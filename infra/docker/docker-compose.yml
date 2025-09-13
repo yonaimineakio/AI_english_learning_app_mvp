@@ -1,0 +1,28 @@
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    env_file:
+      - ../env/.env.example
+    volumes:
+      - ../../:/workspace
+    ports:
+      - "8000:8000"
+    command: uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.web
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+    volumes:
+      - ../../:/workspace
+    ports:
+      - "3000:3000"
+    command: sh -lc "cd apps/web && npm install && npm run dev"
+
+networks:
+  default:
+    driver: bridge
