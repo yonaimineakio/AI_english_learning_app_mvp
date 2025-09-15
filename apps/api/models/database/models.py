@@ -1,23 +1,26 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, JSON, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, JSON, Enum
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.db.base import Base
-import enum
+from datetime import datetime
+from enum import Enum as PyEnum
+
+Base = declarative_base()
 
 
-class ScenarioCategory(str, enum.Enum):
+class ScenarioCategory(PyEnum):
     TRAVEL = "travel"
     BUSINESS = "business"
     DAILY = "daily"
 
 
-class DifficultyLevel(str, enum.Enum):
+class DifficultyLevel(PyEnum):
     BEGINNER = "beginner"
     INTERMEDIATE = "intermediate"
     ADVANCED = "advanced"
 
 
-class SessionMode(str, enum.Enum):
+class SessionMode(PyEnum):
     QUICK = "quick"
     STANDARD = "standard"
     DEEP = "deep"
@@ -44,9 +47,9 @@ class Scenario(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
-    description = Column(Text)
-    category = Column(SQLEnum(ScenarioCategory), nullable=False)
-    difficulty = Column(SQLEnum(DifficultyLevel), nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(Enum(ScenarioCategory), nullable=False)
+    difficulty = Column(Enum(DifficultyLevel), nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -62,8 +65,9 @@ class Session(Base):
     scenario_id = Column(Integer, ForeignKey("scenarios.id"), nullable=False)
     round_target = Column(Integer, nullable=False)  # 4-12 rounds
     completed_rounds = Column(Integer, default=0)
-    difficulty = Column(SQLEnum(DifficultyLevel), nullable=False)
-    mode = Column(SQLEnum(SessionMode), nullable=False)
+    difficulty = Column(Enum(DifficultyLevel), nullable=False)
+    mode = Column(Enum(SessionMode), nullable=False)
+    extension_count = Column(Integer, default=0)  # 延長回数（最大2回）
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     ended_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -102,9 +106,9 @@ class ReviewItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    phrase = Column(Text, nullable=False)  # The phrase to review
-    explanation = Column(Text, nullable=False)  # Explanation of the phrase
-    due_at = Column(DateTime(timezone=True), nullable=False)  # When to show this review
+    phrase = Column(Text, nullable=False)
+    explanation = Column(Text, nullable=False)
+    due_at = Column(DateTime(timezone=True), nullable=False)
     is_completed = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)

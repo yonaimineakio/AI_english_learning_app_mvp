@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from routers.auth.auth import router as auth_router
+from app.routers.auth.auth import router as auth_router
+from app.routers.sessions.sessions import router as sessions_router
 
 # Create FastAPI app
 app = FastAPI(
@@ -22,6 +23,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth_router, prefix=settings.API_V1_STR)
+app.include_router(sessions_router, prefix=f"{settings.API_V1_STR}/sessions", tags=["sessions"])
 
 @app.get("/")
 async def root():
