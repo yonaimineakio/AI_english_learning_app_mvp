@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 from enum import Enum
 
@@ -51,8 +51,8 @@ class User(UserBase):
 class ScenarioBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
-    category: ScenarioCategory
-    difficulty: DifficultyLevel
+    category: Literal["travel", "business", "daily"]
+    difficulty: Literal["beginner", "intermediate", "advanced"]
     is_active: bool = True
 
 
@@ -79,12 +79,12 @@ class Scenario(ScenarioBase):
 class SessionBase(BaseModel):
     scenario_id: int
     round_target: int = Field(..., ge=4, le=12)
-    difficulty: DifficultyLevel
-    mode: SessionMode
+    difficulty: Literal["beginner", "intermediate", "advanced"]
+    mode: Literal["quick", "standard", "deep", "custom"]
 
 
 class SessionCreate(SessionBase):
-    pass
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class SessionUpdate(BaseModel):
@@ -170,27 +170,62 @@ class ReviewItem(ReviewItemBase):
     completed_at: Optional[datetime] = None
 
 
+class ReviewCompleteRequest(BaseModel):
+    result: Literal["correct", "incorrect"]
+
+
 # API Response schemas
 class SessionStartResponse(BaseModel):
     session_id: int
     scenario: Scenario
     round_target: int
-    difficulty: DifficultyLevel
-    mode: SessionMode
+    difficulty: Literal["beginner", "intermediate", "advanced"]
+    mode: Literal["quick", "standard", "deep", "custom"]
+
+
+class SessionStatusResponse(BaseModel):
+    session_id: int
+    scenario_id: int
+    round_target: int
+    completed_rounds: int
+    difficulty: Literal["beginner", "intermediate", "advanced"]
+    mode: Literal["quick", "standard", "deep", "custom"]
+    is_active: bool
+    difficulty_label: Optional[str] = None
+    mode_label: Optional[str] = None
+    extension_offered: bool = False
+    scenario_name: Optional[str] = None
+    can_extend: bool = False
+
+
+class ConversationAiReply(BaseModel):
+    message: str
+    feedback_short: str
+    improved_sentence: str
+    tags: Optional[List[str]] = None
+    details: Optional[Dict[str, Any]] = None
+    scores: Optional[Dict[str, Optional[int]]] = None
 
 
 class TurnResponse(BaseModel):
     round_index: int
-    ai_reply: str
+    ai_reply: ConversationAiReply | str
     feedback_short: str
     improved_sentence: str
     tags: Optional[List[str]] = None
+    response_time_ms: Optional[int] = None
+    provider: Optional[str] = None
+    session_status: Optional[SessionStatusResponse] = None
 
 
 class SessionEndResponse(BaseModel):
     session_id: int
     completed_rounds: int
     top_phrases: List[Dict[str, Any]]  # Top 3 phrases for review
+    next_review_at: Optional[datetime] = None
+    scenario_name: Optional[str] = None
+    difficulty: Literal["beginner", "intermediate", "advanced"]
+    mode: Literal["quick", "standard", "deep", "custom"]
 
 
 class ReviewNextResponse(BaseModel):

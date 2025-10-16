@@ -25,71 +25,71 @@ def init_db() -> None:
                 Scenario(
                     name="Airport Check-in",
                     description="Practice checking in at the airport",
-                    category=ScenarioCategory.TRAVEL,
-                    difficulty=DifficultyLevel.BEGINNER,
+                    category=ScenarioCategory.TRAVEL.value,
+                    difficulty=DifficultyLevel.BEGINNER.value,
                     is_active=True
                 ),
                 Scenario(
                     name="Hotel Reservation",
                     description="Make a hotel reservation over the phone",
-                    category=ScenarioCategory.TRAVEL,
-                    difficulty=DifficultyLevel.INTERMEDIATE,
+                    category=ScenarioCategory.TRAVEL.value,
+                    difficulty=DifficultyLevel.INTERMEDIATE.value,
                     is_active=True
                 ),
                 Scenario(
                     name="Business Meeting",
                     description="Participate in a business meeting",
-                    category=ScenarioCategory.BUSINESS,
-                    difficulty=DifficultyLevel.INTERMEDIATE,
+                    category=ScenarioCategory.BUSINESS.value,
+                    difficulty=DifficultyLevel.INTERMEDIATE.value,
                     is_active=True
                 ),
                 Scenario(
                     name="Job Interview",
                     description="Practice for a job interview",
-                    category=ScenarioCategory.BUSINESS,
-                    difficulty=DifficultyLevel.ADVANCED,
+                    category=ScenarioCategory.BUSINESS.value,
+                    difficulty=DifficultyLevel.ADVANCED.value,
                     is_active=True
                 ),
                 Scenario(
                     name="Ordering Food",
                     description="Order food at a restaurant",
-                    category=ScenarioCategory.DAILY,
-                    difficulty=DifficultyLevel.BEGINNER,
+                    category=ScenarioCategory.DAILY.value,
+                    difficulty=DifficultyLevel.BEGINNER.value,
                     is_active=True
                 ),
                 Scenario(
                     name="Shopping",
                     description="Go shopping and ask for help",
-                    category=ScenarioCategory.DAILY,
-                    difficulty=DifficultyLevel.BEGINNER,
+                    category=ScenarioCategory.DAILY.value,
+                    difficulty=DifficultyLevel.BEGINNER.value,
                     is_active=True
                 ),
                 Scenario(
                     name="Doctor's Appointment",
                     description="Visit the doctor and describe symptoms",
-                    category=ScenarioCategory.DAILY,
-                    difficulty=DifficultyLevel.INTERMEDIATE,
+                    category=ScenarioCategory.DAILY.value,
+                    difficulty=DifficultyLevel.INTERMEDIATE.value,
                     is_active=True
                 ),
                 Scenario(
                     name="Banking",
                     description="Handle banking transactions",
-                    category=ScenarioCategory.DAILY,
-                    difficulty=DifficultyLevel.INTERMEDIATE,
+                    category=ScenarioCategory.DAILY.value,
+                    difficulty=DifficultyLevel.INTERMEDIATE.value,
                     is_active=True
                 ),
                 Scenario(
                     name="Travel Planning",
                     description="Plan a trip and book activities",
-                    category=ScenarioCategory.TRAVEL,
-                    difficulty=DifficultyLevel.ADVANCED,
+                    category=ScenarioCategory.TRAVEL.value,
+                    difficulty=DifficultyLevel.ADVANCED.value,
                     is_active=True
                 ),
                 Scenario(
                     name="Client Presentation",
                     description="Present to a client",
-                    category=ScenarioCategory.BUSINESS,
-                    difficulty=DifficultyLevel.ADVANCED,
+                    category=ScenarioCategory.BUSINESS.value,
+                    difficulty=DifficultyLevel.ADVANCED.value,
                     is_active=True
                 )
             ]

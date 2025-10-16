@@ -6,8 +6,12 @@ import logging
 from app.core.deps import get_db, get_current_user
 from models.database.models import User
 from models.schemas.schemas import (
-    SessionCreate, SessionStartResponse, TurnResponse, SessionEndResponse,
-    ErrorResponse
+    SessionCreate,
+    SessionStartResponse,
+    TurnResponse,
+    SessionEndResponse,
+    ErrorResponse,
+    SessionStatusResponse,
 )
 from app.services.conversation.session_service import SessionService
 
@@ -24,6 +28,7 @@ async def start_session(
 ):
     """セッションを開始する"""
     try:
+        
         session_service = SessionService(db)
         result = session_service.start_session(current_user.id, session_data)
         
@@ -47,15 +52,22 @@ async def start_session(
 @router.post("/{session_id}/turn", response_model=TurnResponse)
 async def process_turn(
     session_id: int,
-    user_input: str,
+    payload: Dict[str, Any],
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """セッションのターンを処理する"""
     try:
         session_service = SessionService(db)
-        result = session_service.process_turn(session_id, user_input, current_user.id)
-        
+        user_input = payload.get("user_input")
+        if not user_input:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="user_input is required"
+            )
+
+        result = await session_service.process_turn(session_id, user_input, current_user.id)
+
         logger.info(f"Turn processed for session {session_id}")
         return result
         
@@ -73,7 +85,7 @@ async def process_turn(
         )
 
 
-@router.post("/{session_id}/extend")
+@router.post("/{session_id}/extend", response_model=SessionStatusResponse)
 async def extend_session(
     session_id: int,
     current_user: User = Depends(get_current_user),
@@ -129,7 +141,7 @@ async def end_session(
         )
 
 
-@router.get("/{session_id}/status")
+@router.get("/{session_id}/status", response_model=SessionStatusResponse)
 async def get_session_status(
     session_id: int,
     current_user: User = Depends(get_current_user),
@@ -150,17 +162,8 @@ async def get_session_status(
                 detail="Session not found"
             )
         
-        return {
-            "session_id": session.id,
-            "scenario_id": session.scenario_id,
-            "round_target": session.round_target,
-            "completed_rounds": session.completed_rounds,
-            "difficulty": session.difficulty,
-            "mode": session.mode,
-            "started_at": session.started_at,
-            "ended_at": session.ended_at,
-            "is_active": session.ended_at is None
-        }
+        service = SessionService(db)
+        return service._build_session_status(session)
         
     except HTTPException:
         raise

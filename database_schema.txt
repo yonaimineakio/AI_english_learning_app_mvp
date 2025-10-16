@@ -1,0 +1,281 @@
+# AI English Learning App MVP - データベース定義
+
+## Enum定義
+
+### ScenarioCategory
+- TRAVEL = "travel"
+- BUSINESS = "business"  
+- DAILY = "daily"
+
+### DifficultyLevel
+- BEGINNER = "beginner"
+- INTERMEDIATE = "intermediate"
+- ADVANCED = "advanced"
+
+### SessionMode
+- QUICK = "quick"
+- STANDARD = "standard"
+- DEEP = "deep"
+- CUSTOM = "custom"
+
+## テーブル定義
+
+### 1. users テーブル
+```sql
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    sub VARCHAR(255) UNIQUE NOT NULL,  -- Auth0 sub
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE
+);
+```
+
+**カラム詳細:**
+- id: 主キー
+- sub: Auth0のユーザー識別子（ユニーク）
+- name: ユーザー名
+- email: メールアドレス（ユニーク）
+- created_at: 作成日時（自動設定）
+- updated_at: 更新日時（自動更新）
+
+**リレーション:**
+- sessions (1:N)
+- review_items (1:N)
+
+### 2. scenarios テーブル
+```sql
+CREATE TABLE scenarios (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    category ENUM('travel', 'business', 'daily') NOT NULL,
+    difficulty ENUM('beginner', 'intermediate', 'advanced') NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+**カラム詳細:**
+- id: 主キー
+- name: シナリオ名
+- description: シナリオの説明
+- category: カテゴリ（travel/business/daily）
+- difficulty: 難易度（beginner/intermediate/advanced）
+- is_active: アクティブフラグ
+- created_at: 作成日時（自動設定）
+
+**リレーション:**
+- sessions (1:N)
+
+### 3. sessions テーブル
+```sql
+CREATE TABLE sessions (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    scenario_id INTEGER NOT NULL REFERENCES scenarios(id),
+    round_target INTEGER NOT NULL,  -- 4-12 rounds
+    completed_rounds INTEGER DEFAULT 0,
+    difficulty ENUM('beginner', 'intermediate', 'advanced') NOT NULL,
+    mode ENUM('quick', 'standard', 'deep', 'custom') NOT NULL,
+    extension_count INTEGER DEFAULT 0,  -- 延長回数（最大2回）
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    ended_at TIMESTAMP WITH TIME ZONE
+);
+```
+
+**カラム詳細:**
+- id: 主キー
+- user_id: ユーザーID（外部キー）
+- scenario_id: シナリオID（外部キー）
+- round_target: 目標ラウンド数（4-12）
+- completed_rounds: 完了ラウンド数
+- difficulty: 難易度（beginner/intermediate/advanced）
+- mode: モード（quick/standard/deep/custom）
+- extension_count: 延長回数（最大2回）
+- started_at: 開始日時（自動設定）
+- ended_at: 終了日時
+
+**リレーション:**
+- user (N:1)
+- scenario (N:1)
+- session_rounds (1:N, cascade delete)
+
+### 4. session_rounds テーブル
+```sql
+CREATE TABLE session_rounds (
+    id INTEGER PRIMARY KEY,
+    session_id INTEGER NOT NULL REFERENCES sessions(id),
+    round_index INTEGER NOT NULL,  -- 1-based index
+    user_input TEXT NOT NULL,
+    ai_reply TEXT NOT NULL,
+    feedback_short VARCHAR(120) NOT NULL,  -- Max 120 characters
+    improved_sentence TEXT NOT NULL,  -- Single sentence
+    tags JSON,  -- Array of strings
+    score_pronunciation INTEGER,  -- 0-100
+    score_grammar INTEGER,  -- 0-100
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    UNIQUE(session_id, round_index)
+);
+```
+
+**カラム詳細:**
+- id: 主キー
+- session_id: セッションID（外部キー）
+- round_index: ラウンド番号（1から開始）
+- user_input: ユーザーの発話内容
+- ai_reply: AIの応答内容
+- feedback_short: 短いフィードバック（120文字以内）
+- improved_sentence: 改善例文（1文）
+- tags: タグ配列（JSON形式）
+- score_pronunciation: 発音スコア（0-100）
+- score_grammar: 文法スコア（0-100）
+- created_at: 作成日時（自動設定）
+
+**制約:**
+- UNIQUE(session_id, round_index): セッション内でラウンド番号は一意
+
+**リレーション:**
+- session (N:1)
+
+### 5. review_items テーブル
+```sql
+CREATE TABLE review_items (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    phrase TEXT NOT NULL,
+    explanation TEXT NOT NULL,
+    due_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    is_completed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    completed_at TIMESTAMP WITH TIME ZONE
+);
+```
+
+**カラム詳細:**
+- id: 主キー
+- user_id: ユーザーID（外部キー）
+- phrase: 復習フレーズ
+- explanation: 説明文
+- due_at: 復習予定日時
+- is_completed: 完了フラグ
+- created_at: 作成日時（自動設定）
+- completed_at: 完了日時
+
+**リレーション:**
+- user (N:1)
+
+## テーブル間の関係図
+
+```
+users (1) ──────────── (N) sessions (1) ──────────── (N) session_rounds
+  │                                                      │
+  │                                                      │
+  │                                                      │
+  └── (N) review_items                                   │
+                                                        │
+scenarios (1) ──────────── (N) sessions ────────────────┘
+```
+
+### 関係の詳細
+
+#### 1. users → sessions (1:N)
+- **関係**: 1人のユーザーは複数のセッションを持つ
+- **外部キー**: sessions.user_id → users.id
+- **制約**: NOT NULL, ユーザー削除時はセッションも削除される
+
+#### 2. scenarios → sessions (1:N)
+- **関係**: 1つのシナリオは複数のセッションで使用される
+- **外部キー**: sessions.scenario_id → scenarios.id
+- **制約**: NOT NULL, シナリオ削除時はセッションも削除される
+
+#### 3. sessions → session_rounds (1:N)
+- **関係**: 1つのセッションは複数のラウンドを持つ
+- **外部キー**: session_rounds.session_id → sessions.id
+- **制約**: NOT NULL, セッション削除時はラウンドも自動削除（CASCADE）
+- **ユニーク制約**: (session_id, round_index) でセッション内のラウンド番号は一意
+
+#### 4. users → review_items (1:N)
+- **関係**: 1人のユーザーは複数の復習アイテムを持つ
+- **外部キー**: review_items.user_id → users.id
+- **制約**: NOT NULL, ユーザー削除時は復習アイテムも削除される
+
+### データフロー
+
+#### セッション作成フロー
+1. **users** テーブルからユーザー情報を取得
+2. **scenarios** テーブルからシナリオ情報を取得
+3. **sessions** テーブルに新しいセッションを作成
+4. セッション進行中に **session_rounds** テーブルにラウンドデータを追加
+
+#### 復習システムフロー
+1. セッション終了時に **session_rounds** からトップ3フレーズを抽出
+2. **review_items** テーブルに復習アイテムを作成
+3. 復習完了時に **review_items** の is_completed を更新
+
+### 参照整合性
+
+#### カスケード削除
+- **users** 削除 → **sessions**, **review_items** も削除
+- **scenarios** 削除 → **sessions** も削除
+- **sessions** 削除 → **session_rounds** も削除（CASCADE）
+
+#### 制約
+- 外部キーは全て NOT NULL
+- セッション内のラウンド番号は一意
+- ユーザーのsubとemailは一意
+
+## インデックス
+
+### 主キーインデックス
+- users.id
+- scenarios.id
+- sessions.id
+- session_rounds.id
+- review_items.id
+
+### ユニークインデックス
+- users.sub
+- users.email
+- session_rounds(session_id, round_index)
+
+### 外部キーインデックス
+- sessions.user_id
+- sessions.scenario_id
+- session_rounds.session_id
+- review_items.user_id
+
+## データベース特徴
+
+### タイムゾーン対応
+- 全DateTimeカラムで `timezone=True` を使用
+- 日本時間（Asia/Tokyo）での管理
+
+### JSONサポート
+- `session_rounds.tags` でJSON配列をサポート
+- タグの動的追加・削除が可能
+
+### Enum型使用
+- カテゴリ、難易度、モードでEnum型を使用
+- データの整合性を保証
+
+### カスケード削除
+- Session削除時にSessionRoundも自動削除
+- データの整合性を保持
+
+### 延長機能
+- `extension_count` で延長回数を管理
+- 最大2回までの延長制限
+
+## 初期データ
+
+### シナリオデータ
+- 10個のシナリオが自動登録
+- 3カテゴリ × 3難易度の組み合わせ
+- 旅行、ビジネス、日常会話の各カテゴリ
+
+### 開発用ユーザー
+- 開発モード時に自動ユーザー作成
+- Auth0連携なしでのテスト可能

@@ -48,8 +48,8 @@ class Scenario(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    category = Column(Enum(ScenarioCategory), nullable=False)
-    difficulty = Column(Enum(DifficultyLevel), nullable=False)
+    category = Column(Enum(ScenarioCategory, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
+    difficulty = Column(Enum(DifficultyLevel, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -65,8 +65,8 @@ class Session(Base):
     scenario_id = Column(Integer, ForeignKey("scenarios.id"), nullable=False)
     round_target = Column(Integer, nullable=False)  # 4-12 rounds
     completed_rounds = Column(Integer, default=0)
-    difficulty = Column(Enum(DifficultyLevel), nullable=False)
-    mode = Column(Enum(SessionMode), nullable=False)
+    difficulty = Column(Enum(DifficultyLevel, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
+    mode = Column(Enum(SessionMode, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
     extension_count = Column(Integer, default=0)  # 延長回数（最大2回）
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     ended_at = Column(DateTime(timezone=True), nullable=True)

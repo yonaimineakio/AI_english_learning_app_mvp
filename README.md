@@ -8,12 +8,16 @@
 - インタラクティブ会話ラウンド
 - 即時フィードバック
 - 徹底した復習システム
+- 音声録音＆自動文字起こし（Google Speech-to-Text）
+- 5秒無音での自動停止と手動停止ボタンを備えた録音UI
+- 文字起こし結果と信頼度スコアの表示、代替候補の取得
 
 ## 技術スタック
 - **フロントエンド**: Next.js + TypeScript + Tailwind CSS
 - **バックエンド**: FastAPI (Python, pydantic v2)
 - **データベース**: PostgreSQL (開発時はSQLite)
 - **API**: REST (OpenAPI自動生成)
+- **音声認識**: Google Cloud Speech-to-Text
 
 ## プロジェクト構成
 ```
@@ -21,16 +25,87 @@ AI_english_learning_app_mvp/
 ├── apps/
 │   ├── web/          # Next.js フロントエンド
 │   └── api/          # FastAPI バックエンド
+│       ├── app/routers/audio/        # Google Speech-to-Text連携API
+│       └── app/services/ai/google_speech_provider.py
 ├── infra/            # Docker, 環境設定, マイグレーション
 ├── docs/             # 要件定義, 設計書
 └── README.md
 ```
 
 ## 開発環境セットアップ
-1. リポジトリをクローン
-2. 環境変数を設定 (`.env.example`を参考)
-3. Docker Composeで開発環境を起動
-4. フロントエンドとバックエンドを起動
+
+### 1. リポジトリをクローン
+```bash
+git clone <repository-url>
+cd AI_english_learning_app_mvp
+```
+
+### 2. 環境変数を設定
+
+#### バックエンド用環境変数
+```bash
+# apps/api/.env を作成
+cp infra/env/backend.env.example apps/api/.env
+
+# 以下の値を実際の値に更新
+# - OPENAI_API_KEY: OpenAI APIキー（会話生成用）
+# - GOOGLE_CLOUD_PROJECT_ID: Google Cloud プロジェクトID（音声認識用）
+# - GOOGLE_APPLICATION_CREDENTIALS: GoogleサービスアカウントJSONファイルへの絶対パス（バックエンドのみ）
+# - GOOGLE_CLIENT_ID: Google OAuth クライアントID
+# - GOOGLE_CLIENT_SECRET: Google OAuth クライアントシークレット
+```
+
+#### フロントエンド用環境変数
+```bash
+# apps/web/.env.local を作成
+cp infra/env/frontend.env.example apps/web/.env.local
+
+# 以下の値を実際の値に更新
+# - NEXT_PUBLIC_GOOGLE_CLIENT_ID: Google OAuth クライアントID
+```
+
+### 3. 依存関係のインストール
+
+#### バックエンド
+```bash
+cd apps/api
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# Google Cloud Speech-to-Text SDK を利用するために環境変数を設定
+export GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/credentials.json
+export GOOGLE_CLOUD_PROJECT_ID=your_project_id
+```
+
+#### フロントエンド
+```bash
+cd apps/web
+npm install
+
+# サービスアカウントの認証情報はバックエンドでのみ利用します。
+# フロントエンド側でGoogle Cloudの秘密情報を扱う必要はありません。
+# フロントエンドはブラウザ標準APIで録音し、バックエンドへBlobを送信します。
+```
+
+### 4. 開発サーバーの起動
+
+#### バックエンド
+```bash
+cd apps/api
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+#### フロントエンド
+```bash
+cd apps/web
+npm run dev
+```
+
+### 5. アクセス
+- フロントエンド: http://localhost:3000
+- バックエンドAPI: http://localhost:8000
+- API ドキュメント: http://localhost:8000/docs
 
 ## ライセンス
 MIT

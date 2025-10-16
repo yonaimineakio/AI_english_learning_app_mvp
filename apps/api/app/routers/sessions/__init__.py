@@ -1,3 +1,4 @@
-from . import sessions
+#initファイルでrouterを呼び出して他からインポートできるようにする
+from .sessions import router
 
-__all__ = ["sessions"]
+__all__ = ["router"]

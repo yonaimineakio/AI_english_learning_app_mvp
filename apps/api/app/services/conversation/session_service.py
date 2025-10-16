@@ -1,13 +1,23 @@
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
+import asyncio
 import logging
+import time
 
 from models.database.models import Session as SessionModel, SessionRound, Scenario, User
 from models.schemas.schemas import (
-    SessionCreate, SessionStartResponse, TurnResponse, SessionEndResponse,
-    SessionRoundCreate, DifficultyLevel, SessionMode
+    SessionCreate,
+    SessionStartResponse,
+    TurnResponse,
+    SessionEndResponse,
+    SessionRoundCreate,
+    DifficultyLevel,
+    SessionMode,
+    SessionStatusResponse,
 )
+
+from app.services.ai import generate_conversation_response
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +25,28 @@ logger = logging.getLogger(__name__)
 class SessionService:
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def _to_str(value):
+        return value.value if hasattr(value, "value") else value
+
+    def _get_existing_review_due(self, session: SessionModel, user_id: int):
+        from models.database.models import ReviewItem
+
+        if session.ended_at is None:
+            return None
+
+        item = (
+            self.db.query(ReviewItem)
+            .filter(
+                ReviewItem.user_id == user_id,
+                ReviewItem.due_at.is_not(None)
+            )
+            .order_by(ReviewItem.due_at.desc())
+            .first()
+        )
+
+        return item.due_at if item else None
 
     def start_session(self, user_id: int, session_data: SessionCreate) -> SessionStartResponse:
         """セッションを開始する"""
@@ -33,8 +65,8 @@ class SessionService:
                 user_id=user_id,
                 scenario_id=session_data.scenario_id,
                 round_target=session_data.round_target,
-                difficulty=session_data.difficulty,
-                mode=session_data.mode,
+                difficulty=session_data.difficulty.value if hasattr(session_data.difficulty, 'value') else session_data.difficulty,
+                mode=session_data.mode.value if hasattr(session_data.mode, 'value') else session_data.mode,
                 started_at=datetime.utcnow()
             )
             
@@ -44,12 +76,25 @@ class SessionService:
             
             logger.info(f"Session {db_session.id} started for user {user_id}")
             
+            # Scenarioオブジェクトを手動で構築（Enum値を文字列に変換）
+            from models.schemas.schemas import Scenario as ScenarioSchema
+
+            scenario_schema = ScenarioSchema(
+                id=scenario.id,
+                name=scenario.name,
+                description=scenario.description,
+                category=self._to_str(scenario.category),
+                difficulty=self._to_str(scenario.difficulty),
+                is_active=scenario.is_active,
+                created_at=scenario.created_at
+            )
+
             return SessionStartResponse(
                 session_id=db_session.id,
-                scenario=scenario,
+                scenario=scenario_schema,
                 round_target=db_session.round_target,
-                difficulty=db_session.difficulty,
-                mode=db_session.mode
+                difficulty=self._to_str(db_session.difficulty),
+                mode=self._to_str(db_session.mode)
             )
             
         except Exception as e:
@@ -57,7 +102,7 @@ class SessionService:
             logger.error(f"Failed to start session: {str(e)}")
             raise
 
-    def process_turn(self, session_id: int, user_input: str, user_id: int) -> TurnResponse:
+    async def process_turn(self, session_id: int, user_input: str, user_id: int) -> TurnResponse:
         """セッションのターンを処理する"""
         try:
             # セッションの存在確認
@@ -77,22 +122,49 @@ class SessionService:
             if current_round > session.round_target:
                 raise ValueError(f"Session {session_id} has reached maximum rounds ({session.round_target})")
 
-            # AI応答とフィードバック生成（モック実装）
-            ai_reply, feedback_short, improved_sentence, tags = self._generate_ai_response(
-                user_input, session.difficulty, current_round
+            # AI応答とフィードバック生成
+            context_records = (
+                self.db.query(SessionRound)
+                .filter(SessionRound.session_id == session_id)
+                .order_by(SessionRound.round_index.desc())
+                .limit(2)
+                .all()
             )
+
+            context = [
+                {
+                    "round_index": record.round_index,
+                    "user_input": record.user_input,
+                    "ai_reply": record.ai_reply,
+                }
+                for record in reversed(context_records)
+            ]
+
+            start_time = time.perf_counter()
+            session_difficulty_value = (
+                session.difficulty.value if hasattr(session.difficulty, "value") else session.difficulty
+            )
+            conversation_result = await generate_conversation_response(
+                user_input=user_input,
+                difficulty=DifficultyLevel(session_difficulty_value),
+                round_index=current_round,
+                context=context,
+            )
+            latency_ms = conversation_result.latency_ms
+            if latency_ms is None:
+                latency_ms = int((time.perf_counter() - start_time) * 1000)
 
             # ラウンド情報を保存
             session_round = SessionRound(
                 session_id=session_id,
                 round_index=current_round,
                 user_input=user_input,
-                ai_reply=ai_reply,
-                feedback_short=feedback_short,
-                improved_sentence=improved_sentence,
-                tags=tags,
+                ai_reply=conversation_result.ai_reply,
+                feedback_short=conversation_result.feedback_short,
+                improved_sentence=conversation_result.improved_sentence,
+                tags=conversation_result.tags,
                 score_pronunciation=None,  # 将来実装
-                score_grammar=None  # 将来実装
+                score_grammar=None,  # 将来実装
             )
             
             self.db.add(session_round)
@@ -101,15 +173,28 @@ class SessionService:
             session.completed_rounds = current_round
             
             self.db.commit()
-            
+            self.db.refresh(session)
+
             logger.info(f"Turn {current_round} processed for session {session_id}")
-            
+
+            ai_details = getattr(conversation_result, "details", None)
+
             return TurnResponse(
                 round_index=current_round,
-                ai_reply=ai_reply,
-                feedback_short=feedback_short,
-                improved_sentence=improved_sentence,
-                tags=tags
+                ai_reply={
+                    "message": conversation_result.ai_reply,
+                    "feedback_short": conversation_result.feedback_short,
+                    "improved_sentence": conversation_result.improved_sentence,
+                    "tags": conversation_result.tags,
+                    "details": ai_details,
+                    "scores": getattr(conversation_result, "scores", None),
+                },
+                feedback_short=conversation_result.feedback_short,
+                improved_sentence=conversation_result.improved_sentence,
+                tags=conversation_result.tags,
+                response_time_ms=latency_ms,
+                provider=conversation_result.provider,
+                session_status=self._build_session_status(session),
             )
             
         except Exception as e:
@@ -141,14 +226,11 @@ class SessionService:
             session.round_target += 3
             
             self.db.commit()
-            
+            self.db.refresh(session)
+
             logger.info(f"Session {session_id} extended by 3 rounds (total: {session.round_target})")
-            
-            return {
-                "session_id": session_id,
-                "new_round_target": session.round_target,
-                "extension_count": session.extension_count
-            }
+
+            return self._build_session_status(session)
             
         except Exception as e:
             self.db.rollback()
@@ -161,29 +243,46 @@ class SessionService:
             session = self.db.query(SessionModel).filter(
                 SessionModel.id == session_id,
                 SessionModel.user_id == user_id,
-                SessionModel.ended_at.is_(None)
             ).first()
-            
-            if not session:
-                raise ValueError(f"Active session {session_id} not found for user {user_id}")
 
-            # セッション終了時刻を設定
-            session.ended_at = datetime.utcnow()
-            
-            # トップ3フレーズを抽出（モック実装）
-            top_phrases = self._extract_top_phrases(session_id)
-            
-            # 復習アイテムを作成
-            self._create_review_items(user_id, top_phrases)
-            
-            self.db.commit()
-            
-            logger.info(f"Session {session_id} ended with {session.completed_rounds} rounds")
-            
+            if not session:
+                raise ValueError(f"Session {session_id} not found for user {user_id}")
+
+            already_ended = session.ended_at is not None
+
+            if not already_ended:
+                # セッション終了時刻を設定
+                session.ended_at = datetime.utcnow()
+
+                # トップ3フレーズを抽出（モック実装）
+                top_phrases = self._extract_top_phrases(session_id)
+
+                # 復習アイテムを作成
+                next_review_at = self._create_review_items(user_id, top_phrases)
+
+                self.db.commit()
+                self.db.refresh(session)
+
+                logger.info(f"Session {session_id} ended with {session.completed_rounds} rounds")
+            else:
+                # 既に終了している場合は、既存データを返却して冪等性を担保
+                top_phrases = self._extract_top_phrases(session_id)
+                next_review_at = self._get_existing_review_due(session, user_id)
+
+                logger.info(
+                    "Session %s already ended at %s. Returning stored summary.",
+                    session_id,
+                    session.ended_at,
+                )
+
             return SessionEndResponse(
                 session_id=session_id,
                 completed_rounds=session.completed_rounds,
-                top_phrases=top_phrases
+                top_phrases=top_phrases,
+                next_review_at=next_review_at,
+                scenario_name=session.scenario.name if session.scenario else None,
+                difficulty=self._to_str(session.difficulty),
+                mode=self._to_str(session.mode),
             )
             
         except Exception as e:
@@ -249,17 +348,47 @@ class SessionService:
     def _create_review_items(self, user_id: int, top_phrases: List[Dict[str, Any]]):
         """復習アイテムを作成する"""
         from models.database.models import ReviewItem
-        
+
+        if not top_phrases:
+            return None
+
         # 翌日の復習時間を設定
         due_at = datetime.utcnow() + timedelta(days=1)
-        
+
         for phrase_data in top_phrases:
             review_item = ReviewItem(
                 user_id=user_id,
                 phrase=phrase_data["phrase"],
                 explanation=phrase_data["explanation"],
-                due_at=due_at
+                due_at=due_at,
             )
             self.db.add(review_item)
-        
+
         logger.info(f"Created {len(top_phrases)} review items for user {user_id}")
+        return due_at
+
+    def _build_session_status(self, session: SessionModel) -> SessionStatusResponse:
+        scenario_name = session.scenario.name if session.scenario else None
+
+        def _to_str(value):
+            return value.value if hasattr(value, "value") else value
+
+        difficulty_label = _to_str(session.difficulty) if session.difficulty else None
+        mode_label = _to_str(session.mode) if session.mode else None
+        extension_offered = session.completed_rounds >= session.round_target
+        can_extend = extension_offered and session.extension_count < 2 and session.ended_at is None
+
+        return SessionStatusResponse(
+            session_id=session.id,
+            scenario_id=session.scenario_id,
+            round_target=session.round_target,
+            completed_rounds=session.completed_rounds,
+            difficulty=_to_str(session.difficulty),
+            mode=_to_str(session.mode),
+            is_active=session.ended_at is None,
+            difficulty_label=difficulty_label,
+            mode_label=mode_label,
+            extension_offered=extension_offered,
+            scenario_name=scenario_name,
+            can_extend=can_extend,
+        )

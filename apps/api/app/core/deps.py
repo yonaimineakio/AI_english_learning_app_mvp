@@ -2,64 +2,75 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.core.auth0 import auth0_service
+from app.core.config import settings
+from app.core.security import verify_token
 from models.database.models import User
 from typing import Optional
 
 # HTTP Bearer token scheme
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
+
+
+def _get_or_create_dev_user(db: Session) -> User:
+    dev_sub = "dev-user"
+    user = db.query(User).filter(User.sub == dev_sub).first()
+    if user:
+        return user
+
+    user = User(
+        sub=dev_sub,
+        name="Dev User",
+        email="dev@example.com",
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
     """Get current authenticated user"""
-    
+
+    if credentials is None:
+        if settings.DEBUG:
+            return _get_or_create_dev_user(db)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication credentials were not provided",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     # Extract token
     token = credentials.credentials
-    
-    # Verify Auth0 token
-    payload = await auth0_service.verify_auth0_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # Get user sub (Auth0 user ID)
-    user_sub = payload.get("sub")
-    if not user_sub:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # Get user from database
-    user = db.query(User).filter(User.sub == user_sub).first()
-    if not user:
-        # Create new user if not exists
-        user_info = await auth0_service.get_user_info(token)
-        if not user_info:
+
+    # まずはアプリ発行トークンを検証
+    payload = verify_token(token)
+    if payload:
+        user_sub = payload.get("sub")
+        if not user_sub:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not retrieve user information",
+                detail="Invalid token payload",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
-        # Create new user
-        user = User(
-            sub=user_sub,
-            name=user_info.get("name", ""),
-            email=user_info.get("email", "")
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    
-    return user
+
+        user = db.query(User).filter(User.sub == user_sub).first()
+        if not user:
+            user = User(sub=user_sub, name="Dev User", email="dev@example.com")
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        return user
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 async def get_current_user_optional(
@@ -68,6 +79,8 @@ async def get_current_user_optional(
 ) -> Optional[User]:
     """Get current user if authenticated, otherwise return None"""
     if not credentials:
+        if settings.DEBUG:
+            return _get_or_create_dev_user(db)
         return None
     
     try:
