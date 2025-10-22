@@ -7,28 +7,15 @@ from typing import List
 import httpx
 
 from app.core.config import settings
-from models.schemas.schemas import DifficultyLevel
+from models.schemas.schemas import DifficultyLevel, ScenarioCategory
 
 from .types import ConversationProvider, ConversationResponse
-
+from app.prompts import get_prompt_by_category_difficulty
 
 logger = logging.getLogger(__name__)
 
 OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
 
-
-SYSTEM_PROMPT = """
-You are an English learning conversation AI coach for Japanese learners. Your role is to:
-1. Respond naturally to the user's message.
-2. Provide a short feedback summary in Japanese within 120 characters.
-3. Provide one improved English sentence as a single sentence.
-
-Guidelines:
-- Consider conversation context for coherence (up to last 2 turns).
-- Adapt response difficulty based on the specified level.
-- Avoid personal data and remain concise.
-- Provide constructive yet encouraging feedback.
-"""
 
 
 class OpenAIConversationProvider(ConversationProvider):
@@ -43,12 +30,13 @@ class OpenAIConversationProvider(ConversationProvider):
     async def generate_response(
         self,
         user_input: str,
-        difficulty: DifficultyLevel,
+        difficulty: str,
+        scenario_category: str,
         round_index: int,
         context: List[dict],
     ) -> ConversationResponse:
         start_time = asyncio.get_event_loop().time()
-        payload = self._build_request_payload(user_input, difficulty, context)
+        payload = self._build_request_payload(user_input, difficulty, scenario_category, context)
 
         try:
             response = await self._client.post(OPENAI_CHAT_COMPLETIONS_URL, json=payload)
@@ -60,7 +48,7 @@ class OpenAIConversationProvider(ConversationProvider):
             logger.exception("Failed to generate AI response via OpenAI: %s", exc)
             raise
 
-        tags = ["conversation", f"round_{round_index}", difficulty.value]
+        tags = ["conversation", f"round_{round_index}", difficulty] + [scenario_category]
         latency_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
         details = {"explanation": None, "suggestions": None}
         scores = None
@@ -76,14 +64,11 @@ class OpenAIConversationProvider(ConversationProvider):
             provider="openai",
         )
 
-    def _build_request_payload(self, user_input: str, difficulty: DifficultyLevel, context: List[dict]) -> dict:
-        difficulty_label = {
-            DifficultyLevel.BEGINNER: "beginner",
-            DifficultyLevel.INTERMEDIATE: "intermediate",
-            DifficultyLevel.ADVANCED: "advanced",
-        }[difficulty]
-
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    def _build_request_payload(self, user_input: str, difficulty: str, scenario_category: str, context: List[dict]) -> dict:
+        
+        system_prompt = get_prompt_by_category_difficulty(scenario_category, difficulty)
+        logger.info(f"System prompt: {system_prompt}")
+        messages = [{"role": "system", "content": system_prompt}]
 
         for turn in context[-2:]:  # Include last two rounds as context
             messages.extend(
@@ -97,9 +82,12 @@ class OpenAIConversationProvider(ConversationProvider):
             {
                 "role": "user",
                 "content": (
-                    f"Difficulty: {difficulty_label}. Respond to the user input. "
-                    "Then provide feedback summary in Japanese (max 120 chars) and one improved English sentence.\n"
-                    f"User input: {user_input}"
+                    f"難易度: {difficulty}。ユーザーの入力に応答してください。\n\n"
+                    "出力形式を以下のように厳密に守ってください：\n"
+                    "AI: [英語での自然な応答のみ]\n"
+                    "Feedback: [日本語でのフィードバック要約（最大120文字）]\n"
+                    "Improved: [改善された英語文1つ]\n\n"
+                    f"ユーザー入力: {user_input}"
                 ),
             }
         )

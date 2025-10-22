@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from typing import List
 
-from models.schemas.schemas import DifficultyLevel
+from models.schemas.schemas import DifficultyLevel, ScenarioCategory
 
 from .types import ConversationProvider, ConversationResponse
 
@@ -30,22 +30,21 @@ MOCK_RESPONSES = {
 }
 
 
-def _generate_tags(round_index: int, difficulty: DifficultyLevel) -> List[str]:
+def _generate_tags(round_index: int, difficulty: DifficultyLevel, scenario_category: ScenarioCategory | None = None) -> List[str]:
     base_tags = ["conversation", f"round_{round_index}"]
     difficulty_tag = difficulty.value
-    return base_tags + [difficulty_tag, random.choice(["fluency", "grammar", "vocabulary"])]
-
-
+    return base_tags + [difficulty_tag, random.choice(["fluency", "grammar", "vocabulary"])] + (scenario_category.value if scenario_category else [])
 class MockConversationProvider(ConversationProvider):
     async def generate_response(
         self,
         user_input: str,
-        difficulty: DifficultyLevel,
+        difficulty: str,
+        scenario_category: str,
         round_index: int,
         context: List[dict],
     ) -> ConversationResponse:
         response_template = MOCK_RESPONSES.get(difficulty, MOCK_RESPONSES[DifficultyLevel.INTERMEDIATE])
-        tags = _generate_tags(round_index, difficulty)
+        tags = _generate_tags(round_index, difficulty, scenario_category)
         return ConversationResponse(
             ai_reply=response_template["ai_reply"],
             feedback_short=response_template["feedback_short"][:120],

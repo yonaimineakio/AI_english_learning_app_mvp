@@ -7,6 +7,7 @@ interface UseAudioRecordingOptions {
   maxRecordingSeconds?: number
   minRecordingSeconds?: number
   silenceDbThreshold?: number
+  onRecordingComplete?: (blob: Blob) => void
 }
 
 interface UseAudioRecordingReturn {
@@ -56,6 +57,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
     maxRecordingSeconds = 60,
     minRecordingSeconds = 1,
     silenceDbThreshold = DEFAULT_DB_THRESHOLD,
+    onRecordingComplete,
   } = options
 
   const [isRecording, setIsRecording] = useState(false)
@@ -74,6 +76,8 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
   const silenceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const isStoppingRef = useRef(false)
+  const preRollBufferRef = useRef<Float32Array[]>([])
+  const isPreRollingRef = useRef(false)
 
   const stopTimers = useCallback(() => {
     if (elapsedTimerRef.current) {
@@ -92,6 +96,8 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
     analyserRef.current = null
     audioContextRef.current = null
     timeDomainDataRef.current = null
+    preRollBufferRef.current = []
+    isPreRollingRef.current = false
   }, [])
 
   const stopRecording = useCallback(
@@ -114,8 +120,9 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
   const analyseAudioLevel = useCallback(() => {
     if (!analyserRef.current || !timeDomainDataRef.current) return
 
-    analyserRef.current.getFloatTimeDomainData(timeDomainDataRef.current)
-    const decibels = computeDecibels(timeDomainDataRef.current)
+    const timeDomainData = timeDomainDataRef.current as Float32Array
+    analyserRef.current.getFloatTimeDomainData(timeDomainData as any)
+    const decibels = computeDecibels(timeDomainData)
 
     setSilenceDurationSeconds((prev) => {
       const isSilent = decibels < silenceDbThreshold
@@ -143,10 +150,35 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
 
       audioContextRef.current = audioContext
       analyserRef.current = analyser
-      timeDomainDataRef.current = timeDomainData
+      timeDomainDataRef.current = timeDomainData as Float32Array
+      
+      // プリロール録音を開始
+      startPreRollRecording(analyser, timeDomainData)
     } catch (err) {
       console.warn('Failed to initialize audio analyser', err)
     }
+  }, [])
+
+  const startPreRollRecording = useCallback((analyser: AnalyserNode, timeDomainData: Float32Array) => {
+    isPreRollingRef.current = true
+    preRollBufferRef.current = []
+    
+    const preRollInterval = setInterval(() => {
+      if (!isPreRollingRef.current) {
+        clearInterval(preRollInterval)
+        return
+      }
+      
+      analyser.getFloatTimeDomainData(timeDomainData as any)
+      const bufferCopy = new Float32Array(timeDomainData.length)
+      bufferCopy.set(timeDomainData)
+      preRollBufferRef.current.push(bufferCopy)
+      
+      // プリロールバッファのサイズを制限（約1秒分）
+      if (preRollBufferRef.current.length > 20) {
+        preRollBufferRef.current.shift()
+      }
+    }, 50)
   }, [])
 
   const startTimers = useCallback(() => {
@@ -212,6 +244,9 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
       }
 
       mediaRecorder.onstop = () => {
+        // プリロール録音を停止
+        isPreRollingRef.current = false
+        
         const recordedBlob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' })
         setAudioBlob(recordedBlob)
         setIsProcessing(false)
@@ -221,6 +256,11 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
         setElapsedSeconds(0)
         cleanupAudioProcessing()
         isStoppingRef.current = false
+
+        // Call the recording complete callback if provided
+        if (onRecordingComplete) {
+          onRecordingComplete(recordedBlob)
+        }
 
         stream.getTracks().forEach((track) => track.stop())
       }
@@ -233,7 +273,10 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}): UseAu
         stopTimers()
       }
 
-      mediaRecorder.start(100)
+      // プリロール録音を停止してから実際の録音を開始
+      isPreRollingRef.current = false
+      
+      mediaRecorder.start(50)
       setIsRecording(true)
       setIsProcessing(false)
       setAudioBlob(null)

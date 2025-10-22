@@ -34,7 +34,21 @@ export function AudioRecorder({
     silenceThresholdSeconds,
     maxRecordingSeconds,
     minRecordingSeconds,
-  } = useAudioRecording()
+  } = useAudioRecording({
+    onRecordingComplete: async (blob) => {
+      setIsTranscribing(true)
+      try {
+        const audioFile = new File([blob], 'recording.webm', { type: 'audio/webm' })
+        const result = await transcribeAudio(audioFile)
+        onTranscriptionComplete(result.text)
+      } catch (err) {
+        console.error('Transcription error:', err)
+        onError(err instanceof Error ? err.message : '音声認識に失敗しました')
+      } finally {
+        setIsTranscribing(false)
+      }
+    }
+  })
 
   const silenceProgress = useMemo(() => {
     if (!isRecording || silenceThresholdSeconds <= 0) return 0
@@ -54,28 +68,7 @@ export function AudioRecorder({
     stopRecording({ force: true })
   }
 
-  const handleTranscribe = async () => {
-    if (!audioBlob) return
 
-    setIsTranscribing(true)
-    try {
-      // BlobをFileオブジェクトに変換
-      const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' })
-      
-      const result = await transcribeAudio(audioFile)
-      onTranscriptionComplete(result.text)
-      clearRecording()
-    } catch (err) {
-      console.error('Transcription error:', err)
-      onError(err instanceof Error ? err.message : '音声認識に失敗しました')
-    } finally {
-      setIsTranscribing(false)
-    }
-  }
-
-  const handleClear = () => {
-    clearRecording()
-  }
 
   // エラー表示
   if (error) {
@@ -83,13 +76,6 @@ export function AudioRecorder({
       <div className={`rounded-lg border border-red-200 bg-red-50 p-4 ${className}`}>
         <p className="text-sm text-red-600">{error}</p>
         <div className="mt-3 flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleClear}
-          >
-            リセット
-          </Button>
           <Button 
             variant="outline" 
             size="sm" 
@@ -107,22 +93,9 @@ export function AudioRecorder({
 
   return (
     <div className={`space-y-3 ${className}`}>
-      {/* 録音状態表示 */}
-      {audioBlob && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-blue-500" />
-            <span className="text-sm text-blue-700">録音完了</span>
-          </div>
-          <p className="text-xs text-blue-600 mt-1">
-            ファイルサイズ: {(audioBlob.size / 1024).toFixed(1)}KB
-          </p>
-        </div>
-      )}
-
       {/* 録音ボタン */}
       <div className="flex gap-2">
-        {!isRecording && !audioBlob && (
+        {!isRecording && (
           <Button
             onClick={handleStartRecording}
             disabled={disabled || isTranscribing}
@@ -148,53 +121,11 @@ export function AudioRecorder({
         {isRecording && (
           <Button
             onClick={handleStopRecording}
-            variant="destructive"
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
           >
             <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
             録音停止
           </Button>
-        )}
-
-        {audioBlob && !isRecording && (
-          <>
-            <Button
-              onClick={handleTranscribe}
-              disabled={isTranscribing}
-              className="flex items-center gap-2"
-            >
-              {isTranscribing ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  認識中...
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-                    />
-                  </svg>
-                  文字起こし
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={handleClear}
-              variant="outline"
-              size="sm"
-            >
-              クリア
-            </Button>
-          </>
         )}
       </div>
 
@@ -229,6 +160,14 @@ export function AudioRecorder({
         <div className="flex items-center gap-2 text-sm text-blue-600">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
           音声を処理中...
+        </div>
+      )}
+
+      {/* 文字起こし中の表示 */}
+      {isTranscribing && (
+        <div className="flex items-center gap-2 text-sm text-green-600">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
+          音声を認識中...
         </div>
       )}
     </div>

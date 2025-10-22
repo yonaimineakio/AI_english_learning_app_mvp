@@ -15,10 +15,11 @@ from models.schemas.schemas import (
     DifficultyLevel,
     SessionMode,
     SessionStatusResponse,
+    ScenarioCategory,
 )
 
 from app.services.ai import generate_conversation_response
-
+from datetime import timezone
 logger = logging.getLogger(__name__)
 
 
@@ -49,6 +50,7 @@ class SessionService:
         return item.due_at if item else None
 
     def start_session(self, user_id: int, session_data: SessionCreate) -> SessionStartResponse:
+        logger.info(f"Starting session for user {user_id} with data: {session_data}")
         """セッションを開始する"""
         try:
             # シナリオの存在確認
@@ -67,7 +69,7 @@ class SessionService:
                 round_target=session_data.round_target,
                 difficulty=session_data.difficulty.value if hasattr(session_data.difficulty, 'value') else session_data.difficulty,
                 mode=session_data.mode.value if hasattr(session_data.mode, 'value') else session_data.mode,
-                started_at=datetime.utcnow()
+                started_at=datetime.now(timezone.utc)
             )
             
             self.db.add(db_session)
@@ -141,12 +143,14 @@ class SessionService:
             ]
 
             start_time = time.perf_counter()
-            session_difficulty_value = (
-                session.difficulty.value if hasattr(session.difficulty, "value") else session.difficulty
-            )
+            
+            session_difficulty = self._to_str(session.difficulty)
+            scenario_category = self._to_str(session.scenario.category)
+
             conversation_result = await generate_conversation_response(
                 user_input=user_input,
-                difficulty=DifficultyLevel(session_difficulty_value),
+                difficulty=session_difficulty,
+                scenario_category=scenario_category,
                 round_index=current_round,
                 context=context,
             )
@@ -252,7 +256,7 @@ class SessionService:
 
             if not already_ended:
                 # セッション終了時刻を設定
-                session.ended_at = datetime.utcnow()
+                session.ended_at = datetime.now(timezone.utc)
 
                 # トップ3フレーズを抽出（モック実装）
                 top_phrases = self._extract_top_phrases(session_id)
@@ -353,7 +357,7 @@ class SessionService:
             return None
 
         # 翌日の復習時間を設定
-        due_at = datetime.utcnow() + timedelta(days=1)
+        due_at = datetime.now(timezone.utc) + timedelta(days=1)
 
         for phrase_data in top_phrases:
             review_item = ReviewItem(

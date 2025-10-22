@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional, Protocol
 
-from models.schemas.schemas import DifficultyLevel
-
 
 @dataclass
 class ConversationResponse:
@@ -22,7 +20,8 @@ class ConversationProvider(Protocol):
     async def generate_response(
         self,
         user_input: str,
-        difficulty: DifficultyLevel,
+        difficulty: str,
+        scenario_category: str,
         round_index: int,
         context: List[dict],
     ) -> ConversationResponse:

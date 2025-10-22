@@ -3,8 +3,7 @@ from __future__ import annotations
 from typing import List
 
 from app.core.config import settings
-from models.schemas.schemas import DifficultyLevel
-
+from models.schemas.schemas import DifficultyLevel, ScenarioCategory
 from .mock_provider import MockConversationProvider
 from .openai_provider import OpenAIConversationProvider
 from .provider_registry import AIProviderRegistry
@@ -22,7 +21,8 @@ def initialize_providers() -> None:
 
 async def generate_conversation_response(
     user_input: str,
-    difficulty: DifficultyLevel,
+    difficulty: str,
+    scenario_category: str,
     round_index: int,
     context: List[dict],
     provider_name: str | None = None,
@@ -32,6 +32,7 @@ async def generate_conversation_response(
     result = await provider.generate_response(
         user_input=user_input,
         difficulty=difficulty,
+        scenario_category=scenario_category,
         round_index=round_index,
         context=context,
     )
