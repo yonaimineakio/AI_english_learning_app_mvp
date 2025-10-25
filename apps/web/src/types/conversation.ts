@@ -19,6 +19,7 @@ export interface ConversationTurn {
   }
   createdAt: string
   isPending?: boolean
+  shouldEndSession?: boolean
 }
 
 export interface SessionStatus {

@@ -43,7 +43,7 @@ class OpenAIConversationProvider(ConversationProvider):
             response.raise_for_status()
             data = response.json()
             content = data["choices"][0]["message"]["content"]
-            ai_reply, feedback_short, improved_sentence = self._parse_response(content)
+            ai_reply, feedback_short, improved_sentence, should_end_session = self._parse_response(content)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Failed to generate AI response via OpenAI: %s", exc)
             raise
@@ -62,12 +62,12 @@ class OpenAIConversationProvider(ConversationProvider):
             scores=scores,
             latency_ms=latency_ms,
             provider="openai",
+            should_end_session=should_end_session,
         )
 
     def _build_request_payload(self, user_input: str, difficulty: str, scenario_category: str, context: List[dict]) -> dict:
         
         system_prompt = get_prompt_by_category_difficulty(scenario_category, difficulty)
-        logger.info(f"System prompt: {system_prompt}")
         messages = [{"role": "system", "content": system_prompt}]
 
         for turn in context[-2:]:  # Include last two rounds as context
@@ -83,6 +83,7 @@ class OpenAIConversationProvider(ConversationProvider):
                 "role": "user",
                 "content": (
                     f"難易度: {difficulty}。ユーザーの入力に応答してください。\n\n"
+                    "フィードバックと改善文は、必ずユーザーの入力に対して実施してくだい。\n"
                     "出力形式を以下のように厳密に守ってください：\n"
                     "AI: [英語での自然な応答のみ]\n"
                     "Feedback: [日本語でのフィードバック要約（最大120文字）]\n"
@@ -99,16 +100,22 @@ class OpenAIConversationProvider(ConversationProvider):
             "max_tokens": 400,
         }
 
-    def _parse_response(self, content: str) -> tuple[str, str, str]:
-        # For this MVP, we expect the LLM to respond in a structured way using delimiters.
-        # Example format:
-        # AI: ...
-        # Feedback: ...
-        # Improved: ...
+    def _parse_response(self, content: str) -> tuple[str, str, str, bool]:
+        """
+        Returns: (ai_reply, feedback_short, improved_sentence, should_end_session)
+        """
         lines = content.strip().splitlines()
         ai_reply = ""
         feedback_short = ""
         improved_sentence = ""
+        should_end_session = False
+        
+        # [END_SESSION]マーカーの検知
+        if "[END_SESSION]" in content:
+            should_end_session = True
+            content = content.replace("[END_SESSION]", "").strip()
+            lines = content.strip().splitlines()
+        
         for line in lines:
             if line.lower().startswith("ai:"):
                 ai_reply = line.split(":", 1)[1].strip()
@@ -124,7 +131,7 @@ class OpenAIConversationProvider(ConversationProvider):
         if not improved_sentence:
             improved_sentence = "Please provide an improved sentence."
 
-        return ai_reply, feedback_short, improved_sentence
+        return ai_reply, feedback_short, improved_sentence, should_end_session
 
     async def __aenter__(self) -> "OpenAIConversationProvider":
         return self

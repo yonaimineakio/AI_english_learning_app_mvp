@@ -61,6 +61,15 @@ export function useSessionConversation({ sessionId, onSessionEnd, onRoundComplet
       if (status) {
         queryClient.setQueryData(['session-status', sessionId], status)
       }
+      
+      // 自動終了判定
+      if (turn.shouldEndSession) {
+        setHasEnded(true)
+        // 少し遅延させてユーザーがAI応答を読めるようにする
+        setTimeout(() => {
+          if (onSessionEnd) onSessionEnd()
+        }, 2000)
+      }
     },
     onError: (err) => {
       setTurns((prev) => prev.filter((turn) => !turn.isPending))

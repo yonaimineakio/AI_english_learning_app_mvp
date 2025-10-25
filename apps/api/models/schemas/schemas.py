@@ -216,6 +216,7 @@ class TurnResponse(BaseModel):
     response_time_ms: Optional[int] = None
     provider: Optional[str] = None
     session_status: Optional[SessionStatusResponse] = None
+    should_end_session: Optional[bool] = False
 
 
 class SessionEndResponse(BaseModel):

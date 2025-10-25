@@ -14,6 +14,7 @@ class ConversationResponse:
     scores: Optional[dict] = None
     latency_ms: Optional[int] = None
     provider: Optional[str] = None
+    should_end_session: bool = False
 
 
 class ConversationProvider(Protocol):

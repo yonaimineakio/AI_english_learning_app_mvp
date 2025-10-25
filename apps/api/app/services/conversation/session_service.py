@@ -183,6 +183,15 @@ class SessionService:
 
             ai_details = getattr(conversation_result, "details", None)
 
+            # 終了判定チェック
+            session_ended = False
+            
+            if conversation_result.should_end_session:
+                # 自動終了処理を実行
+                logger.info(f"Auto-ending session {session_id} due to user's end intent")
+                self.end_session(session_id, user_id)
+                session_ended = True
+
             return TurnResponse(
                 round_index=current_round,
                 ai_reply={
@@ -198,7 +207,8 @@ class SessionService:
                 tags=conversation_result.tags,
                 response_time_ms=latency_ms,
                 provider=conversation_result.provider,
-                session_status=self._build_session_status(session),
+                session_status=self._build_session_status(session) if not session_ended else None,
+                should_end_session=conversation_result.should_end_session,
             )
             
         except Exception as e:

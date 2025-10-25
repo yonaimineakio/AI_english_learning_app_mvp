@@ -152,6 +152,13 @@ export default function SessionConversationPage(): JSX.Element {
                 セッションは終了しました。復習ページに移動して確認しましょう。
               </p>
             ) : null}
+            
+            {/* 自動終了時の通知を追加 */}
+            {turns.length > 0 && turns[turns.length - 1].shouldEndSession ? (
+              <p className="mt-2 text-sm text-green-600">
+                会話を終了します。お疲れ様でした！
+              </p>
+            ) : null}
           </div>
         </section>
 

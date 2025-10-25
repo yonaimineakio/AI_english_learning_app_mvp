@@ -8,7 +8,6 @@ import { ScenarioCategoryFilter } from '@/components/scenario/scenario-category-
 import { ScenarioCard } from '@/components/scenario/scenario-card'
 import { ScenarioDetailDialog } from '@/components/scenario/scenario-detail-dialog'
 import { RoundSelector } from '@/components/scenario/round-selector'
-import { DifficultySelector } from '@/components/scenario/difficulty-selector'
 import { ScenarioSummaryPanel } from '@/components/scenario/scenario-summary-panel'
 import { SCENARIO_LIST } from '@/lib/scenarios'
 import {
@@ -64,6 +63,7 @@ export function ScenarioPage() {
       setSelectionState((prev) => ({
         ...prev,
         selectedScenarioId: scenarioId,
+        selectedDifficulty: scenario.difficulty, // シナリオの難易度を自動設定
         estimatedMinutes: calculateEstimatedMinutes(prev.selectedRounds),
       }))
     }
@@ -162,13 +162,6 @@ export function ScenarioPage() {
                 onChange={handleRoundChange}
               />
 
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">難易度を選択</h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  現在のレベルに合わせて難易度を選択してください。フィードバックの深さも難易度に応じて調整されます。
-                </p>
-              </div>
-              <DifficultySelector value={selectionState.selectedDifficulty} onChange={handleDifficultyChange} />
             </div>
 
             <ScenarioSummaryPanel

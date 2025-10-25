@@ -5,11 +5,24 @@ import { Dialog, Transition } from '@headlessui/react'
 
 import { getScenarioDetail } from '@/lib/scenarios'
 import { formatMinutes } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 
 interface ScenarioDetailDialogProps {
   scenarioId?: number
   open: boolean
   onClose: () => void
+}
+
+const difficultyColorMap = {
+  beginner: 'bg-emerald-50 text-emerald-700',
+  intermediate: 'bg-amber-50 text-amber-700',
+  advanced: 'bg-purple-50 text-purple-700',
+}
+
+const difficultyLabelMap = {
+  beginner: '初級',
+  intermediate: '中級',
+  advanced: '上級',
 }
 
 export function ScenarioDetailDialog({ scenarioId, open, onClose }: ScenarioDetailDialogProps) {
@@ -45,9 +58,14 @@ export function ScenarioDetailDialog({ scenarioId, open, onClose }: ScenarioDeta
                 {scenario ? (
                   <>
                     <div className="border-b border-gray-100 px-6 py-6">
-                      <Dialog.Title className="text-2xl font-semibold text-gray-900">
-                        {scenario.name}
-                      </Dialog.Title>
+                      <div className="flex items-start justify-between">
+                        <Dialog.Title className="text-2xl font-semibold text-gray-900">
+                          {scenario.name}
+                        </Dialog.Title>
+                        <Badge className={difficultyColorMap[scenario.difficulty]}>
+                          {difficultyLabelMap[scenario.difficulty]}
+                        </Badge>
+                      </div>
                       <div className="mt-2 text-sm text-gray-500">
                         所要時間目安: {formatMinutes(scenario.estimatedMinutes)}
                       </div>
