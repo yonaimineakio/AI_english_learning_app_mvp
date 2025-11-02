@@ -11,10 +11,12 @@ from models.schemas.schemas import DifficultyLevel, ScenarioCategory
 
 from .types import ConversationProvider, ConversationResponse
 from app.prompts import get_prompt_by_category_difficulty
+import json
 
 logger = logging.getLogger(__name__)
 
-OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
+OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/responses"
+
 
 
 
@@ -23,8 +25,9 @@ class OpenAIConversationProvider(ConversationProvider):
         if not settings.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY is not configured")
         self._client = httpx.AsyncClient(
-            headers={"Authorization": f"Bearer {settings.OPENAI_API_KEY}"},
-            timeout=httpx.Timeout(12.0, connect=5.0, read=12.0),
+            headers={"Authorization": f"Bearer {settings.OPENAI_API_KEY}",
+            "Content-Type": "application/json"},
+            timeout=httpx.Timeout(30.0, connect=5.0, read=30.0),
         )
 
     async def generate_response(
@@ -36,13 +39,27 @@ class OpenAIConversationProvider(ConversationProvider):
         context: List[dict],
     ) -> ConversationResponse:
         start_time = asyncio.get_event_loop().time()
+        logger.info(f"OpenAI request payload: {user_input}, {difficulty}, {scenario_category}, {round_index}, {context}")
         payload = self._build_request_payload(user_input, difficulty, scenario_category, context)
 
         try:
             response = await self._client.post(OPENAI_CHAT_COMPLETIONS_URL, json=payload)
             response.raise_for_status()
             data = response.json()
-            content = data["choices"][0]["message"]["content"]
+            # content = data["choices"][0]["message"]["content"]
+            texts = []
+            outputs = data.get("output", [])
+            for out in outputs:
+                contents = out.get("content") or []
+                for item in contents:
+                    t = item.get("type")
+                    if t in ("output_text", "text"):
+                        txt = item.get("text")
+                        if txt:
+                            texts.append(txt)
+            content = "".join(texts)
+
+            logger.info(f"OpenAI response: {content}")
             ai_reply, feedback_short, improved_sentence, should_end_session = self._parse_response(content)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Failed to generate AI response via OpenAI: %s", exc)
@@ -68,7 +85,7 @@ class OpenAIConversationProvider(ConversationProvider):
     def _build_request_payload(self, user_input: str, difficulty: str, scenario_category: str, context: List[dict]) -> dict:
         
         system_prompt = get_prompt_by_category_difficulty(scenario_category, difficulty)
-        messages = [{"role": "system", "content": system_prompt}]
+        messages = [{"role": "assistant", "content": system_prompt}]
 
         for turn in context[-2:]:  # Include last two rounds as context
             messages.extend(
@@ -80,14 +97,14 @@ class OpenAIConversationProvider(ConversationProvider):
 
         messages.append(
             {
-                "role": "user",
+                "role": "assistant",
                 "content": (
                     f"難易度: {difficulty}。ユーザーの入力に応答してください。\n\n"
-                    "フィードバックと改善文は、必ずユーザーの入力に対して実施してくだい。\n"
+                    "フィードバックと改善例文は、必ずユーザーの入力に対して実施してください。\n"
                     "出力形式を以下のように厳密に守ってください：\n"
                     "AI: [英語での自然な応答のみ]\n"
                     "Feedback: [日本語でのフィードバック要約（最大120文字）]\n"
-                    "Improved: [改善された英語文1つ]\n\n"
+                    "Improved: [ユーザーの入力に対して改善された英語例文1つ]\n\n"
                     f"ユーザー入力: {user_input}"
                 ),
             }
@@ -95,10 +112,8 @@ class OpenAIConversationProvider(ConversationProvider):
 
         return {
             "model": settings.OPENAI_MODEL_NAME,
-            "messages": messages,
-            "temperature": 0.7,
-            "max_tokens": 400,
-        }
+            "input": json.dumps(messages, ensure_ascii=False)
+        }   
 
     def _parse_response(self, content: str) -> tuple[str, str, str, bool]:
         """

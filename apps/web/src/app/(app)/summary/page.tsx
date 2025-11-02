@@ -1,17 +1,18 @@
 "use client"
 
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 
 import { AppShell } from '@/components/layout/app-shell'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { fetchSessionSummary, fetchReviewItems, startSession } from '@/lib/session'
+import { fetchSessionSummary, fetchReviewItems } from '@/lib/session'
 import { SessionSummary } from '@/types/conversation'
 
 export default function SummaryPage(): JSX.Element {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const sessionId = searchParams.get('sessionId')
 
   // セッションサマリーの取得
@@ -119,7 +120,10 @@ export default function SummaryPage(): JSX.Element {
             )}
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button className="sm:flex-1" onClick={() => void startSession({ scenarioId: 1, difficulty: 'intermediate', mode: 'standard', roundTarget: 6 })}>
+            <Button 
+              className="sm:flex-1" 
+              onClick={() => router.push('/')}
+            >
               新しいセッションを開始する
             </Button>
             <Button asChild variant="outline" className="sm:flex-1">
