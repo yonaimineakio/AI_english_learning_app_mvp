@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from 'react'
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
@@ -12,7 +12,7 @@ import { ConversationTurn } from '@/types/conversation'
 interface UseSessionConversationOptions {
   sessionId: number
   onSessionEnd?: () => void
-  onRoundCompleted?: () => void
+  onRoundCompleted?: (isAutoEnd?: boolean) => void
 }
 
 export function useSessionConversation({ sessionId, onSessionEnd, onRoundCompleted }: UseSessionConversationOptions) {
@@ -64,10 +64,15 @@ export function useSessionConversation({ sessionId, onSessionEnd, onRoundComplet
       
       // 自動終了判定
       if (turn.shouldEndSession) {
-        setHasEnded(true)
         // 少し遅延させてユーザーがAI応答を読めるようにする
         setTimeout(() => {
-          if (onSessionEnd) onSessionEnd()
+          if (onRoundCompleted) {
+            onRoundCompleted(true)  // 自動終了であることを伝える
+          } else if (onSessionEnd) {
+            // フォールバック: onRoundCompletedが指定されていない場合は直接終了
+            setHasEnded(true)
+            onSessionEnd()
+          }
         }, 2000)
       }
     },
@@ -80,13 +85,21 @@ export function useSessionConversation({ sessionId, onSessionEnd, onRoundComplet
     },
   })
 
+  const onExtendSuccessRef = useRef<(() => void) | null>(null)
+  const onEndSuccessRef = useRef<(() => void) | null>(null)
+
   const extendMutation = useMutation({
     mutationFn: () => extendSession(sessionId),
     onSuccess: (status) => {
       queryClient.setQueryData(['session-status', sessionId], status)
+      if (onExtendSuccessRef.current) {
+        onExtendSuccessRef.current()
+        onExtendSuccessRef.current = null
+      }
     },
     onError: (err) => {
       setError(err instanceof Error ? err.message : '延長に失敗しました')
+      onExtendSuccessRef.current = null
     },
     onSettled: () => {
       void statusQuery.refetch()
@@ -97,12 +110,20 @@ export function useSessionConversation({ sessionId, onSessionEnd, onRoundComplet
     mutationFn: () => endSession(sessionId),
     onSuccess: () => {
       setHasEnded(true)
-      if (onSessionEnd) onSessionEnd()
+      // 成功時のコールバックがあればそれを呼ぶ
+      if (onEndSuccessRef.current) {
+        onEndSuccessRef.current()
+        onEndSuccessRef.current = null
+      } else if (onSessionEnd) {
+        // フォールバック: 通常の終了時（サイドバーのボタンなど）
+        onSessionEnd()
+      }
       void statusQuery.refetch()
     },
     onError: (err) => {
       setError(err instanceof Error ? err.message : '終了に失敗しました')
       setHasEnded(false)
+      onEndSuccessRef.current = null
     },
   })
 
@@ -139,17 +160,20 @@ export function useSessionConversation({ sessionId, onSessionEnd, onRoundComplet
     [submitMutation, statusQuery.data?.isActive],
   )
 
+
   return {
     turns,
     status: statusQuery.data,
     isLoadingStatus: statusQuery.isLoading,
     submitMessage,
-    extendSession: () => {
+    extendSession: (onSuccess?: () => void) => {
       if (hasEnded || endMutation.isPending || extendMutation.isPending) return
+      onExtendSuccessRef.current = onSuccess ?? null
       extendMutation.mutate()
     },
-    endSession: () => {
-      if (hasEnded || endMutation.isPending || !statusQuery.data?.isActive) return
+    endSession: (onSuccess?: () => void) => {
+      if (endMutation.isPending) return
+      onEndSuccessRef.current = onSuccess ?? null
       setHasEnded(true)
       endMutation.mutate()
     },

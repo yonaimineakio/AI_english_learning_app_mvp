@@ -9,11 +9,13 @@ interface ExtendModalProps {
   onClose: () => void
   onExtend: () => void
   onEnd: () => void
+  onReview?: () => void
   canExtend: boolean
   isExtending: boolean
   isEnding: boolean
   completedRounds: number
   roundTarget: number
+  isAutoEnd?: boolean
 }
 
 export function ExtendModal({
@@ -21,11 +23,13 @@ export function ExtendModal({
   onClose,
   onExtend,
   onEnd,
+  onReview,
   canExtend,
   isExtending,
   isEnding,
   completedRounds,
   roundTarget,
+  isAutoEnd = false,
 }: ExtendModalProps): JSX.Element | null {
   const [isClosing, setIsClosing] = useState(false)
 
@@ -41,12 +45,19 @@ export function ExtendModal({
 
   const handleExtend = () => {
     onExtend()
-    handleClose()
+    // 延長の場合は成功後にモーダルを閉じる（親コンポーネントで処理）
   }
 
   const handleEnd = () => {
     onEnd()
-    handleClose()
+    // 終了の場合は成功後に遷移するため、ここではモーダルを閉じない
+  }
+
+  const handleReview = () => {
+    if (onReview) {
+      onReview()
+      // 復習の場合は成功後に遷移するため、ここではモーダルを閉じない
+    }
   }
 
   return (
@@ -83,39 +94,75 @@ export function ExtendModal({
           </div>
           
           <h2 className="mb-2 text-xl font-semibold text-blue-900">
-            規定ラウンド完了
+            {isAutoEnd ? '会話終了の検知' : '規定ラウンド完了'}
           </h2>
           
           <p className="mb-6 text-sm text-blue-700">
-            {completedRounds}/{roundTarget} ラウンドが完了しました。
-            <br />
-            セッションを延長するか終了するか選択してください。
+            {isAutoEnd ? (
+              <>
+                会話を終了したい意図が検知されました。
+                <br />
+                セッションを終了するか復習するか選択してください。
+              </>
+            ) : (
+              <>
+                {completedRounds}/{roundTarget} ラウンドが完了しました。
+                <br />
+                セッションを延長するか終了するか選択してください。
+              </>
+            )}
           </p>
 
           <div className="space-y-3">
-            {canExtend && (
-              <Button
-                onClick={handleExtend}
-                disabled={isExtending || isEnding}
-                className="w-full"
-                size="lg"
-              >
-                {isExtending ? '延長中…' : '+3ラウンド延長する'}
-              </Button>
+            {isAutoEnd ? (
+              <>
+                <Button
+                  onClick={handleEnd}
+                  variant="outline"
+                  disabled={isExtending || isEnding}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isEnding ? '終了処理中…' : 'セッションを終了する'}
+                </Button>
+                {onReview && (
+                  <Button
+                    onClick={handleReview}
+                    disabled={isExtending || isEnding}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {isEnding ? '終了処理中…' : '復習する'}
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                {canExtend && (
+                  <Button
+                    onClick={handleExtend}
+                    disabled={isExtending || isEnding}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {isExtending ? '延長中…' : '+3ラウンド延長する'}
+                  </Button>
+                )}
+                
+                <Button
+                  onClick={handleEnd}
+                  variant="outline"
+                  disabled={isExtending || isEnding}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isEnding ? '終了処理中…' : 'セッションを終了する'}
+                </Button>
+              </>
             )}
-            
-            <Button
-              onClick={handleEnd}
-              variant="outline"
-              disabled={isExtending || isEnding}
-              className="w-full"
-              size="lg"
-            >
-              {isEnding ? '終了処理中…' : 'セッションを終了する'}
-            </Button>
           </div>
 
-          {!canExtend && (
+          {!isAutoEnd && !canExtend && (
             <p className="mt-4 text-xs text-blue-600">
               延長回数の上限に達しているため、終了のみ選択可能です。
             </p>

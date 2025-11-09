@@ -46,7 +46,6 @@ class OpenAIConversationProvider(ConversationProvider):
             response = await self._client.post(OPENAI_CHAT_COMPLETIONS_URL, json=payload)
             response.raise_for_status()
             data = response.json()
-            # content = data["choices"][0]["message"]["content"]
             texts = []
             outputs = data.get("output", [])
             for out in outputs:

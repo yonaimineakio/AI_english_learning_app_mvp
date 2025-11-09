@@ -23,6 +23,7 @@ export default function SessionConversationPage(): JSX.Element {
   const [message, setMessage] = useState('')
   const [expandedTurnId, setExpandedTurnId] = useState<string | null>(null)
   const [isExtendModalOpen, setIsExtendModalOpen] = useState(false)
+  const [isAutoEnd, setIsAutoEnd] = useState(false)
   const [audioError, setAudioError] = useState<string | null>(null)
 
   const {
@@ -39,8 +40,14 @@ export default function SessionConversationPage(): JSX.Element {
     estimatedMinutes,
   } = useSessionConversation({
     sessionId,
-    onSessionEnd: () => router.push(`/summary?sessionId=${sessionId}`),
-    onRoundCompleted: () => setIsExtendModalOpen(true),
+    onSessionEnd: () => {
+      // 通常の終了時（サイドバーの「セッションを終了する」ボタンなど）
+      router.push(`/summary?sessionId=${sessionId}`)
+    },
+    onRoundCompleted: (isAutoEndDetected = false) => {
+      setIsAutoEnd(isAutoEndDetected)
+      setIsExtendModalOpen(true)
+    },
   })
 
   const handleSubmit = useCallback(() => {
@@ -58,15 +65,29 @@ export default function SessionConversationPage(): JSX.Element {
 
   const handleExtendModalClose = useCallback(() => {
     setIsExtendModalOpen(false)
+    setIsAutoEnd(false)
   }, [])
 
   const handleExtendModalExtend = useCallback(() => {
-    extendSessionAction()
+    extendSessionAction(() => {
+      // 延長成功後にモーダルを閉じる
+      setIsExtendModalOpen(false)
+    })
   }, [extendSessionAction])
 
   const handleExtendModalEnd = useCallback(() => {
-    endSessionAction()
-  }, [endSessionAction])
+    // 「セッションを終了する」ボタン → ホーム画面に遷移
+    endSessionAction(() => {
+      router.push('/')
+    })
+  }, [endSessionAction, router])
+
+  const handleExtendModalReview = useCallback(() => {
+    // 「復習する」ボタン → サマリーページに遷移
+    endSessionAction(() => {
+      router.push(`/summary?sessionId=${sessionId}`)
+    })
+  }, [endSessionAction, router, sessionId])
 
   const handleTranscriptionComplete = useCallback((text: string) => {
     setMessage(text)
@@ -232,11 +253,13 @@ export default function SessionConversationPage(): JSX.Element {
         onClose={handleExtendModalClose}
         onExtend={handleExtendModalExtend}
         onEnd={handleExtendModalEnd}
+        onReview={isAutoEnd ? handleExtendModalReview : undefined}
         canExtend={status?.canExtend ?? false}
         isExtending={extendPending}
         isEnding={endPending}
         completedRounds={status?.completedRounds ?? 0}
         roundTarget={status?.roundTarget ?? 0}
+        isAutoEnd={isAutoEnd}
       />
     </div>
   )

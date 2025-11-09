@@ -156,7 +156,7 @@ export function ReviewQuiz(): JSX.Element {
           {REVIEW_OPTIONS.map((option) => (
             <Button
               key={option}
-              variant={option === 'correct' ? 'default' : 'outline'}
+              variant={option === 'correct' ? 'primary' : 'outline'}
               className="flex-1"
               onClick={() => void handleSubmit(option)}
               disabled={submitting}

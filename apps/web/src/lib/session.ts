@@ -48,6 +48,7 @@ interface TurnResponse {
   }
   session_status?: SessionStatus
   response_time_ms?: number
+  should_end_session?: boolean
 }
 
 export async function submitTurn(
@@ -72,6 +73,7 @@ export async function submitTurn(
       createdAt: new Date().toISOString(),
     },
     createdAt: new Date().toISOString(),
+    shouldEndSession: result.should_end_session ?? false,
   }
 
   return {
