@@ -1,7 +1,8 @@
 "use client"
 
-import { useCallback, useState } from 'react'
+import { Fragment, useCallback, useState } from 'react'
 import { notFound, useParams, useRouter } from 'next/navigation'
+import { Dialog, Transition } from '@headlessui/react'
 
 import { AudioRecorder } from '@/components/audio/audio-recorder'
 import { ConversationTurnRow } from '@/components/conversation/conversation-turn'
@@ -9,6 +10,7 @@ import { ExtendModal } from '@/components/session/extend-modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useSessionConversation } from '@/hooks/use-session-conversation'
+import { getScenarioDetail } from '@/lib/scenarios'
 import { formatMinutes } from '@/lib/utils'
 
 export default function SessionConversationPage(): JSX.Element {
@@ -25,6 +27,7 @@ export default function SessionConversationPage(): JSX.Element {
   const [isExtendModalOpen, setIsExtendModalOpen] = useState(false)
   const [isAutoEnd, setIsAutoEnd] = useState(false)
   const [audioError, setAudioError] = useState<string | null>(null)
+  const [isLearningGoalsOpen, setIsLearningGoalsOpen] = useState(false)
 
   const {
     turns,
@@ -49,6 +52,8 @@ export default function SessionConversationPage(): JSX.Element {
       setIsExtendModalOpen(true)
     },
   })
+
+  const scenarioDetail = status?.scenarioId ? getScenarioDetail(status.scenarioId) : null
 
   const handleSubmit = useCallback(() => {
     if (!message.trim() || pending || !status?.isActive) return
@@ -223,13 +228,28 @@ export default function SessionConversationPage(): JSX.Element {
               >
                 {endPending ? '終了処理中…' : 'セッションを終了する'}
               </Button>
+              {scenarioDetail ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="mt-1 justify-start text-xs text-blue-700 hover:text-blue-900"
+                  onClick={() => setIsLearningGoalsOpen(true)}
+                >
+                  このセッションの学習ゴールを見る
+                </Button>
+              ) : null}
             </div>
           </div>
 
           <div className="space-y-3 rounded-2xl border border-blue-200 bg-white/95 p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-blue-900">最新の改善例文</h2>
             <p className="text-sm text-blue-800">
-              {turns.length ? turns[turns.length - 1].aiReply.improvedSentence : '会話を開始するとここに表示されます'}
+              {(() => {
+                const lastTurnWithFeedback = [...turns].reverse().find((t) => t.roundIndex > 0)
+                return lastTurnWithFeedback
+                  ? lastTurnWithFeedback.aiReply.improvedSentence
+                  : '会話を開始するとここに表示されます'
+              })()}
             </p>
             <p className="text-xs text-blue-600">
               3回音読してニュアンスを確かめましょう。必要に応じて類例を作って練習してください。
@@ -261,6 +281,84 @@ export default function SessionConversationPage(): JSX.Element {
         roundTarget={status?.roundTarget ?? 0}
         isAutoEnd={isAutoEnd}
       />
+
+      {/* 学習ゴールモーダル */}
+      {scenarioDetail && scenarioDetail.learningGoals?.length ? (
+        <Transition.Root show={isLearningGoalsOpen} as={Fragment}>
+          <Dialog
+            as="div"
+            className="relative z-50"
+            onClose={() => setIsLearningGoalsOpen(false)}
+          >
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-200"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-150"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 bg-gray-900/30 backdrop-blur-sm" />
+            </Transition.Child>
+
+            <div className="fixed inset-0 z-50 overflow-y-auto">
+              <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-6">
+                <Transition.Child
+                  as={Fragment}
+                  enter="ease-out duration-200"
+                  enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                  enterTo="opacity-100 translate-y-0 sm:scale-100"
+                  leave="ease-in duration-150"
+                  leaveFrom="opacity-100 translate-y-0 sm:scale-100"
+                  leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                >
+                  <Dialog.Panel className="relative w-full max-w-lg transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all">
+                    <div className="border-b border-gray-100 px-6 py-5">
+                      <Dialog.Title className="text-base font-semibold text-gray-900">
+                        このセッションの学習ゴール
+                      </Dialog.Title>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {scenarioDetail.name}
+                      </p>
+                    </div>
+                    <div className="space-y-5 px-6 py-5">
+                      <div>
+                        <h3 className="text-xs font-semibold text-gray-500">学習ゴール</h3>
+                        <ul className="mt-2 list-inside list-disc space-y-2 text-sm text-gray-700">
+                          {scenarioDetail.learningGoals.map((goal) => (
+                            <li key={goal}>{goal}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {scenarioDetail.keyPhrases?.length ? (
+                        <div>
+                          <h3 className="text-xs font-semibold text-gray-500">キーフレーズ</h3>
+                          <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gray-800">
+                            {scenarioDetail.keyPhrases.map((phrase) => (
+                              <li key={phrase}>{phrase}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="border-t border-gray-100 bg-gray-50 px-6 py-4">
+                      <button
+                        type="button"
+                        className="w-full rounded-lg border border-gray-200 bg-white py-2 text-sm font-medium text-gray-700 transition hover:border-gray-300"
+                        onClick={() => setIsLearningGoalsOpen(false)}
+                      >
+                        閉じる
+                      </button>
+                    </div>
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
+            </div>
+          </Dialog>
+        </Transition.Root>
+      ) : null}
     </div>
   )
 }

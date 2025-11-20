@@ -25,6 +25,7 @@ async def generate_conversation_response(
     scenario_category: str,
     round_index: int,
     context: List[dict],
+    scenario_id: int | None = None,
     provider_name: str | None = None,
 ) -> ConversationResponse:
     provider_cls = AIProviderRegistry.get_provider(provider_name)
@@ -35,6 +36,7 @@ async def generate_conversation_response(
         scenario_category=scenario_category,
         round_index=round_index,
         context=context,
+        scenario_id=scenario_id,
     )
     if not result.provider:
         result.provider = provider_name or AIProviderRegistry.default_provider()

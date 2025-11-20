@@ -37,6 +37,14 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Placement test / personalized learning fields
+    placement_level = Column(
+        Enum(DifficultyLevel, values_callable=lambda obj: [e.value for e in obj]),
+        nullable=True,
+    )
+    placement_score = Column(Integer, nullable=True)
+    placement_completed_at = Column(DateTime(timezone=True), nullable=True)
+
     # Relationships
     sessions = relationship("Session", back_populates="user")
     review_items = relationship("ReviewItem", back_populates="user")

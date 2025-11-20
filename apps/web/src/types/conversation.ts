@@ -25,6 +25,7 @@ export interface ConversationTurn {
 export interface SessionStatus {
   sessionId: number
   scenarioId: number
+  initialAiMessage?: string
   scenarioName?: string
   roundTarget: number
   completedRounds: number

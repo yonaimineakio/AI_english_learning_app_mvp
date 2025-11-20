@@ -5,6 +5,7 @@ from app.routers.auth import router as auth_router
 from app.routers.sessions import router as sessions_router
 from app.routers.reviews import router as reviews_router
 from app.routers.audio import router as audio_router
+from app.routers.placement import router as placement_router
 from app.services.ai import initialize_providers
 
 # Create FastAPI app
@@ -29,6 +30,7 @@ app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth")
 app.include_router(sessions_router, prefix=f"{settings.API_V1_STR}/sessions", tags=["sessions"])
 app.include_router(reviews_router, prefix=f"{settings.API_V1_STR}/reviews", tags=["reviews"])
 app.include_router(audio_router, prefix=f"{settings.API_V1_STR}/audio", tags=["audio"])
+app.include_router(placement_router, prefix=f"{settings.API_V1_STR}/placement")
 
 
 @app.on_event("startup")

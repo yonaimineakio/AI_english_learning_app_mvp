@@ -106,9 +106,9 @@ export function ExtendModal({
               </>
             ) : (
               <>
-                {completedRounds}/{roundTarget} ラウンドが完了しました。
-                <br />
-                セッションを延長するか終了するか選択してください。
+            {completedRounds}/{roundTarget} ラウンドが完了しました。
+            <br />
+            セッションを延長するか終了するか選択してください。
               </>
             )}
           </p>
@@ -138,26 +138,26 @@ export function ExtendModal({
               </>
             ) : (
               <>
-                {canExtend && (
-                  <Button
-                    onClick={handleExtend}
-                    disabled={isExtending || isEnding}
-                    className="w-full"
-                    size="lg"
-                  >
-                    {isExtending ? '延長中…' : '+3ラウンド延長する'}
-                  </Button>
-                )}
-                
-                <Button
-                  onClick={handleEnd}
-                  variant="outline"
-                  disabled={isExtending || isEnding}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isEnding ? '終了処理中…' : 'セッションを終了する'}
-                </Button>
+            {canExtend && (
+              <Button
+                onClick={handleExtend}
+                disabled={isExtending || isEnding}
+                className="w-full"
+                size="lg"
+              >
+                {isExtending ? '延長中…' : '+3ラウンド延長する'}
+              </Button>
+            )}
+            
+            <Button
+              onClick={handleEnd}
+              variant="outline"
+              disabled={isExtending || isEnding}
+              className="w-full"
+              size="lg"
+            >
+              {isEnding ? '終了処理中…' : 'セッションを終了する'}
+            </Button>
               </>
             )}
           </div>

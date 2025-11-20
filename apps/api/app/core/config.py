@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     GOOGLE_CLOUD_PROJECT_ID: str = "ai-english-learning-452516"
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
     GOOGLE_SPEECH_API_ENDPOINT: str = "https://speech.googleapis.com/v1/speech:recognize"
+    # Google Cloud Text-to-Speech
+    GOOGLE_TTS_LANGUAGE: str = "en-US"
+    GOOGLE_TTS_VOICE: Optional[str] = None
+    GOOGLE_TTS_SPEAKING_RATE: float = 1.0
     
     # Timezone
     TIMEZONE: str = "Asia/Tokyo"

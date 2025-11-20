@@ -18,7 +18,11 @@ import {
 import { calculateEstimatedMinutes } from '@/lib/utils'
 import { startSession } from '@/lib/session'
 
-export function ScenarioPage() {
+interface ScenarioPageProps {
+  placementLevel?: 'beginner' | 'intermediate' | 'advanced'
+}
+
+export function ScenarioPage({ placementLevel }: ScenarioPageProps) {
   const router = useRouter()
   const [selectedScenarioId, setSelectedScenarioId] = useState<number | undefined>(
     DEFAULT_SCENARIO_SELECTION.selectedScenarioId
@@ -52,9 +56,17 @@ export function ScenarioPage() {
   })
 
   const filteredScenarios = useMemo(() => {
-    if (filterCategory === 'all') return SCENARIO_LIST
-    return SCENARIO_LIST.filter((scenario) => scenario.category === filterCategory)
-  }, [filterCategory])
+    let base = SCENARIO_LIST
+
+    if (placementLevel === 'beginner') {
+      base = base.filter((scenario) => scenario.difficulty === 'beginner')
+    } else if (placementLevel === 'intermediate') {
+      base = base.filter((scenario) => scenario.difficulty === 'beginner' || scenario.difficulty === 'intermediate')
+    }
+
+    if (filterCategory === 'all') return base
+    return base.filter((scenario) => scenario.category === filterCategory)
+  }, [filterCategory, placementLevel])
 
   const handleSelectScenario = (scenarioId: number) => {
     setSelectedScenarioId(scenarioId)
@@ -123,7 +135,10 @@ export function ScenarioPage() {
             <div className="mb-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">シナリオを選ぶ</h2>
-                <p className="mt-1 text-sm text-gray-500">カテゴリで絞り込み、詳細を確認しながら最適なシナリオを選択できます。</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  カテゴリで絞り込み、詳細を確認しながら最適なシナリオを選択できます。
+                  {placementLevel ? `（現在のレベル: ${placementLevel}）` : null}
+                </p>
               </div>
               <ScenarioCategoryFilter selectedCategory={filterCategory} onSelectCategory={setFilterCategory} />
             </div>

@@ -49,6 +49,43 @@ class SessionService:
 
         return item.due_at if item else None
 
+    def _get_initial_message(self, scenario: Scenario) -> Optional[str]:
+        """シナリオIDに応じた初期メッセージを返す（モック実装）。"""
+        try:
+            scenario_id = scenario.id
+        except AttributeError:
+            return None
+
+        messages = {
+            # 1–5: 既存シナリオ
+            1: "Hi, I'm the airline staff. Let's check you in for your flight. Where are you flying today?",
+            2: "Hi, thanks for joining the meeting. Could you briefly introduce yourself and your role?",
+            3: "Welcome to our restaurant! Are you ready to order, or would you like some recommendations?",
+            4: "Thanks for joining this online business call. What would you like to achieve in this negotiation?",
+            5: "Welcome to our hotel. Do you have a reservation, or would you like to book a room today?",
+            # 6–10: 旅行系シナリオ
+            6: "Let’s plan your perfect vacation together. What kind of trip are you dreaming about?",
+            7: "You’re showing a foreign friend around Japan today. Where would you like to take them first?",
+            8: "You’ve just arrived at immigration. The officer is asking you questions. How will you respond?",
+            9: "You’re talking with a friend about your next trip. Where do you want to go and why?",
+            10: "You’ve lost your wallet while traveling. How would you explain the situation to the police?",
+            # 11–14: 日常会話シナリオ
+            11: "You’re calling customer service about a problem. How would you start the conversation?",
+            12: "You’re chatting with a barista at a stylish cafe. What would you like to order today?",
+            13: "You want to get tickets for a show. How would you ask about available seats?",
+            14: "You’re talking with someone in the park. How would you start a light, friendly conversation?",
+            # 15–21: ビジネスシナリオ
+            15: "You need to reschedule a meeting. How would you politely ask to change the time?",
+            16: "You’re setting up a new meeting. Who would you like to invite and what is the purpose?",
+            17: "You’re leading a meeting. How would you open the session and share the agenda?",
+            18: "You’re negotiating contract terms. What is the most important point you want to discuss first?",
+            19: "You’re presenting customer survey results. What key finding would you like to share first?",
+            20: "Your project is delayed and you must apologize. How would you explain the situation?",
+            21: "You’re calling your manager to say you’re sick. How would you explain your condition and absence?",
+        }
+
+        return messages.get(scenario_id)
+
     def start_session(self, user_id: int, session_data: SessionCreate) -> SessionStartResponse:
         logger.info(f"Starting session for user {user_id} with data: {session_data}")
         """セッションを開始する"""
@@ -91,12 +128,15 @@ class SessionService:
                 created_at=scenario.created_at
             )
 
+            initial_message = self._get_initial_message(scenario)
+
             return SessionStartResponse(
                 session_id=db_session.id,
                 scenario=scenario_schema,
                 round_target=db_session.round_target,
                 difficulty=self._to_str(db_session.difficulty),
-                mode=self._to_str(db_session.mode)
+                mode=self._to_str(db_session.mode),
+                initial_ai_message=initial_message,
             )
             
         except Exception as e:
@@ -146,6 +186,7 @@ class SessionService:
             
             session_difficulty = self._to_str(session.difficulty)
             scenario_category = self._to_str(session.scenario.category)
+            scenario_id = session.scenario_id
 
             conversation_result = await generate_conversation_response(
                 user_input=user_input,
@@ -153,6 +194,7 @@ class SessionService:
                 scenario_category=scenario_category,
                 round_index=current_round,
                 context=context,
+                scenario_id=scenario_id,
             )
             latency_ms = conversation_result.latency_ms
             if latency_ms is None:
@@ -392,6 +434,8 @@ class SessionService:
         extension_offered = session.completed_rounds >= session.round_target
         can_extend = extension_offered and session.extension_count < 2 and session.ended_at is None
 
+        initial_message = self._get_initial_message(session.scenario) if session.scenario else None
+
         return SessionStatusResponse(
             session_id=session.id,
             scenario_id=session.scenario_id,
@@ -405,4 +449,5 @@ class SessionService:
             extension_offered=extension_offered,
             scenario_name=scenario_name,
             can_extend=can_extend,
+            initial_ai_message=initial_message,
         )

@@ -18,6 +18,8 @@ export interface ScenarioSummary {
 export interface ScenarioDetail extends ScenarioSummary {
   learningGoals: string[]
   sampleDialog: string
+  // シナリオごとに重点的に覚えたい動詞句・熟語（キーフレーズ）
+  keyPhrases?: string[]
 }
 
 export interface ScenarioPreset {

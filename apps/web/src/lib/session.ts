@@ -14,6 +14,8 @@ export interface StartSessionResponse {
   round_target: number
   difficulty: string
   mode: string
+  // セッション開始時に表示するシナリオ別の初期AIメッセージ（任意）
+  initial_ai_message?: string
   scenario: {
     id: number
     name: string
@@ -86,6 +88,7 @@ export async function fetchSessionStatus(sessionId: number): Promise<SessionStat
   const result = await apiRequest<{
     session_id: number
     scenario_id: number
+    initial_ai_message?: string
     scenario_name?: string
     round_target: number
     completed_rounds: number
@@ -100,6 +103,7 @@ export async function fetchSessionStatus(sessionId: number): Promise<SessionStat
   return {
     sessionId: result.session_id,
     scenarioId: result.scenario_id,
+    initialAiMessage: result.initial_ai_message,
     scenarioName: result.scenario_name,
     roundTarget: result.round_target,
     completedRounds: result.completed_rounds,

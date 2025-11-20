@@ -45,6 +45,9 @@ class User(UserBase):
     sub: str
     created_at: datetime
     updated_at: Optional[datetime] = None
+    placement_level: Optional[DifficultyLevel] = None
+    placement_score: Optional[int] = None
+    placement_completed_at: Optional[datetime] = None
 
 
 # Scenario schemas
@@ -181,6 +184,8 @@ class SessionStartResponse(BaseModel):
     round_target: int
     difficulty: Literal["beginner", "intermediate", "advanced"]
     mode: Literal["quick", "standard", "deep", "custom"]
+    # セッション開始時に表示するシナリオ別の初期AIメッセージ（任意）
+    initial_ai_message: Optional[str] = None
 
 
 class SessionStatusResponse(BaseModel):
@@ -196,6 +201,8 @@ class SessionStatusResponse(BaseModel):
     extension_offered: bool = False
     scenario_name: Optional[str] = None
     can_extend: bool = False
+    # セッション開始時に表示するシナリオ別の初期AIメッセージ（任意）
+    initial_ai_message: Optional[str] = None
 
 
 class ConversationAiReply(BaseModel):

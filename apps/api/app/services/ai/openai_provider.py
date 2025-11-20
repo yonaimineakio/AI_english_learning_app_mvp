@@ -10,7 +10,7 @@ from app.core.config import settings
 from models.schemas.schemas import DifficultyLevel, ScenarioCategory
 
 from .types import ConversationProvider, ConversationResponse
-from app.prompts import get_prompt_by_category_difficulty
+from app.prompts import get_prompt_by_category_difficulty, get_prompt_by_scenario_id
 import json
 
 logger = logging.getLogger(__name__)
@@ -37,10 +37,26 @@ class OpenAIConversationProvider(ConversationProvider):
         scenario_category: str,
         round_index: int,
         context: List[dict],
+        scenario_id: int | None = None,
     ) -> ConversationResponse:
         start_time = asyncio.get_event_loop().time()
-        logger.info(f"OpenAI request payload: {user_input}, {difficulty}, {scenario_category}, {round_index}, {context}")
-        payload = self._build_request_payload(user_input, difficulty, scenario_category, context)
+        logger.info(
+            "OpenAI request payload: user_input=%s, difficulty=%s, "
+            "scenario_category=%s, round_index=%s, scenario_id=%s, context=%s",
+            user_input,
+            difficulty,
+            scenario_category,
+            round_index,
+            scenario_id,
+            context,
+        )
+        payload = self._build_request_payload(
+            user_input=user_input,
+            difficulty=difficulty,
+            scenario_category=scenario_category,
+            context=context,
+            scenario_id=scenario_id,
+        )
 
         try:
             response = await self._client.post(OPENAI_CHAT_COMPLETIONS_URL, json=payload)
@@ -81,9 +97,23 @@ class OpenAIConversationProvider(ConversationProvider):
             should_end_session=should_end_session,
         )
 
-    def _build_request_payload(self, user_input: str, difficulty: str, scenario_category: str, context: List[dict]) -> dict:
-        
-        system_prompt = get_prompt_by_category_difficulty(scenario_category, difficulty)
+    def _build_request_payload(
+        self,
+        user_input: str,
+        difficulty: str,
+        scenario_category: str,
+        context: List[dict],
+        scenario_id: int | None = None,
+    ) -> dict:
+
+        # まずシナリオIDに対応するプロンプトを優先的に使用する（一対一対応）
+        system_prompt = None
+        if scenario_id is not None:
+            system_prompt = get_prompt_by_scenario_id(scenario_id)
+
+        # シナリオIDで取得できなかった場合は、カテゴリ×難易度でのプロンプトにフォールバック
+        if not system_prompt:
+            system_prompt = get_prompt_by_category_difficulty(scenario_category, difficulty) or ""
         messages = [{"role": "assistant", "content": system_prompt}]
 
         for turn in context[-2:]:  # Include last two rounds as context
@@ -112,7 +142,7 @@ class OpenAIConversationProvider(ConversationProvider):
         return {
             "model": settings.OPENAI_MODEL_NAME,
             "input": json.dumps(messages, ensure_ascii=False)
-        }   
+        }
 
     def _parse_response(self, content: str) -> tuple[str, str, str, bool]:
         """
@@ -159,7 +189,14 @@ async def warm_up_provider() -> None:
         return
     provider = OpenAIConversationProvider()
     try:
-        await provider.generate_response("Hello", DifficultyLevel.INTERMEDIATE, 1, [])
+        await provider.generate_response(
+            user_input="Hello",
+            difficulty=DifficultyLevel.INTERMEDIATE.value,
+            scenario_category=ScenarioCategory.BUSINESS.value,
+            round_index=1,
+            context=[],
+            scenario_id=2,
+        )
     except Exception:  # noqa: BLE001
         logger.info("OpenAI warm-up failed (expected if key invalid)" )
     finally:

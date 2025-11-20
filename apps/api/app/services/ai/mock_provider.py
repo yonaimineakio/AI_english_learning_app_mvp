@@ -42,6 +42,7 @@ class MockConversationProvider(ConversationProvider):
         scenario_category: str,
         round_index: int,
         context: List[dict],
+        scenario_id: int | None = None,
     ) -> ConversationResponse:
         response_template = MOCK_RESPONSES.get(difficulty, MOCK_RESPONSES[DifficultyLevel.INTERMEDIATE])
         tags = _generate_tags(round_index, difficulty, scenario_category)

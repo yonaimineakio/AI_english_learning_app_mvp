@@ -25,6 +25,7 @@ class ConversationProvider(Protocol):
         scenario_category: str,
         round_index: int,
         context: List[dict],
+        scenario_id: int | None = None,
     ) -> ConversationResponse:
         ...
 

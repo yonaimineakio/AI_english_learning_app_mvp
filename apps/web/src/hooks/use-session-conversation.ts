@@ -32,11 +32,15 @@ export function useSessionConversation({ sessionId, onSessionEnd, onRoundComplet
     mutationFn: (message: string) => submitTurn(sessionId, message),
     onMutate: async (message) => {
       setError(null)
-      setTurns((prev) => [
+      setTurns((prev) => {
+        const now = new Date().toISOString()
+        const nextRoundIndex = (statusQuery.data?.completedRounds ?? 0) + 1
+
+        return [
         ...prev,
         {
           id: `pending-${Date.now()}`,
-          roundIndex: prev.length + 1,
+            roundIndex: nextRoundIndex,
           userMessage: message,
           aiReply: {
             message: '応答を生成しています…',
@@ -45,12 +49,13 @@ export function useSessionConversation({ sessionId, onSessionEnd, onRoundComplet
             tags: [],
             scores: null,
             details: null,
-            createdAt: new Date().toISOString(),
+              createdAt: now,
           },
-          createdAt: new Date().toISOString(),
+            createdAt: now,
           isPending: true,
         },
-      ])
+        ]
+      })
     },
     onSuccess: ({ turn, status }) => {
       setTurns((prev) => {
@@ -151,6 +156,33 @@ export function useSessionConversation({ sessionId, onSessionEnd, onRoundComplet
     
     setPreviousCompletedRounds(currentCompletedRounds)
   }, [statusQuery.data?.completedRounds, statusQuery.data?.roundTarget, statusQuery.data?.isActive, previousCompletedRounds, onRoundCompleted])
+
+  // セッション開始時の初期AIメッセージを会話ログに反映
+  useEffect(() => {
+    const initialMessage = statusQuery.data?.initialAiMessage
+    if (!initialMessage) return
+
+    setTurns((prev) => {
+      if (prev.length > 0) return prev
+      const now = new Date().toISOString()
+      const initialTurn: ConversationTurn = {
+        id: `initial-${sessionId}`,
+        roundIndex: 0,
+        userMessage: '',
+        aiReply: {
+          message: initialMessage,
+          feedbackShort: '',
+          improvedSentence: '',
+          tags: [],
+          scores: null,
+          details: null,
+          createdAt: now,
+        },
+        createdAt: now,
+      }
+      return [initialTurn]
+    })
+  }, [statusQuery.data?.initialAiMessage, sessionId])
 
   const submitMessage = useCallback(
     (message: string) => {

@@ -19,16 +19,48 @@
 - **API**: REST (OpenAPI自動生成)
 - **音声認識**: Google Cloud Speech-to-Text
 
-## プロジェクト構成
+## プロジェクト構成（現在）
+
 ```
 AI_english_learning_app_mvp/
 ├── apps/
-│   ├── web/          # Next.js フロントエンド
-│   └── api/          # FastAPI バックエンド
-│       ├── app/routers/audio/        # Google Speech-to-Text連携API
-│       └── app/services/ai/google_speech_provider.py
-├── infra/            # Docker, 環境設定, マイグレーション
-├── docs/             # 要件定義, 設計書
+│   ├── web/                  # Next.js フロントエンド
+│   │   └── src/
+│   │       ├── app/          # App Router ページ
+│   │       │   ├── page.tsx                  # ルート（シナリオ選択 or レベルテストへの分岐）
+│   │       │   ├── login/                    # ログイン画面
+│   │       │   ├── (app)/placement/          # レベル判定テストページ
+│   │       │   ├── (app)/sessions/[sessionId]/ # 会話セッション画面
+│   │       │   ├── (app)/summary/            # セッションサマリー
+│   │       │   └── review/                   # 復習ページ
+│   │       ├── components/   # UIコンポーネント群（会話UI・シナリオカードなど）
+│   │       ├── hooks/        # `use-session-conversation` などのカスタムフック
+│   │       ├── lib/          # APIクライアント・シナリオ定義・TTSヘルパーなど
+│   │       ├── contexts/     # 認証コンテキスト
+│   │       └── types/        # 型定義
+│   └── api/                  # FastAPI バックエンド
+│       ├── app/
+│       │   ├── main.py       # FastAPI アプリ本体（ルーター登録など）
+│       │   ├── core/         # 設定・認証ヘルパー
+│       │   ├── db/           # DB セッション・初期化
+│       │   ├── prompts/      # シナリオ別システムプロンプト
+│       │   ├── routers/      # ルーター定義
+│       │   │   ├── auth/     # 認証（/auth/me, /auth/token など）
+│       │   │   ├── sessions/ # セッション開始・ターン処理・終了・延長
+│       │   │   ├── reviews/  # 復習（/reviews/next, /reviews/{id}/complete）
+│       │   │   ├── audio/    # 音声認識・TTS（/audio/transcribe, /audio/tts）
+│       │   │   └── placement/# レベル判定テスト（/placement/questions, /placement/submit）
+│       │   └── services/
+│       │       ├── ai/       # OpenAI / Google Speech / Google TTS プロバイダ
+│       │       ├── conversation/ # セッションビジネスロジック
+│       │       └── review/   # 復習ビジネスロジック
+│       ├── models/
+│       │   ├── database/     # SQLAlchemy モデル（users, sessions, session_rounds, review_items など）
+│       │   └── schemas/      # Pydantic スキーマ
+│       ├── tests/            # pytest テスト
+│       └── app.db            # 開発用 SQLite DB
+├── infra/                    # Docker, 環境設定, マイグレーション
+├── docs/                     # 要件定義, 設計書
 └── README.md
 ```
 
@@ -110,129 +142,59 @@ npm run dev
 ## ライセンス
 MIT
 
-## 詳細なプロジェクト構成
+## 詳細なプロジェクト構成（簡易版）
 
 ### バックエンド (apps/api/)
-```
-apps/api/
-├── app/                    # FastAPIアプリケーション本体
-│   ├── api/               # APIエンドポイント定義
-│   │   ├── v1/           # API v1エンドポイント
-│   │   │   ├── auth.py   # 認証関連エンドポイント
-│   │   │   ├── sessions.py # セッション管理エンドポイント
-│   │   │   ├── reviews.py # 復習システムエンドポイント
-│   │   │   └── __init__.py
-│   │   └── __init__.py
-│   ├── core/             # コア設定・ユーティリティ
-│   │   ├── config.py     # アプリケーション設定
-│   │   ├── security.py   # セキュリティ関連（JWT、パスワードハッシュ）
-│   │   ├── dependencies.py # 依存性注入
-│   │   ├── exceptions.py # カスタム例外
-│   │   └── __init__.py
-│   ├── db/               # データベース関連
-│   │   ├── base.py       # データベースベースクラス
-│   │   ├── session.py    # データベースセッション管理
-│   │   ├── init_db.py    # 初期データ投入
-│   │   └── __init__.py
-│   └── __init__.py
-├── models/               # データモデル
-│   ├── database/         # SQLAlchemyモデル
-│   │   ├── user.py       # ユーザーモデル
-│   │   ├── session.py    # セッションモデル
-│   │   ├── session_round.py # セッションラウンドモデル
-│   │   ├── review_item.py # 復習アイテムモデル
-│   │   └── __init__.py
-│   ├── schemas/          # Pydanticスキーマ
-│   │   ├── user.py       # ユーザースキーマ
-│   │   ├── session.py    # セッションスキーマ
-│   │   ├── session_round.py # セッションラウンドスキーマ
-│   │   ├── review_item.py # 復習アイテムスキーマ
-│   │   └── __init__.py
-│   └── __init__.py
-├── routers/              # ルーター定義
-│   ├── auth/             # 認証ルーター
-│   │   ├── login.py      # ログイン
-│   │   ├── register.py   # ユーザー登録
-│   │   └── __init__.py
-│   ├── sessions/         # セッションルーター
-│   │   ├── start.py      # セッション開始
-│   │   ├── turn.py       # 会話ターン
-│   │   ├── extend.py     # セッション延長
-│   │   ├── end.py        # セッション終了
-│   │   └── __init__.py
-│   ├── reviews/          # 復習ルーター
-│   │   ├── next.py       # 次回復習取得
-│   │   ├── complete.py   # 復習完了
-│   │   └── __init__.py
-│   └── __init__.py
-├── services/             # ビジネスロジック
-│   ├── ai/               # AI関連サービス
-│   │   ├── openai_client.py # OpenAI API クライアント
-│   │   ├── prompt_builder.py # プロンプト構築
-│   │   ├── response_parser.py # レスポンス解析
-│   │   └── __init__.py
-│   ├── conversation/     # 会話関連サービス
-│   │   ├── session_manager.py # セッション管理
-│   │   ├── feedback_generator.py # フィードバック生成
-│   │   ├── phrase_extractor.py # トップ3フレーズ抽出
-│   │   └── __init__.py
-│   ├── review/           # 復習関連サービス
-│   │   ├── review_scheduler.py # 復習スケジューリング
-│   │   ├── quiz_generator.py # クイズ生成
-│   │   └── __init__.py
-│   └── __init__.py
-├── utils/                # ユーティリティ
-│   ├── validators.py     # バリデーション関数
-│   ├── helpers.py        # ヘルパー関数
-│   ├── constants.py      # 定数定義
-│   └── __init__.py
-├── tests/                # テストファイル
-│   ├── conftest.py       # pytest設定
-│   ├── test_auth.py      # 認証テスト
-│   ├── test_sessions.py  # セッションテスト
-│   ├── test_reviews.py   # 復習テスト
-│   └── __init__.py
-├── main.py               # FastAPIアプリケーションエントリーポイント
-├── requirements.txt      # Python依存関係
-└── pyproject.toml        # プロジェクト設定
-```
 
-### API/app配下の詳細説明
+- `app/main.py`  
+  - FastAPI アプリのエントリーポイント。CORS 設定とルーター登録（/auth, /sessions, /reviews, /audio, /placement）を行う。
+- `app/core/`  
+  - `config.py`: 設定（DB, JWT, OpenAI, Google Cloud など）  
+  - `deps.py`: 依存関係（`get_db`, `get_current_user` など）  
+  - `security.py`: JWT 発行・検証
+- `app/db/`  
+  - `session.py`: DB セッション管理  
+  - `init_db.py`: 初期シナリオなどの投入
+- `app/routers/`  
+  - `auth/auth.py`: `/auth/me`, `/auth/token`, Google OAuth コールバックなど  
+  - `sessions/sessions.py`: `/sessions/start`, `/sessions/{id}/turn`, `/sessions/{id}/end`, `/sessions/{id}/extend`  
+  - `reviews/reviews.py`: `/reviews/next`, `/reviews/{id}/complete`  
+  - `audio/audio.py`: `/audio/transcribe`（音声→テキスト）, `/audio/tts`（テキスト→音声）  
+  - `placement/placement.py`: `/placement/questions`, `/placement/submit`（レベル判定テスト）
+- `app/services/`  
+  - `ai/`: OpenAIプロバイダ、Google Speech-to-Text, Google Text-to-Speech, モックプロバイダなど  
+  - `conversation/session_service.py`: 会話セッションのビジネスロジック（ターン処理・自動終了・サマリー生成）  
+  - `review/review_service.py`: 復習用フレーズ生成・スケジューリング
+- `models/`  
+  - `database/models.py`: `User`, `Session`, `SessionRound`, `ReviewItem`, `Scenario` テーブル定義  
+  - `schemas/schemas.py`: Pydanticスキーマ（`SessionStartResponse`, `TurnResponse`, `SessionStatusResponse` など）
+- `tests/`  
+  - `test_prompt_mapping.py`: シナリオIDとプロンプトのマッピング検証
 
-#### `app/api/` - APIエンドポイント定義
-- **v1/**: API v1のエンドポイントを定義
-- **auth.py**: 認証関連のエンドポイント（ログイン、登録、トークン検証）
-- **sessions.py**: セッション管理のエンドポイント（開始、進行、終了、延長）
-- **reviews.py**: 復習システムのエンドポイント（復習取得、完了）
+### フロントエンド (apps/web/)
 
-#### `app/core/` - コア設定・ユーティリティ
-- **config.py**: アプリケーション全体の設定（データベース、JWT、外部API等）
-- **security.py**: セキュリティ関連（JWT生成・検証、パスワードハッシュ化）
-- **dependencies.py**: FastAPIの依存性注入（認証、データベースセッション等）
-- **exceptions.py**: カスタム例外クラス定義
-
-#### `app/db/` - データベース関連
-- **base.py**: SQLAlchemyのベースクラスと共通設定
-- **session.py**: データベースセッションの管理と接続プール
-- **init_db.py**: 初期データの投入とデータベース初期化
-
-### 各ディレクトリの役割
-
-1. **models/**: データの構造定義
-   - `database/`: SQLAlchemyモデル（データベーステーブル定義）
-   - `schemas/`: Pydanticスキーマ（API リクエスト/レスポンス定義）
-
-2. **routers/**: エンドポイントのルーティング
-   - 各機能ごとにディレクトリを分割
-   - 認証、セッション、復習の3つの主要機能
-
-3. **services/**: ビジネスロジック
-   - `ai/`: AI機能（OpenAI API統合、プロンプト管理）
-   - `conversation/`: 会話機能（セッション管理、フィードバック生成）
-   - `review/`: 復習機能（スケジューリング、クイズ生成）
-
-4. **utils/**: 共通ユーティリティ
-   - バリデーション、ヘルパー関数、定数定義
-
-5. **tests/**: テストファイル
-   - 各機能のユニットテストと統合テスト
+- `src/app/`  
+  - `page.tsx`: ルート。ログイン済みユーザーの `placement_completed_at` を見て `/placement` かシナリオ選択に振り分ける。  
+  - `login/page.tsx`: ログイン画面。`useAuth` と `LoginButton` を利用。  
+  - `(app)/placement/page.tsx`: レベル判定テスト（20問の自己評価＋Listening問題TTS）。  
+  - `(app)/sessions/[sessionId]/page.tsx`: 会話セッション画面。会話ログ、延長モーダル、音声録音UIなど。  
+  - `(app)/summary/page.tsx`: セッション終了後のサマリー画面。トップ3フレーズなどを表示。  
+  - `review/page.tsx`: 復習クイズ画面。`/reviews/next` と `/reviews/{id}/complete` を使用。
+- `src/components/`  
+  - `scenario/`: シナリオ選択UI（カード一覧、カテゴリフィルタ、詳細モーダル、ラウンドセレクタなど）。  
+  - `conversation/conversation-turn.tsx`: 1ターン分の会話UI（ユーザー発話＋AI応答＋フィードバック＋TTSボタン）。  
+  - `audio/audio-recorder.tsx`: 音声録音と `/audio/transcribe` への送信。  
+  - `session/extend-modal.tsx`: ラウンド完了時・自動終了時の延長/終了/復習モーダル。  
+  - `layout/app-shell.tsx`: 共通レイアウト（ヘッダー・フッター）。  
+  - `auth/*`: 認証UI（ログイン/ログアウトボタン、AuthGuard など）。
+- `src/hooks/`  
+  - `use-session-conversation.ts`: 会話セッション用のメインフック。ターン送信、ステータス取得、自動終了検知など。  
+  - `use-audio-recording.ts`: ブラウザ録音処理。  
+  - `use-auth.ts`: 認証コンテキストの薄いラッパー。
+- `src/lib/`  
+  - `api-client.ts`: 認証付き `fetch` ラッパー（401時にログアウト）。  
+  - `session.ts`: セッション関連APIクライアント（`startSession`, `submitTurn`, `extendSession`, `endSession`）。  
+  - `scenarios.ts`: フロント側のシナリオ定義（カテゴリ・難易度・学習ゴール・キーフレーズなど）。  
+  - `placement.ts`: レベルテストAPIクライアント（`fetchPlacementQuestions`, `submitPlacementAnswers`）。  
+  - `tts.ts`: Text-to-Speech クライアント (`playTextWithTts`)。  
+  - `utils.ts`: 各種ユーティリティ関数。

@@ -82,6 +82,17 @@ export function ScenarioDetailDialog({ scenarioId, open, onClose }: ScenarioDeta
                         </ul>
                       </div>
 
+                      {scenario.keyPhrases?.length ? (
+                        <div>
+                          <h3 className="text-sm font-semibold text-gray-900">キーフレーズ</h3>
+                          <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-gray-700">
+                            {scenario.keyPhrases.map((phrase) => (
+                              <li key={phrase}>{phrase}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+
                       <div>
                         <h3 className="text-sm font-semibold text-gray-900">サンプルフレーズ</h3>
                         <div className="mt-3 rounded-xl bg-blue-50 p-4 text-sm text-blue-900">
