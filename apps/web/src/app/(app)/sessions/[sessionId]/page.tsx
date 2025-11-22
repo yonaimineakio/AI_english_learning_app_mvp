@@ -33,6 +33,7 @@ export default function SessionConversationPage(): JSX.Element {
     turns,
     status,
     isLoadingStatus,
+    goalProgress,
     submitMessage,
     extendSession: extendSessionAction,
     endSession: endSessionAction,
@@ -114,7 +115,9 @@ export default function SessionConversationPage(): JSX.Element {
             </h1>
           </div>
           <div className="text-sm text-blue-600">
-            {isLoadingStatus ? '読み込み中…' : `${status?.completedRounds ?? 0}/${status?.roundTarget ?? 0} ラウンド`}
+            {isLoadingStatus
+              ? '読み込み中…'
+              : `${status?.completedRounds ?? 0}/${status?.roundTarget ?? 0} ラウンド`}
           </div>
         </div>
       </header>
@@ -199,6 +202,19 @@ export default function SessionConversationPage(): JSX.Element {
                 進捗: {status?.completedRounds ?? 0}/{status?.roundTarget ?? 0} ラウンド
               </p>
               <p>残り時間の目安: {formatMinutes(estimatedMinutes)}</p>
+              {(() => {
+                const totalFromScenario = scenarioDetail?.learningGoals?.length ?? 0
+                const total = goalProgress?.total ?? totalFromScenario
+                const achieved = goalProgress?.achieved ?? 0
+                if (!total) return null
+                return (
+                  <p>
+                    <span className="inline-flex items-center rounded-full border border-blue-300 bg-blue-50 px-3 py-0.5 text-xs font-medium text-blue-700">
+                      ゴール達成率: {achieved}/{total}
+                    </span>
+                  </p>
+                )
+              })()}
             </div>
 
             <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-blue-100">

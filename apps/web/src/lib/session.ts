@@ -51,12 +51,15 @@ interface TurnResponse {
   session_status?: SessionStatus
   response_time_ms?: number
   should_end_session?: boolean
+  goals_total?: number
+  goals_achieved?: number
+  goals_status?: number[]
 }
 
 export async function submitTurn(
   sessionId: number,
   message: string,
-): Promise<{ turn: ConversationTurn; status?: SessionStatus }> {
+): Promise<{ turn: ConversationTurn; status?: SessionStatus; goalsTotal?: number; goalsAchieved?: number }> {
   const result = await apiRequest<TurnResponse>(`/sessions/${sessionId}/turn`, 'POST', {
     user_input: message,
   })
@@ -81,6 +84,8 @@ export async function submitTurn(
   return {
     turn,
     status: result.session_status,
+    goalsTotal: result.goals_total,
+    goalsAchieved: result.goals_achieved,
   }
 }
 
@@ -159,6 +164,9 @@ export async function endSession(sessionId: number): Promise<SessionSummary> {
     scenario_name?: string
     difficulty: string
     mode: string
+    goals_total?: number
+    goals_achieved?: number
+    goals_status?: number[]
   }>(`/sessions/${sessionId}/end`, 'POST')
   return {
     sessionId: result.session_id,
@@ -168,6 +176,9 @@ export async function endSession(sessionId: number): Promise<SessionSummary> {
     scenarioName: result.scenario_name,
     difficulty: result.difficulty,
     mode: result.mode,
+    goalsTotal: result.goals_total,
+    goalsAchieved: result.goals_achieved,
+    goalsStatus: result.goals_status,
   }
 }
 

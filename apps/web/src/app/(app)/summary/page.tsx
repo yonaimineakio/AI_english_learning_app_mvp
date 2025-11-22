@@ -8,7 +8,6 @@ import { AppShell } from '@/components/layout/app-shell'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { fetchSessionSummary, fetchReviewItems } from '@/lib/session'
-import { SessionSummary } from '@/types/conversation'
 
 export default function SummaryPage(): JSX.Element {
   const searchParams = useSearchParams()
@@ -68,6 +67,13 @@ export default function SummaryPage(): JSX.Element {
               </CardHeader>
               <CardContent className="grid gap-2 text-sm text-blue-800">
                 <span>完了ラウンド数: {sessionSummary.completedRounds}</span>
+                {typeof sessionSummary.goalsTotal === 'number' &&
+                typeof sessionSummary.goalsAchieved === 'number' &&
+                sessionSummary.goalsTotal > 0 ? (
+                  <span>
+                    ゴール達成率: {sessionSummary.goalsAchieved}/{sessionSummary.goalsTotal}
+                  </span>
+                ) : null}
                 <span>セッションID: {sessionSummary.sessionId}</span>
               </CardContent>
             </Card>

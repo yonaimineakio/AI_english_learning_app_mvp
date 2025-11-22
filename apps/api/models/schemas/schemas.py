@@ -224,6 +224,10 @@ class TurnResponse(BaseModel):
     provider: Optional[str] = None
     session_status: Optional[SessionStatusResponse] = None
     should_end_session: Optional[bool] = False
+    # 学習ゴール達成率（達成率判定機能用）
+    goals_total: Optional[int] = None
+    goals_achieved: Optional[int] = None
+    goals_status: Optional[List[int]] = None
 
 
 class SessionEndResponse(BaseModel):
@@ -234,6 +238,10 @@ class SessionEndResponse(BaseModel):
     scenario_name: Optional[str] = None
     difficulty: Literal["beginner", "intermediate", "advanced"]
     mode: Literal["quick", "standard", "deep", "custom"]
+    # セッション全体の学習ゴール達成率
+    goals_total: Optional[int] = None
+    goals_achieved: Optional[int] = None
+    goals_status: Optional[List[int]] = None
 
 
 class ReviewNextResponse(BaseModel):

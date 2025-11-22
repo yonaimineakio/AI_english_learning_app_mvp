@@ -1,5 +1,7 @@
 "use client"
 
+import { useRouter } from 'next/navigation'
+
 import { useAuth } from '@/hooks/use-auth'
 import { LoginButton } from './login-button'
 import { LogoutButton } from './logout-button'
@@ -9,6 +11,7 @@ interface AuthStatusProps {
 }
 
 export function AuthStatus({ className }: AuthStatusProps): JSX.Element {
+  const router = useRouter()
   const { user, isAuthenticated, isLoading } = useAuth()
 
   if (isLoading) {
@@ -29,9 +32,17 @@ export function AuthStatus({ className }: AuthStatusProps): JSX.Element {
     )
   }
 
+  const handleProfileClick = () => {
+    router.push('/settings')
+  }
+
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={handleProfileClick}
+        className="flex items-center gap-2 rounded-full border border-transparent px-2 py-1 text-left transition hover:border-blue-300 hover:bg-blue-50"
+      >
         {user.picture && (
           <img
             src={user.picture}
@@ -43,7 +54,7 @@ export function AuthStatus({ className }: AuthStatusProps): JSX.Element {
           <div className="font-medium text-blue-900">{user.name}</div>
           <div className="text-xs text-blue-600">{user.email}</div>
         </div>
-      </div>
+      </button>
       <LogoutButton size="sm" />
     </div>
   )

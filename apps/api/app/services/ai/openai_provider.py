@@ -62,7 +62,7 @@ class OpenAIConversationProvider(ConversationProvider):
             response = await self._client.post(OPENAI_CHAT_COMPLETIONS_URL, json=payload)
             response.raise_for_status()
             data = response.json()
-            texts = []
+            texts: list[str] = []
             outputs = data.get("output", [])
             for out in outputs:
                 contents = out.get("content") or []
@@ -74,8 +74,15 @@ class OpenAIConversationProvider(ConversationProvider):
                             texts.append(txt)
             content = "".join(texts)
 
-            logger.info(f"OpenAI response: {content}")
+            logger.info("OpenAI response: %s", content)
             ai_reply, feedback_short, improved_sentence, should_end_session = self._parse_response(content)
+        except httpx.ReadTimeout as exc:
+            # OpenAI側のタイムアウトはアプリ側で扱いやすいように TimeoutError にラップして伝播させる
+            logger.warning("OpenAI request timed out: %s", exc)
+            raise TimeoutError("OpenAI request timed out") from exc
+        except httpx.HTTPError as exc:
+            logger.exception("HTTP error while calling OpenAI: %s", exc)
+            raise
         except Exception as exc:  # noqa: BLE001
             logger.exception("Failed to generate AI response via OpenAI: %s", exc)
             raise

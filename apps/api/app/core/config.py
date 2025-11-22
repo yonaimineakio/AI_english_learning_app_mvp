@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # Auth / OAuth Configuration
-    AUTH_USE_MOCK: bool = True
+    AUTH_USE_MOCK: bool = False
     GOOGLE_CLIENT_ID: str = "85372847730-vogng3qs66idtuqeaasvmmoghm9nj9k8.apps.googleusercontent.com"
     GOOGLE_CLIENT_SECRET: str = "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"
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
