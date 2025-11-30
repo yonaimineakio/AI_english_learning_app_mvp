@@ -27,7 +27,7 @@ export function AuthStatus({ className }: AuthStatusProps): JSX.Element {
     return (
       <div className={`flex items-center gap-2 ${className}`}>
         <span className="text-sm text-blue-600">未ログイン</span>
-        <LoginButton size="sm" />
+        <LoginButton />
       </div>
     )
   }
@@ -55,7 +55,7 @@ export function AuthStatus({ className }: AuthStatusProps): JSX.Element {
           <div className="text-xs text-blue-600">{user.email}</div>
         </div>
       </button>
-      <LogoutButton size="sm" />
+      <LogoutButton />
     </div>
   )
 }

@@ -34,7 +34,7 @@ export default function LoginPage(): JSX.Element {
               </p>
               
               <div className="space-y-4">
-                <LoginButton className="w-full" size="lg">
+                <LoginButton className="w-full">
                   ログインして開始する
                 </LoginButton>
                 
