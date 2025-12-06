@@ -48,6 +48,12 @@ class User(UserBase):
     placement_level: Optional[DifficultyLevel] = None
     placement_score: Optional[int] = None
     placement_completed_at: Optional[datetime] = None
+    # Streak fields
+    current_streak: Optional[int] = 0
+    longest_streak: Optional[int] = 0
+    last_activity_date: Optional[datetime] = None
+    # Points field
+    total_points: Optional[int] = 0
 
 
 # Scenario schemas

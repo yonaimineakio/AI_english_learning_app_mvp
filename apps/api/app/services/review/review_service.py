@@ -6,7 +6,7 @@ from typing import List, Tuple
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from models.database.models import ReviewItem
+from models.database.models import ReviewItem, User
 
 
 class ReviewService:
@@ -84,6 +84,13 @@ class ReviewService:
         if normalized == "correct":
             item.is_completed = True
             item.completed_at = now
+
+            # Award points for correct review
+            from app.services.point.point_service import PointService
+            user = self.db.query(User).filter(User.id == user_id).first()
+            if user:
+                point_service = PointService(self.db)
+                point_service.award_review_points(user)
         else:
             # 翌日再出題（シンプルな復習間隔）
             item.is_completed = False

@@ -19,6 +19,8 @@ from models.schemas.schemas import (
 )
 
 from app.services.ai import generate_conversation_response
+from app.services.streak.streak_service import StreakService
+from app.services.point.point_service import PointService
 from datetime import timezone
 logger = logging.getLogger(__name__)
 
@@ -315,6 +317,22 @@ class SessionService:
 
                 # 復習アイテムを作成
                 next_review_at = self._create_review_items(user_id, top_phrases)
+
+                # Update user streak and award points
+                user = self.db.query(User).filter(User.id == user_id).first()
+                if user:
+                    streak_service = StreakService(self.db)
+                    streak_info = streak_service.update_streak(user)
+                    logger.info(f"Updated streak for user {user_id}: {user.current_streak} days")
+
+                    # Award points
+                    point_service = PointService(self.db)
+                    points_awarded = point_service.award_session_points(
+                        user=user,
+                        completed_rounds=session.completed_rounds,
+                        streak_days=streak_info.current_streak,
+                    )
+                    logger.info(f"Awarded {points_awarded} points to user {user_id}")
 
                 self.db.commit()
                 self.db.refresh(session)

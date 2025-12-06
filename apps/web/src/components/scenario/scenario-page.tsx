@@ -9,6 +9,7 @@ import { ScenarioCard } from '@/components/scenario/scenario-card'
 import { ScenarioDetailDialog } from '@/components/scenario/scenario-detail-dialog'
 import { RoundSelector } from '@/components/scenario/round-selector'
 import { ScenarioSummaryPanel } from '@/components/scenario/scenario-summary-panel'
+import { StreakDisplay } from '@/components/stats/streak-display'
 import { SCENARIO_LIST } from '@/lib/scenarios'
 import {
   DEFAULT_SCENARIO_SELECTION,
@@ -95,13 +96,6 @@ export function ScenarioPage({ placementLevel }: ScenarioPageProps) {
     }))
   }
 
-  const handleDifficultyChange = (difficulty: ScenarioSelectionState['selectedDifficulty']) => {
-    setSelectionState((prev) => ({
-      ...prev,
-      selectedDifficulty: difficulty,
-    }))
-  }
-
   const handleReset = () => {
     setSelectedScenarioId(DEFAULT_SCENARIO_SELECTION.selectedScenarioId)
     setSelectionState(DEFAULT_SCENARIO_SELECTION)
@@ -120,6 +114,11 @@ export function ScenarioPage({ placementLevel }: ScenarioPageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-blue-50 pb-12">
       <div className="mx-auto max-w-6xl px-4 pt-8">
+        {/* Stats Display */}
+        <div className="mb-8">
+          <StreakDisplay />
+        </div>
+
         <div className="mx-auto max-w-3xl text-center">
           <div className="mb-3 text-sm font-semibold uppercase tracking-wide text-blue-600">Step 1</div>
           <h1 className="text-3xl font-bold text-gray-900 md:text-4xl">

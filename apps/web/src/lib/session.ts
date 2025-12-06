@@ -1,6 +1,13 @@
 import { apiRequest } from '@/lib/api-client'
 import { ConversationTurn, SessionStatus, SessionSummary } from '@/types/conversation'
-import type { ReviewItem, ReviewNextResponse, ReviewResult } from '@/types/review'
+import type {
+  ReviewItem,
+  ReviewNextResponse,
+  ReviewResult,
+  ReviewProblem,
+  ReviewProblemType,
+  ReviewEvaluationResult,
+} from '@/types/review'
 
 export interface StartSessionPayload {
   scenarioId: number
@@ -242,6 +249,58 @@ export async function transcribeAudio(audioFile: File, language?: string): Promi
   const result = await apiRequest<TranscriptionResponse>('/audio/transcribe', 'POST', formData)
   console.log('result', result)
   return result
+}
+
+// Review problem APIs
+export async function fetchNextReviewProblem(): Promise<ReviewProblem> {
+  return apiRequest<ReviewProblem>('/reviews/next-problem', 'GET')
+}
+
+export async function evaluateReviewProblem(
+  reviewItemId: number,
+  type: ReviewProblemType,
+  answer: string,
+): Promise<ReviewEvaluationResult> {
+  const result = await apiRequest<{
+    type: ReviewProblemType
+    is_correct: boolean
+    speaking_result?: {
+      word_matches: Array<{ word: string; matched: boolean; position: number }>
+      score: number
+      matched_count: number
+      total_count: number
+    }
+    expected?: string
+    review_item: {
+      id: number
+      phrase: string
+      explanation: string
+      due_at: string
+      is_completed: boolean
+      created_at: string
+      completed_at?: string
+    }
+  }>('/reviews/evaluate-problem', 'POST', {
+    review_item_id: reviewItemId,
+    type,
+    answer,
+  })
+
+  return {
+    type: result.type,
+    is_correct: result.is_correct,
+    speaking_result: result.speaking_result,
+    expected: result.expected,
+    review_item: {
+      id: result.review_item.id,
+      phrase: result.review_item.phrase,
+      explanation: result.review_item.explanation,
+      dueAt: result.review_item.due_at,
+      isCompleted: result.review_item.is_completed,
+      createdAt: result.review_item.created_at,
+      completedAt: result.review_item.completed_at,
+    },
+  }
 }
 
 

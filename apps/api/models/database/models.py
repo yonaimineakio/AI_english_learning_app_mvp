@@ -45,9 +45,18 @@ class User(Base):
     placement_score = Column(Integer, nullable=True)
     placement_completed_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Streak tracking fields
+    current_streak = Column(Integer, default=0)  # 現在の連続日数
+    longest_streak = Column(Integer, default=0)  # 最長連続日数
+    last_activity_date = Column(DateTime(timezone=True), nullable=True)  # 最終学習日
+
+    # Points/ranking fields
+    total_points = Column(Integer, default=0)
+
     # Relationships
     sessions = relationship("Session", back_populates="user")
     review_items = relationship("ReviewItem", back_populates="user")
+    point_histories = relationship("PointHistory", back_populates="user")
 
 
 class Scenario(Base):
@@ -123,3 +132,16 @@ class ReviewItem(Base):
 
     # Relationships
     user = relationship("User", back_populates="review_items")
+
+
+class PointHistory(Base):
+    __tablename__ = "point_histories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    points = Column(Integer, nullable=False)  # 獲得/消費ポイント
+    reason = Column(String(100), nullable=False)  # "session_complete", "review_correct", etc.
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User", back_populates="point_histories")
