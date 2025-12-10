@@ -55,7 +55,8 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     class Config:
-        env_file = ".env"
+        # .envファイルのパスを絶対パスで指定
+        env_file = str(Path(__file__).parent.parent.parent / ".env")
         case_sensitive = True
         env_file_encoding = "utf-8"
 

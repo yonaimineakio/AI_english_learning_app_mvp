@@ -25,9 +25,12 @@ class OpenAIConversationProvider(ConversationProvider):
         if not settings.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY is not configured")
         self._client = httpx.AsyncClient(
-            headers={"Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-            "Content-Type": "application/json"},
-            timeout=httpx.Timeout(30.0, connect=5.0, read=30.0),
+            headers={
+                "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            # 全体60秒、接続5秒、読み取り60秒に延長
+            timeout=httpx.Timeout(60.0, connect=5.0, read=60.0),
         )
 
     async def generate_response(
