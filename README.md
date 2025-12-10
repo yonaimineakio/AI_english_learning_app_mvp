@@ -19,6 +19,17 @@
 - **API**: REST (OpenAPI自動生成)
 - **音声認識**: Google Cloud Speech-to-Text
 
+## アーキテクチャ
+このアプリは**レイヤードアーキテクチャ + サービス層パターン**を採用しています。
+
+詳細は [📚 アーキテクチャドキュメント](./docs/architecture.md) を参照してください。
+
+**4層構造：**
+- Presentation Layer (Router)
+- Business Logic Layer (Service)
+- Data Access Layer (Models)
+- Infrastructure Layer (DB, External APIs)
+
 ## プロジェクト構成（現在）
 
 ```

@@ -59,10 +59,12 @@ async def get_current_user(
 
         user = db.query(User).filter(User.sub == user_sub).first()
         if not user:
-            user = User(sub=user_sub, name="Dev User", email="dev@example.com")
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+            # トークンに紐づくユーザーが存在しない場合は401を返す
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found for token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
         return user
 

@@ -24,16 +24,12 @@ export function AudioRecorder({
     isRecording,
     isProcessing,
     isAutoStopping,
-    audioBlob,
     startRecording,
     stopRecording,
-    clearRecording,
     error,
     elapsedSeconds,
     silenceDurationSeconds,
     silenceThresholdSeconds,
-    maxRecordingSeconds,
-    minRecordingSeconds,
   } = useAudioRecording({
     onRecordingComplete: async (blob) => {
       setIsTranscribing(true)

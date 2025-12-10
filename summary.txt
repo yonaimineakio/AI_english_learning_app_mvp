@@ -118,7 +118,139 @@
 - `users` テーブルとユーザースキーマに `placement_level` / `placement_score` / `placement_completed_at` を追加し、レベル判定結果を永続化。SQLiteに対してはALTER TABLEでカラムを追加して既存DBを移行した。
 - フロントエンドに `/placement` ページを追加し、初回ログイン時は必ずレベルテストにリダイレクト、完了後はシナリオ選択画面に進むフローを実装した。以後は `/auth/me` の `placement_completed_at` を見てテストをスキップする。
 - シナリオ選択画面でユーザーレベルに応じたフィルタリングを導入（beginner→初級のみ、intermediate→初級＋中級、advanced→全て表示）し、現在のレベルをUIに表示するようにした。
-- 実装途中で発生した `/auth/me` のレスポンス検証エラー（EnumとLiteralの不整合）や、`"use client"` のタイポ、`users.placement_level` カラム未作成エラーを特定・修正し、バックエンドテスト（pytest apps/api）も全てパスすることを確認した。
+- 実装途中で発生した `/auth/me` のレスポンス検証エラー（EnumとLiteralの不整合）や、`\"use client\"` のタイポ、`users.placement_level` カラム未作成エラーを特定・修正し、バックエンドテスト（pytest apps/api）も全てパスすることを確認した。
 - Google Cloud Text-to-Speech を利用するため、バックエンドに `GoogleTTSProvider` を追加し、`POST /api/v1/audio/tts` エンドポイントからテキストをMP3音声として返せるようにした。
 - フロントエンドに `playTextWithTts` ヘルパーを実装し、会話画面のAI応答とレベル判定テストのListening問題それぞれに読み上げボタン（🔊）を追加、ワンクリックで英語音声を再生できるようにした。
 - TTS呼び出し時のエラーハンドリング（API呼び出し失敗時は400/500を返し、フロント側では簡易メッセージ表示）を追加し、音声再生ができない場合もUI的に破綻しないようにした。
+
+日付: 2025-11-21
+今日の取り組み:
+- セッション画面のAI応答について、ユーザーのクリック不要で自動的に音声が再生されるようにTTS連携を改善（初期メッセージを含む全AI応答が対象）。
+- `useSessionConversation` フックに最新ターンを監視するロジックを追加し、確定済みAI応答のみを `playTextWithTts` で一度だけ自動再生するよう制御（pending中メッセージやプレースホルダーは除外）。
+- 既存の会話行コンポーネントから🔊ボタンと再生状態管理を削除し、自動再生前提のシンプルなUIにリファクタリング。
+- ブラウザの自動再生ブロックやネットワークエラー発生時でも会話UIが壊れないように、TTSエラーは `console.warn` ログのみにとどめる形でエラーハンドリングを実装。
+
+日付: 2025-11-22
+今日の取り組み:
+- Issue #29「セッション達成率判定と表示機能」を実装。学習ゴールの達成状況を各ターンで逐次更新し、リアルタイムにユーザーへフィードバックできる機能を追加。
+- バックエンドにシナリオID→learningGoalsのマッピングを追加（`SCENARIO_GOALS`）し、各シナリオの学習目標を定義。
+- OpenAI APIによる達成率判定処理を実装。会話履歴とゴール一覧をプロンプトに渡し、各ゴールの達成状況を0/1のフラグ配列として取得。
+- 各ターン処理（`POST /sessions/{id}/turn`）に達成率判定を組み込み、前回値とのORマージで単調増加（0→1のみ、揺れ戻りなし）を保証する制御を実装。
+- セッションターンレスポンスと終了レスポンスに `goals_total` / `goals_achieved` / `goals_status` フィールドを追加し、Pydanticスキーマと TypeScript 型定義を拡張。
+- フロントエンドの会話画面ヘッダーに達成率バッジ（例: `2/3`）を常時表示し、サマリ画面でも最終達成率を表示するUIを実装。
+- OpenAI呼び出し失敗時のフォールバック処理を追加し、達成率判定エラーでもセッションが継続できるようエラーハンドリングを強化。
+- ゴール未定義シナリオでも `0/0` として適切に処理し、UIが自然に振る舞うよう実装（バッジ非表示）。
+
+主な成果:
+- MVPの4つの価値（①パーソナライズ学習 ②インタラクティブ会話 ③即時フィードバック ④徹底した復習）のうち、①パーソナライズ学習をさらに強化。
+- ユーザーが学習の進捗をリアルタイムに把握できるようになり、学習意欲の向上が期待できる。
+- AIによる柔軟な達成判定により、定型的な文言マッチングではなく、文脈に応じた適切な評価が可能に。
+
+ドキュメント整備:
+- アーキテクチャドキュメント（`docs/architecture.md`）を作成。採用している「レイヤードアーキテクチャ + サービス層パターン」の詳細、各層の責任、主要な設計パターン、クリーンアーキテクチャやDDDとの違いを包括的に記録。
+- READMEにアーキテクチャセクションを追加し、ドキュメントへのリンクを設置。
+- 将来の開発者や自分自身が設計判断の背景を理解できるよう、採用理由と段階的な進化パスも明記。
+
+日付: 2025-11-30
+今日の取り組み:
+- Capacitor関連の作業を全てロールバック。iOS開発を一旦中断し、Next.jsをFlutterに移行する方針に転換。
+  - capacitor.config.ts, ios/, scripts/, docs/ios-development.md を削除
+  - package.json, next.config.js, package-lock.json を元の状態に復元
+  - npm installで不要になった75パッケージをクリーンアップ
+- Next.jsからFlutterへのフロントエンド移行計画を策定。最終ゴールはiOS実機での動作確認。
+  - 技術スタック: Flutter + Riverpod（状態管理）+ dio（HTTP）+ go_router（ルーティング）
+  - 既存FastAPIバックエンドはそのまま利用し、フロントのみを段階的に置き換え
+  - MVPの4つの価値（パーソナライズ学習/インタラクティブ会話/即時フィードバック/徹底した復習）を維持
+- Flutterプロジェクトの基盤を構築（apps/mobile/）
+  - pubspec.yamlで依存関係を定義（flutter_riverpod, dio, go_router）
+  - ディレクトリ構成: config/, router/, shared/, features/ に分割
+  - app_config.dartでAPIベースURL（開発/本番）を管理
+- FastAPIスキーマに基づいてDart側のデータモデルとAPIクライアントを実装
+  - モデル: UserModel, SessionModels, ReviewModels, PlacementModels, ErrorModel
+  - APIクライアント: ApiClient（共通処理）+ AuthApi, SessionApi, ReviewApi, PlacementApi, AudioApi
+  - JWT認証ヘッダ付与、401エラーハンドリングを実装
+- Riverpodベースの認証フローを実装
+  - AuthNotifier + AuthStateでログイン状態・ユーザー情報・レベルテスト完了状態を管理
+  - モックログイン（/auth/token → /auth/me）でJWT取得
+  - go_routerのredirect機能で「未ログイン→/login」「レベル未判定→/placement」のルートガードを実装
+- 全画面を実装（Next.js版と同等のナビゲーションフロー）
+  - LoginScreen: モックログインボタン
+  - PlacementScreen: 20問の自己評価テスト（/placement/questions, /placement/submit）
+  - ScenarioSelectionScreen: シナリオ一覧表示（scenarios.ts相当のデータをDartに移植）
+  - SessionScreen + SessionController: 会話ラウンド送信・AI応答表示・ゴール達成バッジ
+  - SummaryScreen: セッション終了結果・トップ3フレーズ・ゴール達成率表示
+  - ReviewScreen: 復習フレーズ取得・クイズ形式UI
+- 音声録音・TTS機能の実装を試みたが、ビルドエラーにより一時無効化
+  - AudioController作成（record/just_audioを使用予定）
+  - recordプラグイン（録音）とjust_audioプラグイン（TTS再生）を追加したがビルドエラー多発
+- iOS実機ビルドに向けた多数のトラブルシューティングと修正
+  - record_linuxの非互換エラー → recordパッケージを削除（録音機能を一時無効化）
+  - GoRouterRefreshStreamメソッド未定義エラー → 該当コードを削除
+  - BytesAudioSourceクラス未定義エラー → just_audioパッケージを削除（TTS再生を一時無効化）
+  - AsyncNotifierのdispose()エラー → ref.onDispose()に変更（Riverpod 2.x の正しい書き方）
+  - Module 'audio_session' not foundエラー → just_audio削除により解消
+- iOS開発環境の整備
+  - flutter create . でiOS構成（Runner.xcworkspace, Podfileなど）を生成
+  - Info.plistにNSMicrophoneUsageDescription追加（将来の録音機能用）
+  - pod installでFlutterプラグインのPodsをインストール
+  - flutter run時のデバイス指定方法を修正（-d ios → -d <デバイスID>）
+- 実機確認の準備完了
+  - バックエンド: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+  - Flutter設定: apiBaseUrl を MacのローカルIP（10.230.232.90）に設定
+  - XcodeでRunner.xcworkspaceを開き、実機を選択してビルド可能な状態
+
+課題点:
+- 音声録音（record）とTTS再生（just_audio）は一時的に無効化されており、マイクボタンと音声再生は動作しない。
+- ビルドが安定したら、安定版のプラグインで音声機能を再導入する必要がある。
+- 実機での動作確認（ログイン→レベルテスト→シナリオ選択→会話→サマリ→復習）はまだ未実施。
+
+主な成果:
+- Next.js版のWeb UIを維持したまま、Flutter版モバイルアプリの土台を並行構築できた。
+- FlutterでiOS向けビルドが通る状態まで到達し、実機確認の準備が整った。
+- 既存のFastAPIバックエンドとの連携部分（APIモデル・クライアント・認証フロー）を完全に実装。
+
+日付: 2025-12-03
+今日の取り組み:
+- Flutter版iOS実機での動作確認を実施し、複数の実装エラーを修正してMVP機能を動作可能な状態にした。
+- 音声録音機能を再実装
+  - record（録音）とpath_provider（一時ファイル）を追加
+  - AudioRecorder + WAVフォーマット（PCM 16kHz/Mono）で録音を実装
+  - 録音停止後、音声ファイルをバックエンドの /audio/transcribe へ送信してテキスト変換
+  - 1KB未満の短すぎる録音はクライアント側で弾き、エラーメッセージを表示
+  - M4A（AAC）からWAVに変更することで、Google Speech-to-Text APIの最小ファイルサイズ要件をクリア
+- API通信の堅牢化
+  - ApiClientのpostJson()でFormDataを正しく扱えるよう修正（_encodeBody()を追加）
+  - Content-Type: multipart/form-dataの手動指定を削除し、Dioが自動でboundaryを付与するように変更
+  - LLM応答待機のためにAPIタイムアウトを12秒→30秒に延長
+- セッション管理の改善
+  - SessionController.startNewSession()がセッションIDを返すように変更し、画面URLと状態を一致させた
+  - sendUserMessage()でエラーハンドリングを強化し、LLM呼び出し失敗時もUIが詰まらないように修正
+  - SessionScreenに送信エラー時のSnackBar表示を追加
+- 依存関係の解決
+  - record_linuxのバージョン不整合を解消（dependency_overridesで1.2.1を強制指定）
+  - pubspec.yamlにpath_providerを追加し、録音ファイルの一時保存に対応
+- ネットワーク接続の確認
+  - MacのローカルIP（192.168.11.7）経由でiPhoneからFastAPIバックエンドに接続
+  - /auth/token → /auth/me → /sessions/start → /audio/transcribe の一連のフローが正常動作することを確認
+- UIの改善
+  - マイクボタンに録音中・変換中のスピナー表示を追加
+  - 送信ボタンに送信中のスピナー表示を追加
+  - 空メッセージの送信を防止（trim()チェック）
+- Issue #33「Flutter版UIの見栄え改善（Web版デザインの移植）」を作成
+  - 現状はデフォルトのMaterial3テーマのみで、Web版のTailwindデザインが未移植
+  - 共通テーマ定義、共通レイアウトウィジェット、各画面のスタイル調整が必要
+
+課題点:
+- LLM応答がタイムアウトする問題が残っている。iPhone→FastAPIへの/sessions/{id}/turnリクエストが到達していない可能性があり、さらなる調査が必要。
+- TTS再生機能は依然として無効化されたまま（just_audioを削除したため）。
+- Flutter版UIはプロトタイプレベルで、Web版のような洗練されたデザインになっていない。
+
+主な成果:
+- 音声録音→テキスト変換→会話送信の一連のフローが実機で動作するようになった。
+- Google Speech-to-Text APIとの連携が正常に機能し、英語音声認識が実用レベルで動作。
+- FastAPIバックエンドとFlutterフロントエンドの統合が完了し、MVPの主要機能（認証・レベルテスト・シナリオ選択・会話・音声認識）が実機で確認可能な状態に到達。
+
+
+日付: 2025-12-06
+- 今後重要になる課題を整理してissueを作成。４つ
+- BEロジックに沿ったUI設計をfigma Makeで実装。 

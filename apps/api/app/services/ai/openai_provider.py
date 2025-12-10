@@ -25,9 +25,12 @@ class OpenAIConversationProvider(ConversationProvider):
         if not settings.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY is not configured")
         self._client = httpx.AsyncClient(
-            headers={"Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-            "Content-Type": "application/json"},
-            timeout=httpx.Timeout(30.0, connect=5.0, read=30.0),
+            headers={
+                "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            # 全体60秒、接続5秒、読み取り60秒に延長
+            timeout=httpx.Timeout(60.0, connect=5.0, read=60.0),
         )
 
     async def generate_response(
@@ -62,7 +65,7 @@ class OpenAIConversationProvider(ConversationProvider):
             response = await self._client.post(OPENAI_CHAT_COMPLETIONS_URL, json=payload)
             response.raise_for_status()
             data = response.json()
-            texts = []
+            texts: list[str] = []
             outputs = data.get("output", [])
             for out in outputs:
                 contents = out.get("content") or []
@@ -74,8 +77,15 @@ class OpenAIConversationProvider(ConversationProvider):
                             texts.append(txt)
             content = "".join(texts)
 
-            logger.info(f"OpenAI response: {content}")
+            logger.info("OpenAI response: %s", content)
             ai_reply, feedback_short, improved_sentence, should_end_session = self._parse_response(content)
+        except httpx.ReadTimeout as exc:
+            # OpenAI側のタイムアウトはアプリ側で扱いやすいように TimeoutError にラップして伝播させる
+            logger.warning("OpenAI request timed out: %s", exc)
+            raise TimeoutError("OpenAI request timed out") from exc
+        except httpx.HTTPError as exc:
+            logger.exception("HTTP error while calling OpenAI: %s", exc)
+            raise
         except Exception as exc:  # noqa: BLE001
             logger.exception("Failed to generate AI response via OpenAI: %s", exc)
             raise

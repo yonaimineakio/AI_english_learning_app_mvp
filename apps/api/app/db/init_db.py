@@ -3,9 +3,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from sqlalchemy.orm import Session
-from app.db.base import Base
 from app.db.session import engine
-from models.database.models import Scenario, ScenarioCategory, DifficultyLevel
+from models.database.models import Base, Scenario, ScenarioCategory, DifficultyLevel
 
 
 def _create_initial_scenarios(db: Session) -> None:
@@ -14,84 +13,84 @@ def _create_initial_scenarios(db: Session) -> None:
         print("ℹ️  Scenarios already exist, skipping initial seed")
         return
 
-            scenarios = [
-                Scenario(
-                    name="Airport Check-in",
-                    description="Practice checking in at the airport",
-                    category=ScenarioCategory.TRAVEL.value,
-                    difficulty=DifficultyLevel.BEGINNER.value,
-            is_active=True,
-                ),
-                Scenario(
-                    name="Hotel Reservation",
-                    description="Make a hotel reservation over the phone",
-                    category=ScenarioCategory.TRAVEL.value,
-                    difficulty=DifficultyLevel.INTERMEDIATE.value,
-            is_active=True,
-                ),
-                Scenario(
-                    name="Business Meeting",
-                    description="Participate in a business meeting",
-                    category=ScenarioCategory.BUSINESS.value,
-                    difficulty=DifficultyLevel.INTERMEDIATE.value,
-            is_active=True,
-                ),
-                Scenario(
-                    name="Job Interview",
-                    description="Practice for a job interview",
-                    category=ScenarioCategory.BUSINESS.value,
-                    difficulty=DifficultyLevel.ADVANCED.value,
-            is_active=True,
-                ),
-                Scenario(
-                    name="Ordering Food",
-                    description="Order food at a restaurant",
-                    category=ScenarioCategory.DAILY.value,
-                    difficulty=DifficultyLevel.BEGINNER.value,
-            is_active=True,
-                ),
-                Scenario(
-                    name="Shopping",
-                    description="Go shopping and ask for help",
-                    category=ScenarioCategory.DAILY.value,
-                    difficulty=DifficultyLevel.BEGINNER.value,
-            is_active=True,
-                ),
-                Scenario(
-                    name="Doctor's Appointment",
-                    description="Visit the doctor and describe symptoms",
-                    category=ScenarioCategory.DAILY.value,
-                    difficulty=DifficultyLevel.INTERMEDIATE.value,
-            is_active=True,
-                ),
-                Scenario(
-                    name="Banking",
-                    description="Handle banking transactions",
-                    category=ScenarioCategory.DAILY.value,
-                    difficulty=DifficultyLevel.INTERMEDIATE.value,
-            is_active=True,
-                ),
-                Scenario(
-                    name="Travel Planning",
-                    description="Plan a trip and book activities",
-                    category=ScenarioCategory.TRAVEL.value,
-                    difficulty=DifficultyLevel.ADVANCED.value,
-            is_active=True,
-                ),
-                Scenario(
-                    name="Client Presentation",
-                    description="Present to a client",
-                    category=ScenarioCategory.BUSINESS.value,
-                    difficulty=DifficultyLevel.ADVANCED.value,
+    scenarios = [
+        Scenario(
+            name="Airport Check-in",
+            description="Practice checking in at the airport",
+            category=ScenarioCategory.TRAVEL.value,
+            difficulty=DifficultyLevel.BEGINNER.value,
             is_active=True,
         ),
-            ]
-            
-            for scenario in scenarios:
-                db.add(scenario)
-            
-            db.commit()
-            print("✅ Initial scenarios created successfully")
+        Scenario(
+            name="Hotel Reservation",
+            description="Make a hotel reservation over the phone",
+            category=ScenarioCategory.TRAVEL.value,
+            difficulty=DifficultyLevel.INTERMEDIATE.value,
+            is_active=True,
+        ),
+        Scenario(
+            name="Business Meeting",
+            description="Participate in a business meeting",
+            category=ScenarioCategory.BUSINESS.value,
+            difficulty=DifficultyLevel.INTERMEDIATE.value,
+            is_active=True,
+        ),
+        Scenario(
+            name="Job Interview",
+            description="Practice for a job interview",
+            category=ScenarioCategory.BUSINESS.value,
+            difficulty=DifficultyLevel.ADVANCED.value,
+            is_active=True,
+        ),
+        Scenario(
+            name="Ordering Food",
+            description="Order food at a restaurant",
+            category=ScenarioCategory.DAILY.value,
+            difficulty=DifficultyLevel.BEGINNER.value,
+            is_active=True,
+        ),
+        Scenario(
+            name="Shopping",
+            description="Go shopping and ask for help",
+            category=ScenarioCategory.DAILY.value,
+            difficulty=DifficultyLevel.BEGINNER.value,
+            is_active=True,
+        ),
+        Scenario(
+            name="Doctor's Appointment",
+            description="Visit the doctor and describe symptoms",
+            category=ScenarioCategory.DAILY.value,
+            difficulty=DifficultyLevel.INTERMEDIATE.value,
+            is_active=True,
+        ),
+        Scenario(
+            name="Banking",
+            description="Handle banking transactions",
+            category=ScenarioCategory.DAILY.value,
+            difficulty=DifficultyLevel.INTERMEDIATE.value,
+            is_active=True,
+        ),
+        Scenario(
+            name="Travel Planning",
+            description="Plan a trip and book activities",
+            category=ScenarioCategory.TRAVEL.value,
+            difficulty=DifficultyLevel.ADVANCED.value,
+            is_active=True,
+        ),
+        Scenario(
+            name="Client Presentation",
+            description="Present to a client",
+            category=ScenarioCategory.BUSINESS.value,
+            difficulty=DifficultyLevel.ADVANCED.value,
+            is_active=True,
+        ),
+    ]
+
+    for scenario in scenarios:
+        db.add(scenario)
+
+    db.commit()
+    print("✅ Initial scenarios created successfully")
 
 
 def _ensure_issue27_additional_scenarios(db: Session) -> None:
@@ -200,7 +199,7 @@ def _ensure_issue27_additional_scenarios(db: Session) -> None:
     if created_count:
         db.commit()
         print(f"✅ Issue #27 additional scenarios created: {created_count}")
-        else:
+    else:
         print("ℹ️  Issue #27 additional scenarios already exist, no changes")
 
 

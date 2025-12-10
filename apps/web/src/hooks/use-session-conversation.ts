@@ -1,13 +1,9 @@
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import {
-  fetchSessionStatus,
-  submitTurn,
-  extendSession,
-  endSession,
-} from '@/lib/session'
-import { ConversationTurn } from '@/types/conversation'
+import { fetchSessionStatus, submitTurn, extendSession, endSession } from '@/lib/session'
+import { playTextWithTts } from '@/lib/tts'
+import { ConversationTurn, SessionGoalProgress } from '@/types/conversation'
 
 interface UseSessionConversationOptions {
   sessionId: number
@@ -21,6 +17,8 @@ export function useSessionConversation({ sessionId, onSessionEnd, onRoundComplet
   const [error, setError] = useState<string | null>(null)
   const [hasEnded, setHasEnded] = useState<boolean>(false)
   const [previousCompletedRounds, setPreviousCompletedRounds] = useState<number>(0)
+  const lastPlayedTurnIdRef = useRef<string | null>(null)
+  const [goalProgress, setGoalProgress] = useState<SessionGoalProgress | null>(null)
 
   const statusQuery = useQuery({
     queryKey: ['session-status', sessionId],
@@ -57,7 +55,7 @@ export function useSessionConversation({ sessionId, onSessionEnd, onRoundComplet
         ]
       })
     },
-    onSuccess: ({ turn, status }) => {
+    onSuccess: ({ turn, status, goalsTotal, goalsAchieved }) => {
       setTurns((prev) => {
         const next = [...prev]
         next[next.length - 1] = turn
@@ -65,6 +63,12 @@ export function useSessionConversation({ sessionId, onSessionEnd, onRoundComplet
       })
       if (status) {
         queryClient.setQueryData(['session-status', sessionId], status)
+      }
+      if (typeof goalsTotal === 'number' && typeof goalsAchieved === 'number') {
+        setGoalProgress({
+          total: goalsTotal,
+          achieved: goalsAchieved,
+        })
       }
       
       // 自動終了判定
@@ -184,6 +188,34 @@ export function useSessionConversation({ sessionId, onSessionEnd, onRoundComplet
     })
   }, [statusQuery.data?.initialAiMessage, sessionId])
 
+  // AI応答の自動TTS再生（初期メッセージ含む）
+  useEffect(() => {
+    if (turns.length === 0) return
+
+    const lastTurn = turns[turns.length - 1]
+    const message = lastTurn.aiReply?.message ?? ''
+
+    // すでにこのターンを再生済みなら何もしない
+    if (lastPlayedTurnIdRef.current === lastTurn.id) return
+
+    // プレースホルダーや未確定の応答はスキップ
+    if (lastTurn.isPending) return
+    if (!message.trim()) return
+    if (message === '応答を生成しています…') return
+
+    lastPlayedTurnIdRef.current = lastTurn.id
+
+    void (async () => {
+      try {
+        await playTextWithTts(message)
+      } catch (error) {
+        // 自動再生がブラウザにブロックされた場合などは警告のみ
+        // eslint-disable-next-line no-console
+        console.warn('Failed to auto-play TTS for AI reply', error)
+      }
+    })()
+  }, [turns])
+
   const submitMessage = useCallback(
     (message: string) => {
       if (!message.trim() || submitMutation.isPending || !statusQuery.data?.isActive) return
@@ -196,6 +228,7 @@ export function useSessionConversation({ sessionId, onSessionEnd, onRoundComplet
   return {
     turns,
     status: statusQuery.data,
+    goalProgress,
     isLoadingStatus: statusQuery.isLoading,
     submitMessage,
     extendSession: (onSuccess?: () => void) => {

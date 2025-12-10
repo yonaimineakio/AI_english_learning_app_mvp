@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 interface LogoutButtonProps {
   className?: string
   children?: React.ReactNode
-  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
+  variant?: 'primary' | 'outline' | 'secondary' | 'ghost'
 }
 
 export function LogoutButton({ className, children, variant = 'outline' }: LogoutButtonProps): JSX.Element {

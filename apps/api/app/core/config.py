@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # Auth / OAuth Configuration
-    AUTH_USE_MOCK: bool = True
+    AUTH_USE_MOCK: bool = False
     GOOGLE_CLIENT_ID: str = "85372847730-vogng3qs66idtuqeaasvmmoghm9nj9k8.apps.googleusercontent.com"
     GOOGLE_CLIENT_SECRET: str = "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"
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:8000",
+        "http://localhost",        # iOS Simulator
     ]
     
     # AI Service
@@ -54,7 +55,8 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     class Config:
-        env_file = ".env"
+        # .envファイルのパスを絶対パスで指定
+        env_file = str(Path(__file__).parent.parent.parent / ".env")
         case_sensitive = True
         env_file_encoding = "utf-8"
 

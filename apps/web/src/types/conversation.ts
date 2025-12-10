@@ -22,6 +22,12 @@ export interface ConversationTurn {
   shouldEndSession?: boolean
 }
 
+export interface SessionGoalProgress {
+  total: number
+  achieved: number
+  status?: number[]
+}
+
 export interface SessionStatus {
   sessionId: number
   scenarioId: number
@@ -50,6 +56,9 @@ export interface SessionSummary {
   scenarioName?: string
   difficulty?: string
   mode?: string
+  goalsTotal?: number
+  goalsAchieved?: number
+  goalsStatus?: number[]
 }
 
 

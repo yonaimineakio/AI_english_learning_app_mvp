@@ -95,13 +95,6 @@ export function ScenarioPage({ placementLevel }: ScenarioPageProps) {
     }))
   }
 
-  const handleDifficultyChange = (difficulty: ScenarioSelectionState['selectedDifficulty']) => {
-    setSelectionState((prev) => ({
-      ...prev,
-      selectedDifficulty: difficulty,
-    }))
-  }
-
   const handleReset = () => {
     setSelectedScenarioId(DEFAULT_SCENARIO_SELECTION.selectedScenarioId)
     setSelectionState(DEFAULT_SCENARIO_SELECTION)

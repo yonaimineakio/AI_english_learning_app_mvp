@@ -202,9 +202,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'beginner',
     estimatedMinutes: 18,
     learningGoals: [
-      '旅の始まりに必要な表現を定着させる',
-      'チェックイン時のやりとりに自信を持つ',
-      '予期せぬ質問にも対応できる力をつける',
+      '予約名を伝えてチェックインを開始する',
+      '座席の希望（窓側・通路側）を伝える',
+      '荷物の預け入れについて確認する',
     ],
     sampleDialog: 'I have a reservation under the name Suzuki. Can I have a window seat, please?',
     keyPhrases: ['be about to board', 'be supposed to check in', 'have to drop off my baggage'],
@@ -217,9 +217,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'intermediate',
     estimatedMinutes: 18,
     learningGoals: [
-      '意見を明確に述べる表現を習得',
-      '合意形成のためのフレーズを練習',
-      '質問に対する対応力を強化',
+      '会議の冒頭で自分の意見を述べる',
+      '他の参加者の提案に賛成・反対を表明する',
+      '次のアクションアイテムを確認する',
     ],
     sampleDialog: 'From my perspective, we should prioritize the user experience over new features at this stage.',
     keyPhrases: ['want to bring up', 'need to follow up on', 'be ready to move forward'],
@@ -232,11 +232,11 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'beginner',
     estimatedMinutes: 12,
     learningGoals: [
-      'メニューを理解し適切に注文する力をつける',
-      'アレルギーや好みの説明に慣れる',
-      '会計時のやり取りをスムーズに行う',
+      'ウェイターを呼んでメニューを依頼する',
+      'おすすめ料理やサイドメニューについて尋ねる',
+      'アレルギーや食材の制限を伝える',
     ],
-    sampleDialog: 'Could you recommend something vegetarian? I’m allergic to nuts.',
+    sampleDialog: "Could you recommend something vegetarian? I'm allergic to nuts.",
     keyPhrases: ['would like to order', 'be allergic to', 'want to try'],
   },
   4: {
@@ -247,11 +247,11 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'advanced',
     estimatedMinutes: 30,
     learningGoals: [
-      'オンラインでの自己紹介とアイスブレイクに慣れる',
-      '提案内容を説得力を持って伝える',
-      'フォローアップとアクションアイテムを明確にする',
+      '会議の冒頭で自己紹介とアイスブレイクを行う',
+      '自社の提案内容を簡潔に説明する',
+      '相手の質問に答えて懸念点を解消する',
     ],
-    sampleDialog: 'Let’s recap the action items and confirm the next steps for both teams.',
+    sampleDialog: "Let's recap the action items and confirm the next steps for both teams.",
     keyPhrases: ['would like to walk you through', 'be willing to consider', 'plan to move forward'],
   },
   5: {
@@ -262,9 +262,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'intermediate',
     estimatedMinutes: 18,
     learningGoals: [
-      '予約内容の確認と要望の伝え方を練習',
-      'トラブル対応時の英語表現に慣れる',
-      'チェックアウト時の手続きをスムーズにする',
+      '予約名を伝えてチェックイン手続きを開始する',
+      '部屋のアップグレードや追加リクエストを依頼する',
+      'ホテルの設備やサービスについて質問する',
     ],
     sampleDialog: 'Is it possible to have a late checkout tomorrow around 2 PM?',
     keyPhrases: ['have a reservation under', 'would like to request', 'need to check out'],
@@ -278,9 +278,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'beginner',
     estimatedMinutes: 18,
     learningGoals: [
-      '休暇の予定や希望を英語で説明する',
-      '場所・期間・予算などの基本情報を整理して伝える',
-      '相手の質問に答えながら会話を広げる',
+      '行きたい旅行先とその理由を説明する',
+      '滞在期間と予算の希望を伝える',
+      'おすすめのアクティビティや観光地を尋ねる',
     ],
     sampleDialog: "I'd love to spend a week at a beach resort. Do you have any recommendations?",
     keyPhrases: ['dream of going to', 'would love to stay at', 'want to get away from'],
@@ -293,9 +293,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'intermediate',
     estimatedMinutes: 18,
     learningGoals: [
-      '観光地や名物を分かりやすく説明する',
-      '移動手段や所要時間を伝える表現を身につける',
-      '相手の興味に合わせて提案をアレンジする',
+      '訪問したい観光地を提案して魅力を説明する',
+      '移動手段（電車・バス・タクシー）と所要時間を伝える',
+      '相手の興味や好みを聞いて計画を調整する',
     ],
     sampleDialog:
       "If you like history, we should definitely visit Kyoto. Would you be interested in staying there for two days?",
@@ -309,9 +309,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'advanced',
     estimatedMinutes: 18,
     learningGoals: [
-      '入国目的や滞在予定を明確に説明する',
-      '持ち込み品や申告内容について正確に答える',
-      '追加質問にも落ち着いて対応できるようにする',
+      '訪問目的（観光・ビジネス）と滞在期間を答える',
+      '滞在先のホテル名と住所を伝える',
+      '持ち込み品の申告や追加質問に対応する',
     ],
     sampleDialog:
       "I'm here on business for five days, and I'll be staying at the Grand Tokyo Hotel. Would you like to see my return ticket?",
@@ -325,9 +325,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'beginner',
     estimatedMinutes: 18,
     learningGoals: [
-      '行き先や日程の希望を伝える',
-      '相手の都合を聞きながら予定を調整する',
-      '予算やアクティビティの希望を共有する',
+      '行きたい場所と日程の候補を提案する',
+      '相手の都合や希望を聞いて調整する',
+      '予算とやりたいアクティビティを共有する',
     ],
     sampleDialog: "How about going to Osaka for the weekend? We could visit Universal Studios Japan.",
     keyPhrases: ['be thinking of going to', 'want to spend time doing', 'be flexible about'],
@@ -340,9 +340,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'beginner',
     estimatedMinutes: 18,
     learningGoals: [
-      '時間・場所・状況を整理して説明する',
-      '財布の特徴や中身を具体的に伝える',
-      '必要な書類や今後の流れを確認する',
+      'いつどこで財布を無くしたかを説明する',
+      '財布の色・形・中身（カード・現金）を伝える',
+      '遺失物届の手続きについて確認する',
     ],
     sampleDialog:
       "I lost my wallet on the train about an hour ago. Could you tell me what I should do now?",
@@ -356,9 +356,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'beginner',
     estimatedMinutes: 18,
     learningGoals: [
-      '問題の内容と影響をシンプルに説明する',
-      '相手の提案を確認しながら選択肢を理解する',
-      '丁寧なクレーム・相談の表現に慣れる',
+      '商品の不具合や問題点を具体的に説明する',
+      '返品・交換・返金のいずれかを依頼する',
+      '担当者の提案を確認して対応を決める',
     ],
     sampleDialog:
       "I received a damaged item in my order. Could you tell me if I can get a replacement or a refund?",
@@ -372,9 +372,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'intermediate',
     estimatedMinutes: 18,
     learningGoals: [
-      '飲み物や食事の好みを自然に伝える',
-      '天気や趣味などの軽い話題で会話を続ける',
-      '相手のコメントに返しながら雑談を広げる',
+      'おすすめのドリンクや季節限定メニューを尋ねる',
+      '店の雰囲気やインテリアについてコメントする',
+      '天気や最近の出来事について軽く話す',
     ],
     sampleDialog:
       "This place has such a nice atmosphere. Do you have any seasonal drinks you recommend?",
@@ -388,9 +388,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'beginner',
     estimatedMinutes: 15,
     learningGoals: [
-      '希望の日時や人数を正確に伝える',
-      '席の種類や価格を確認する表現を学ぶ',
-      '空き状況に応じて代替案を相談する',
+      '希望の日時と人数を伝える',
+      '座席の種類（前方・中央・後方）と価格を確認する',
+      '空席がない場合は別の日時を相談する',
     ],
     sampleDialog:
       "I'd like two tickets for tonight's show around 7 PM. Are there any seats left near the front?",
@@ -404,9 +404,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'intermediate',
     estimatedMinutes: 15,
     learningGoals: [
-      '自然な挨拶と自己紹介のフレーズを身につける',
-      '天気や趣味など無難な話題で会話を続ける',
-      '別れ際の丁寧な表現に慣れる',
+      '天気や公園の雰囲気について話しかける',
+      '相手の趣味やこの公園に来る頻度を尋ねる',
+      '別れ際に「また会いましょう」と挨拶する',
     ],
     sampleDialog:
       "It's such a nice day today, isn't it? Do you often come to this park for a walk?",
@@ -420,9 +420,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'beginner',
     estimatedMinutes: 15,
     learningGoals: [
-      '予定変更の理由をシンプルに説明する',
-      '代わりの日時候補を分かりやすく提示する',
-      '相手への配慮を示す表現を練習する',
+      '予定変更が必要な理由を簡潔に伝える',
+      '代替の日時候補を2〜3つ提案する',
+      '相手の都合を確認して謝罪の言葉を添える',
     ],
     sampleDialog:
       "Something urgent came up this afternoon. Would it be possible to move our meeting to tomorrow morning?",
@@ -436,9 +436,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'intermediate',
     estimatedMinutes: 18,
     learningGoals: [
-      '会議の目的と所要時間を簡潔に説明する',
-      '複数の候補日時を提示して調整する',
-      '参加者の都合を確認しながら決定する',
+      '会議の目的と所要時間を伝える',
+      '複数の候補日時を提示する',
+      '参加者全員の都合を確認して日程を確定する',
     ],
     sampleDialog:
       "I'd like to set up a 30-minute meeting next week. Are you available on Tuesday or Wednesday afternoon?",
@@ -452,12 +452,12 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'advanced',
     estimatedMinutes: 24,
     learningGoals: [
-      'アジェンダの提示と時間管理の表現を身につける',
-      '意見を引き出しつつ議論を整理する',
-      '決定事項とアクションアイテムを明確にまとめる',
+      '会議の冒頭でアジェンダを提示する',
+      '各議題で参加者の意見を引き出す',
+      '決定事項とアクションアイテムを確認する',
     ],
     sampleDialog:
-      "Let’s move on to the second agenda item. Could you briefly share your thoughts on the proposed timeline?",
+      "Let's move on to the second agenda item. Could you briefly share your thoughts on the proposed timeline?",
     keyPhrases: ['would like to start with', 'move on to', 'come back to'],
   },
   18: {
@@ -468,9 +468,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'advanced',
     estimatedMinutes: 24,
     learningGoals: [
-      '価格や納期などの条件を明確に比較する',
-      '譲歩や代替案を提示する表現を身につける',
-      '合意に向けて論点を整理しながら交渉する',
+      '価格・納期・支払い条件について確認する',
+      '自社の希望条件と譲歩できる範囲を伝える',
+      '相手の提案に対して代替案を提示する',
     ],
     sampleDialog:
       "If we extend the contract period, would you be open to offering a discount on the monthly fee?",
@@ -484,9 +484,9 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'advanced',
     estimatedMinutes: 24,
     learningGoals: [
-      'グラフや数値を言葉で説明する',
-      '調査結果から導かれる示唆を整理して伝える',
-      '次のアクション案を論理的に提案する',
+      '調査の概要（期間・対象・方法）を説明する',
+      '主要な数値結果とその変化を伝える',
+      '結果から導かれる改善提案を述べる',
     ],
     sampleDialog:
       "Overall satisfaction increased by 12%, mainly due to faster response times. How would you like us to act on these findings?",
@@ -500,12 +500,12 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'intermediate',
     estimatedMinutes: 18,
     learningGoals: [
-      '状況と原因を事実ベースで整理して伝える',
-      '謝罪と責任の取り方を適切に表現する',
-      'リカバリープランや新しいスケジュールを共有する',
+      '遅延の事実と原因を正直に説明する',
+      '謝罪の言葉と責任の所在を明確にする',
+      '新しいスケジュールと再発防止策を提示する',
     ],
     sampleDialog:
-      "We’re really sorry for the delay. A key dependency took longer than expected, but here is our updated timeline.",
+      "We're really sorry for the delay. A key dependency took longer than expected, but here is our updated timeline.",
     keyPhrases: ['would like to apologize for', 'have been trying to catch up', 'plan to prevent this from happening again'],
   },
   21: {
@@ -516,12 +516,12 @@ export const SCENARIO_DETAILS: Record<number, ScenarioDetail> = {
     difficulty: 'intermediate',
     estimatedMinutes: 12,
     learningGoals: [
-      '症状と状況を簡潔に説明する',
-      '休暇の希望日と期間を伝える',
-      '担当タスクの引き継ぎ方法を相談する',
+      '体調不良の症状（熱・頭痛など）を伝える',
+      '休みたい日数と復帰予定を説明する',
+      '担当業務の引き継ぎ先を相談する',
     ],
     sampleDialog:
-      "I’m not feeling well today and have a fever. Would it be okay if I take the day off and hand over my tasks to a colleague?",
+      "I'm not feeling well today and have a fever. Would it be okay if I take the day off and hand over my tasks to a colleague?",
     keyPhrases: ['not feel well today', 'need to take the day off', 'hand over my tasks'],
   },
 }

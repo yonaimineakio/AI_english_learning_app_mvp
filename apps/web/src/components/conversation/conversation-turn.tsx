@@ -1,9 +1,8 @@
 "use client"
 
-import { useId, useState } from 'react'
+import { useId } from 'react'
 
 import { ConversationTurn } from '@/types/conversation'
-import { playTextWithTts } from '@/lib/tts'
 
 interface ConversationTurnProps {
   turn: ConversationTurn
@@ -13,19 +12,6 @@ interface ConversationTurnProps {
 
 export function ConversationTurnRow({ turn, isDetailsOpen, onToggleDetails }: ConversationTurnProps) {
   const detailsId = useId()
-  const [isPlaying, setIsPlaying] = useState(false)
-
-  const handlePlay = async () => {
-    if (isPlaying || !turn.aiReply.message.trim()) return
-    try {
-      setIsPlaying(true)
-      await playTextWithTts(turn.aiReply.message)
-    } catch (error) {
-      console.error('Failed to play TTS', error)
-    } finally {
-      setIsPlaying(false)
-    }
-  }
 
   return (
     <article className="space-y-3" aria-label={`Conversation turn ${turn.roundIndex}`}>
@@ -46,22 +32,11 @@ export function ConversationTurnRow({ turn, isDetailsOpen, onToggleDetails }: Co
         </div>
         <div className="flex-1 space-y-3">
           <div className="rounded-2xl border border-blue-100 bg-white/90 p-4 shadow">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-500" aria-label="AI response">
-                  AI の応答
-                </p>
-                <p className="mt-2 text-sm text-blue-900">{turn.aiReply.message}</p>
-              </div>
-              <button
-                type="button"
-                onClick={handlePlay}
-                disabled={isPlaying || !turn.aiReply.message.trim()}
-                className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-xs text-blue-700 shadow-sm hover:border-blue-400 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="AIの応答を再生"
-              >
-                {isPlaying ? '…' : '🔊'}
-              </button>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-500" aria-label="AI response">
+                AI の応答
+              </p>
+              <p className="mt-2 text-sm text-blue-900">{turn.aiReply.message}</p>
             </div>
           </div>
 

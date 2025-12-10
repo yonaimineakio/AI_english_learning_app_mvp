@@ -177,6 +177,91 @@ class ReviewCompleteRequest(BaseModel):
     result: Literal["correct", "incorrect"]
 
 
+# Review Question schemas (for speaking/listening practice)
+class ReviewQuestion(BaseModel):
+    """復習用の問題（スピーキング/リスニング）"""
+    question_type: Literal["speaking", "listening"]
+    prompt: str
+    hint: Optional[str] = None
+    # スピーキング用: ユーザーが読み上げるターゲット文
+    target_sentence: Optional[str] = None
+    # リスニング用: TTS読み上げテキスト
+    audio_text: Optional[str] = None
+    # リスニング用: 単語パズル（正解順の単語リスト）
+    puzzle_words: Optional[List[str]] = None
+
+
+class ReviewQuestionsResponse(BaseModel):
+    """復習アイテムに対する問題一式"""
+    review_item_id: int
+    phrase: str
+    explanation: str
+    speaking: ReviewQuestion
+    listening: ReviewQuestion
+
+
+class WordMatch(BaseModel):
+    """単語の一致情報"""
+    word: str
+    matched: bool
+    index: int
+
+
+class ReviewEvaluateRequest(BaseModel):
+    """復習の評価リクエスト"""
+    question_type: Literal["speaking", "listening"]
+    # スピーキング用: 音声認識結果
+    user_transcription: Optional[str] = None
+    # リスニング用: ユーザーが並べた単語リスト
+    user_answer: Optional[List[str]] = None
+
+
+class ReviewEvaluateResponse(BaseModel):
+    """復習の評価結果レスポンス"""
+    review_item_id: int
+    question_type: str
+    score: int = Field(..., ge=0, le=100)  # 0-100点
+    is_correct: bool  # 正解かどうか
+    is_completed: bool  # 復習アイテムが完了したか
+    next_due_at: Optional[datetime] = None
+    # スピーキング用: 単語ごとの一致情報
+    matching_words: Optional[List[WordMatch]] = None
+    # 正解文（フィードバック用）
+    correct_answer: Optional[str] = None
+
+
+# Placement Test evaluation schemas
+class PlacementSpeakingEvaluateRequest(BaseModel):
+    """Placementテスト - Speaking評価リクエスト"""
+    question_id: int
+    user_transcription: str  # 音声認識結果
+
+
+class PlacementSpeakingEvaluateResponse(BaseModel):
+    """Placementテスト - Speaking評価レスポンス"""
+    question_id: int
+    target_sentence: str
+    user_transcription: str
+    score: int = Field(..., ge=0, le=100)
+    matching_words: List[WordMatch]
+    feedback: str
+
+
+class PlacementListeningEvaluateRequest(BaseModel):
+    """Placementテスト - Listening評価リクエスト"""
+    question_id: int
+    user_answer: List[str]  # ユーザーが並べた単語リスト
+
+
+class PlacementListeningEvaluateResponse(BaseModel):
+    """Placementテスト - Listening評価レスポンス"""
+    question_id: int
+    correct_sentence: str
+    user_answer: str
+    is_correct: bool
+    score: int = Field(..., ge=0, le=100)
+
+
 # API Response schemas
 class SessionStartResponse(BaseModel):
     session_id: int
@@ -224,6 +309,10 @@ class TurnResponse(BaseModel):
     provider: Optional[str] = None
     session_status: Optional[SessionStatusResponse] = None
     should_end_session: Optional[bool] = False
+    # 学習ゴール達成率（達成率判定機能用）
+    goals_total: Optional[int] = None
+    goals_achieved: Optional[int] = None
+    goals_status: Optional[List[int]] = None
 
 
 class SessionEndResponse(BaseModel):
@@ -234,6 +323,10 @@ class SessionEndResponse(BaseModel):
     scenario_name: Optional[str] = None
     difficulty: Literal["beginner", "intermediate", "advanced"]
     mode: Literal["quick", "standard", "deep", "custom"]
+    # セッション全体の学習ゴール達成率
+    goals_total: Optional[int] = None
+    goals_achieved: Optional[int] = None
+    goals_status: Optional[List[int]] = None
 
 
 class ReviewNextResponse(BaseModel):

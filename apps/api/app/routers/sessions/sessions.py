@@ -75,13 +75,20 @@ async def process_turn(
         logger.warning(f"Turn processing failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=str(e),
+        )
+    except TimeoutError as e:
+        # OpenAI側のタイムアウトなど、AI応答生成の時間超過
+        logger.error(f"Turn processing timed out: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="AI応答がタイムアウトしました。少し待ってからもう一度お試しください。",
         )
     except Exception as e:
         logger.error(f"Unexpected error in turn processing: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to process turn"
+            detail="Failed to process turn",
         )
 
 
@@ -122,7 +129,7 @@ async def end_session(
     """セッションを終了する"""
     try:
         session_service = SessionService(db)
-        result = session_service.end_session(session_id, current_user.id)
+        result = await session_service.end_session(session_id, current_user.id)
         
         logger.info(f"Session {session_id} ended")
         return result
