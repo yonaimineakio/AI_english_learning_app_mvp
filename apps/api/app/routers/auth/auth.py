@@ -8,7 +8,7 @@ from app.core.deps import get_current_user, get_current_user_optional
 from datetime import timedelta
 
 from models.database.models import User
-from models.schemas.schemas import User as UserSchema
+from models.schemas.schemas import User as UserSchema, UserStatsResponse
 from typing import Optional
 import httpx
 from urllib.parse import urlencode
@@ -31,6 +31,17 @@ async def get_current_user_info(
 ):
     """Get current user information"""
     return current_user
+
+
+@router.get("/me/stats", response_model=UserStatsResponse)
+async def get_user_stats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get user statistics including streak information"""
+    from app.services.streak.streak_service import StreakService
+    service = StreakService(db)
+    return service.get_user_stats(current_user.id)
 
 
 

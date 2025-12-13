@@ -477,6 +477,14 @@ class SessionService:
                 # 復習アイテムを作成
                 next_review_at = self._create_review_items(user_id, top_phrases)
 
+                # ストリーク更新
+                from app.services.streak.streak_service import StreakService
+                import pytz
+
+                jst = pytz.timezone('Asia/Tokyo')
+                activity_date = datetime.now(jst).date()
+                StreakService(self.db).update_streak(user_id, activity_date)
+
                 self.db.commit()
                 self.db.refresh(session)
 

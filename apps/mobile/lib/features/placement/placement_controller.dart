@@ -85,7 +85,7 @@ class PlacementController extends AsyncNotifier<PlacementState> {
       final result = await _api.evaluateSpeaking(
         questionId: questionId,
         userTranscription: transcript,
-      );
+    );
 
       final updatedResults =
           Map<int, PlacementSpeakingEvaluateResponseModel>.from(
@@ -133,7 +133,7 @@ class PlacementController extends AsyncNotifier<PlacementState> {
       state = AsyncData(current.copyWith(isCompleted: true));
     } else {
       state = AsyncData(current.copyWith(currentIndex: nextIndex));
-    }
+  }
   }
 
   /// 結果を送信
@@ -145,12 +145,12 @@ class PlacementController extends AsyncNotifier<PlacementState> {
 
     try {
       final result = await _api.submitAnswers(current.answers);
-      state = AsyncData(
-        current.copyWith(
-          isSubmitting: false,
+    state = AsyncData(
+      current.copyWith(
+        isSubmitting: false,
           submitResult: result,
-        ),
-      );
+      ),
+    );
     } catch (e) {
       state = AsyncData(current.copyWith(isSubmitting: false));
       rethrow;

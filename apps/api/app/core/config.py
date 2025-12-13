@@ -32,6 +32,8 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost:8000",
         "http://localhost",        # iOS Simulator
+        "http://172.20.10.10:8000",  # Flutter app (Mac IP)
+        "http://192.168.11.7:8000",  # Flutter app (previous Mac IP)
     ]
     
     # AI Service

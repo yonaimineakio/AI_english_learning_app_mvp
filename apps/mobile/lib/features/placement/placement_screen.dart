@@ -153,11 +153,11 @@ class PlacementScreen extends ConsumerWidget {
 
       // 提出ボタン
       return Center(
-        child: Padding(
+                      child: Padding(
           padding: const EdgeInsets.all(32),
-          child: Column(
+                        child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+                          children: [
               const Icon(
                 Icons.check_circle_outline,
                 size: 80,
@@ -168,11 +168,11 @@ class PlacementScreen extends ConsumerWidget {
                 '全問回答完了！',
                 style: TextStyle(
                   fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
               const SizedBox(height: 16),
-              Text(
+                            Text(
                 '${data.questions.length}問すべての問題に回答しました。',
                 style: const TextStyle(fontSize: 16),
               ),
@@ -228,14 +228,14 @@ class PlacementScreen extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
                   vertical: 16,
-                ),
+                              ),
                 decoration: BoxDecoration(
                   color: levelColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: levelColor, width: 2),
                 ),
                 child: Column(
-                  children: [
+                              children: [
                     const Text(
                       'あなたのレベル',
                       style: TextStyle(fontSize: 14, color: Colors.grey),
@@ -247,10 +247,10 @@ class PlacementScreen extends ConsumerWidget {
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
                         color: levelColor,
-                      ),
-                    ),
-                  ],
-                ),
+                                  ),
+                                ),
+                              ],
+                            ),
               ),
               const SizedBox(height: 24),
 
@@ -280,19 +280,19 @@ class PlacementScreen extends ConsumerWidget {
 
               // シナリオ選択へ
               SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
+                  width: double.infinity,
+                  child: ElevatedButton(
                   onPressed: () {
-                    // 認証状態にレベルテスト完了を反映
-                    ref
-                        .read(authStateProvider.notifier)
-                        .applyPlacementResult(result);
-                    context.go('/');
-                  },
+                              // 認証状態にレベルテスト完了を反映
+                              ref
+                                  .read(authStateProvider.notifier)
+                                  .applyPlacementResult(result);
+                                        context.go('/');
+                                      },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                  child: const Text('シナリオ選択へ'),
+                                      child: const Text('シナリオ選択へ'),
                 ),
               ),
             ],
