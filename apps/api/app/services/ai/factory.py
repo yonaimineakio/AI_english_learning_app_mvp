@@ -34,18 +34,18 @@ async def generate_conversation_response(
     )
 
     try:
-    provider = provider_cls()
-    result = await provider.generate_response(
-        user_input=user_input,
-        difficulty=difficulty,
-        scenario_category=scenario_category,
-        round_index=round_index,
-        context=context,
-        scenario_id=scenario_id,
-    )
-    if not result.provider:
-        result.provider = provider_name or AIProviderRegistry.default_provider()
-    return result
+        provider = provider_cls()
+        result = await provider.generate_response(
+            user_input=user_input,
+            difficulty=difficulty,
+            scenario_category=scenario_category,
+            round_index=round_index,
+            context=context,
+            scenario_id=scenario_id,
+        )
+        if not result.provider:
+            result.provider = provider_name or AIProviderRegistry.default_provider()
+        return result
     except httpx.HTTPError as exc:
         # OpenAI など外部API呼び出しの失敗時は、モックプロバイダにフォールバックして
         # セッション自体は継続できるようにする。
