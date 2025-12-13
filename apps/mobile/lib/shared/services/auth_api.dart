@@ -38,6 +38,13 @@ class AuthApi {
     );
   }
 
+  Future<UserStatsModel> getUserStats() async {
+    final Response<dynamic> res = await _client.getJson('/auth/me/stats');
+    return UserStatsModel.fromJson(
+      Map<String, dynamic>.from(res.data as Map),
+    );
+  }
+
   /// Exchange authorization code for app JWT.
   ///
   /// In mock mode, `code` can be any string starting with `mock_auth_code_`.

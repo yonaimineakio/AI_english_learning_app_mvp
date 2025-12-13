@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Dict, Any, Literal
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum
 
 
@@ -48,6 +48,18 @@ class User(UserBase):
     placement_level: Optional[DifficultyLevel] = None
     placement_score: Optional[int] = None
     placement_completed_at: Optional[datetime] = None
+    current_streak: Optional[int] = None
+    longest_streak: Optional[int] = None
+    last_activity_date: Optional[date] = None
+
+
+class UserStatsResponse(BaseModel):
+    """ユーザー統計情報レスポンス"""
+    current_streak: int
+    longest_streak: int
+    last_activity_date: Optional[date] = None
+    total_sessions: int
+    total_rounds: int
 
 
 # Scenario schemas

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, JSON, Enum
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, JSON, Enum, Date
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -44,6 +44,11 @@ class User(Base):
     )
     placement_score = Column(Integer, nullable=True)
     placement_completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Streak fields
+    current_streak = Column(Integer, default=0)
+    longest_streak = Column(Integer, default=0)
+    last_activity_date = Column(Date, nullable=True)
 
     # Relationships
     sessions = relationship("Session", back_populates="user")

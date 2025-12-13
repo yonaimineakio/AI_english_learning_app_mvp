@@ -8,6 +8,7 @@ import '../features/scenario_selection/scenario_selection_screen.dart';
 import '../features/session/session_screen.dart';
 import '../features/summary/summary_screen.dart';
 import '../features/review/review_screen.dart';
+import '../features/rankings/rankings_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authStateProvider);
@@ -41,6 +42,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/review',
         builder: (context, state) => const ReviewScreen(),
+      ),
+      GoRoute(
+        path: '/rankings',
+        builder: (context, state) => const RankingsScreen(),
       ),
     ],
     redirect: (context, state) {

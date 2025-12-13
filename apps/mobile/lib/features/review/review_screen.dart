@@ -57,27 +57,27 @@ class ReviewScreen extends ConsumerWidget {
                       ),
                     );
                   },
-                  child: Padding(
+                child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.phrase,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.phrase,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          item.explanation,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        item.explanation,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
                           mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
+                        children: [
                             Text(
                               'タップして問題を開始 →',
                               style: TextStyle(
@@ -86,9 +86,9 @@ class ReviewScreen extends ConsumerWidget {
                               ),
                             ),
                           ],
-                        ),
-                      ],
-                    ),
+                          ),
+                        ],
+                      ),
                   ),
                 ),
               );

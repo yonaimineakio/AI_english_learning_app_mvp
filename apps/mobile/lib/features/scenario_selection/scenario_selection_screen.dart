@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../shared/models/scenario_static.dart';
 import '../auth/auth_providers.dart';
 import '../session/session_controller.dart';
+import '../home/streak_widget.dart';
 
 class ScenarioSelectionScreen extends ConsumerWidget {
   const ScenarioSelectionScreen({super.key});
@@ -37,10 +38,14 @@ class ScenarioSelectionScreen extends ConsumerWidget {
             return true;
           }).toList();
 
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            itemCount: scenarios.length,
-            itemBuilder: (context, index) {
+          return Column(
+            children: [
+              const StreakWidget(),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  itemCount: scenarios.length,
+                  itemBuilder: (context, index) {
               final s = scenarios[index];
               return Card(
                 child: InkWell(
@@ -111,8 +116,11 @@ class ScenarioSelectionScreen extends ConsumerWidget {
                   ),
                 ),
               );
-            },
-          );
+                },
+              ),
+            ),
+          ],
+        );
         },
       ),
     );
