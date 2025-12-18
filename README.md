@@ -112,9 +112,14 @@ cp infra/env/frontend.env.example apps/web/.env.local
 #### バックエンド
 ```bash
 cd apps/api
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+
+# uv を使った依存管理（推奨）
+# インストール例:
+# - macOS: brew install uv
+# - それ以外: 公式手順（astral/uv）に従ってインストール
+#
+# 依存関係を lockfile から再現（dev も含める）
+uv sync --extra dev --frozen
 
 # Google Cloud Speech-to-Text SDK を利用するために環境変数を設定
 export GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/credentials.json
@@ -136,7 +141,7 @@ npm install
 #### バックエンド
 ```bash
 cd apps/api
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 #### フロントエンド

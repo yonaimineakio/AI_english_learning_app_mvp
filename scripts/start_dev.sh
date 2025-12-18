@@ -5,7 +5,6 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$ROOT_DIR/apps/api"
 FRONTEND_DIR="$ROOT_DIR/apps/web"
-VENV_DIR="$ROOT_DIR/venv"
 
 PIDS=()
 
@@ -28,11 +27,18 @@ start_backend() {
   echo "Starting FastAPI backend..."
   (
     cd "$BACKEND_DIR"
-    if [ -d "$VENV_DIR" ] && [ -f "$VENV_DIR/bin/activate" ]; then
-      # shellcheck disable=SC1091
-      source "$VENV_DIR/bin/activate"
+    if ! command -v uv >/dev/null 2>&1; then
+      echo "ERROR: uv is not installed. Install uv and retry."
+      echo "Hint (macOS): brew install uv"
+      exit 1
     fi
-    exec python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+    # Ensure the local dev env exists (includes ruff/pytest etc.)
+    if [ ! -d ".venv" ]; then
+      uv sync --extra dev
+    fi
+
+    exec uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
   ) &
   PIDS+=($!)
 }
