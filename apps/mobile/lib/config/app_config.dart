@@ -12,7 +12,7 @@ class AppConfig {
   // );
 
   // for development ios simulator
-  static const String apiBaseUrl = 'http://192.168.11.7:8000/api/v1';
+  static const String apiBaseUrl = 'http://192.168.11.3:8000/api/v1';
 
   /// API timeout in seconds.
   /// バックエンド側のOpenAI呼び出しタイムアウト（60秒）に合わせて少し長めに確保する。

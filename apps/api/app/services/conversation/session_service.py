@@ -383,14 +383,15 @@ class SessionService:
             # 学習ゴール達成率の判定
             goals_total, goals_achieved, goals_status = await self._calculate_goal_progress(session)
 
-            # 終了判定チェック
-            session_ended = False
-            
+            goals_completed = goals_total > 0 and goals_achieved == goals_total
+            suggest_end = bool(conversation_result.should_end_session) or goals_completed
+            end_prompt_reason: str | None
             if conversation_result.should_end_session:
-                # 自動終了処理を実行
-                logger.info(f"Auto-ending session {session_id} due to user's end intent")
-                await self.end_session(session_id, user_id)
-                session_ended = True
+                end_prompt_reason = "user_intent"
+            elif goals_completed:
+                end_prompt_reason = "goals_completed"
+            else:
+                end_prompt_reason = None
 
             return TurnResponse(
                 round_index=current_round,
@@ -407,8 +408,11 @@ class SessionService:
                 tags=conversation_result.tags,
                 response_time_ms=latency_ms,
                 provider=conversation_result.provider,
-                session_status=self._build_session_status(session) if not session_ended else None,
-                should_end_session=conversation_result.should_end_session,
+                # NOTE: should_end_session は「終了提案」フラグ。実際の終了はクライアントが
+                # /sessions/{id}/end を呼んだときにのみ行う（ユーザー承認が必要）。
+                session_status=self._build_session_status(session),
+                should_end_session=suggest_end,
+                end_prompt_reason=end_prompt_reason,
                 goals_total=goals_total,
                 goals_achieved=goals_achieved,
                 goals_status=goals_status or None,

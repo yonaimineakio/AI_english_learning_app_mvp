@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,11 +10,13 @@ class ListeningQuestionCard extends ConsumerStatefulWidget {
     super.key,
     required this.question,
     required this.onEvaluate,
+    required this.onRetry,
     this.evaluationResult,
   });
 
   final PlacementQuestionModel question;
   final Future<void> Function(List<String> userAnswer) onEvaluate;
+  final VoidCallback onRetry;
   final PlacementListeningEvaluateResponseModel? evaluationResult;
 
   @override
@@ -24,8 +25,8 @@ class ListeningQuestionCard extends ConsumerStatefulWidget {
 }
 
 class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
-  List<String> _shuffledWords = [];
-  List<String> _selectedWords = [];
+  List<String> _availableWords = [];
+  List<String?> _answerSlots = [];
   bool _isEvaluating = false;
 
   @override
@@ -44,38 +45,53 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
 
   void _resetWords() {
     final words = List<String>.from(widget.question.puzzleWords ?? []);
-    words.shuffle(Random());
     setState(() {
-      _shuffledWords = words;
-      _selectedWords = [];
+      _availableWords = words.toList()..shuffle();
+      _answerSlots = List<String?>.filled(words.length, null);
     });
   }
 
-  void _selectWord(String word) {
+  void _placeWord(int slotIndex, String word) {
     setState(() {
-      _shuffledWords.remove(word);
-      _selectedWords.add(word);
+      // 既に別スロットに同じ単語が入っていたら外す（安全策）
+      for (var i = 0; i < _answerSlots.length; i++) {
+        if (_answerSlots[i] == word) {
+          _answerSlots[i] = null;
+        }
+      }
+
+      // 既に埋まっているスロットなら、元の単語を戻す
+      final prev = _answerSlots[slotIndex];
+      if (prev != null) {
+        _availableWords.add(prev);
+      }
+
+      _answerSlots[slotIndex] = word;
+      _availableWords.remove(word);
     });
   }
 
-  void _unselectWord(String word) {
+  void _removeFromSlot(int slotIndex) {
     setState(() {
-      _selectedWords.remove(word);
-      _shuffledWords.add(word);
+      final word = _answerSlots[slotIndex];
+      if (word == null) return;
+      _answerSlots[slotIndex] = null;
+      _availableWords.add(word);
     });
   }
 
   Future<void> _handleEvaluate() async {
-    if (_selectedWords.isEmpty) {
+    final filled = _answerSlots.whereType<String>().toList();
+    if (filled.length != _answerSlots.length) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('単語を並べてください')),
+        const SnackBar(content: Text('すべてのスロットを埋めてください')),
       );
       return;
     }
 
     setState(() => _isEvaluating = true);
     try {
-      await widget.onEvaluate(_selectedWords);
+      await widget.onEvaluate(filled);
     } finally {
       if (mounted) {
         setState(() => _isEvaluating = false);
@@ -140,7 +156,7 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
                         : () async {
                             if (widget.question.audioText != null) {
                               await audioController
-                                  .playTts(widget.question.audioText!);
+                                  .playTts(widget.question.audioText!, profile: 'placement_listening');
                             }
                           },
                     icon: Icon(
@@ -164,7 +180,7 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
           if (result != null) ...[
             _buildEvaluationResult(result),
           ] else ...[
-            // 選択済み単語（回答エリア）
+            // 回答エリア（スロット）
             const Text(
               'あなたの回答',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
@@ -179,44 +195,45 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.grey.shade300),
               ),
-              child: _selectedWords.isEmpty
-                  ? Text(
-                      '下の単語をタップして並べてください',
-                      style: TextStyle(
-                        color: Colors.grey.shade500,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    )
-                  : Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _selectedWords.map((word) {
-                        return InkWell(
-                          onTap: () => _unselectWord(word),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              word,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: List.generate(_answerSlots.length, (idx) {
+                  final word = _answerSlots[idx];
+                  return DragTarget<String>(
+                    onWillAcceptWithDetails: (_) => word == null,
+                    onAcceptWithDetails: (details) => _placeWord(idx, details.data),
+                    builder: (context, candidate, rejected) {
+                      final isActive = candidate.isNotEmpty;
+                      return InkWell(
+                        onTap: word == null ? null : () => _removeFromSlot(idx),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: word == null ? Colors.white : Colors.blue,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isActive ? Colors.blue : Colors.grey.shade300,
+                              width: isActive ? 2 : 1,
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ),
+                          child: Text(
+                            word ?? '____',
+                            style: TextStyle(
+                              color: word == null ? Colors.grey.shade600 : Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }),
+              ),
             ),
             const SizedBox(height: 16),
 
-            // シャッフルされた単語（選択肢）
+            // 単語パーツ（ドラッグ元）
             const Text(
               '単語を選択',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
@@ -225,24 +242,18 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _shuffledWords.map((word) {
-                return InkWell(
-                  onTap: () => _selectWord(word),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.grey.shade400),
-                    ),
-                    child: Text(
-                      word,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
+              children: _availableWords.map((word) {
+                return Draggable<String>(
+                  data: word,
+                  feedback: Material(
+                    color: Colors.transparent,
+                    child: _WordChip(word: word, dragging: true),
                   ),
+                  childWhenDragging: Opacity(
+                    opacity: 0.4,
+                    child: _WordChip(word: word),
+                  ),
+                  child: _WordChip(word: word),
                 );
               }).toList(),
             ),
@@ -266,7 +277,10 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed:
-                    _selectedWords.isNotEmpty && !_isEvaluating ? _handleEvaluate : null,
+                    _answerSlots.whereType<String>().length == _answerSlots.length &&
+                            !_isEvaluating
+                        ? _handleEvaluate
+                        : null,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   backgroundColor: Colors.green,
@@ -343,8 +357,51 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
                 ),
               ),
             ],
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () {
+                  _resetWords();
+                  widget.onRetry();
+                },
+                child: const Text('Retry'),
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _WordChip extends StatelessWidget {
+  const _WordChip({required this.word, this.dragging = false});
+
+  final String word;
+  final bool dragging;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade400),
+        boxShadow: dragging
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      child: Text(
+        word,
+        style: const TextStyle(fontWeight: FontWeight.bold),
       ),
     );
   }

@@ -274,6 +274,37 @@ class PlacementListeningEvaluateResponse(BaseModel):
     score: int = Field(..., ge=0, le=100)
 
 
+# Rankings schemas
+class UserPointsResponse(BaseModel):
+    """ユーザーのポイントサマリ"""
+    total_points: int
+    points_this_week: int
+    points_today: int
+
+
+class RankingEntry(BaseModel):
+    """ランキング1行分"""
+    rank: int
+    user_id: int
+    user_name: str
+    total_points: int
+    current_streak: int
+
+
+class RankingsResponse(BaseModel):
+    """ランキング一覧レスポンス"""
+    rankings: List[RankingEntry]
+    total_users: int
+
+
+class MyRankingResponse(BaseModel):
+    """自分のランキング情報"""
+    rank: int
+    total_points: int
+    points_to_next_rank: Optional[int] = None
+    total_users: int
+
+
 # API Response schemas
 class SessionStartResponse(BaseModel):
     session_id: int
@@ -321,6 +352,8 @@ class TurnResponse(BaseModel):
     provider: Optional[str] = None
     session_status: Optional[SessionStatusResponse] = None
     should_end_session: Optional[bool] = False
+    # 終了提案の理由（UIで文言や再表示制御に使う）
+    end_prompt_reason: Optional[Literal["user_intent", "goals_completed"]] = None
     # 学習ゴール達成率（達成率判定機能用）
     goals_total: Optional[int] = None
     goals_achieved: Optional[int] = None

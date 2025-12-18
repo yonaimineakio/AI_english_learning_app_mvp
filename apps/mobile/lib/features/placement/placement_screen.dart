@@ -50,6 +50,7 @@ class PlacementScreen extends ConsumerWidget {
           final currentQuestion = data.questions[data.currentIndex];
           final speakingResult = data.speakingResults[currentQuestion.id];
           final listeningResult = data.listeningResults[currentQuestion.id];
+          final transcript = data.transcripts[currentQuestion.id];
 
           return Column(
             children: [
@@ -64,12 +65,18 @@ class PlacementScreen extends ConsumerWidget {
                         key: ValueKey(currentQuestion.id),
                         question: currentQuestion,
                         evaluationResult: speakingResult,
+                        transcript: transcript,
+                        onRetry: () {
+                          ref
+                              .read(placementControllerProvider.notifier)
+                              .retryQuestion(currentQuestion.id);
+                        },
                         onEvaluate: (transcript) async {
                           await ref
                               .read(placementControllerProvider.notifier)
                               .evaluateSpeaking(
-                                currentQuestion.id,
-                                transcript,
+                                questionId: currentQuestion.id,
+                                transcript: transcript,
                               );
                         },
                       )
@@ -77,12 +84,17 @@ class PlacementScreen extends ConsumerWidget {
                         key: ValueKey(currentQuestion.id),
                         question: currentQuestion,
                         evaluationResult: listeningResult,
+                        onRetry: () {
+                          ref
+                              .read(placementControllerProvider.notifier)
+                              .retryQuestion(currentQuestion.id);
+                        },
                         onEvaluate: (userAnswer) async {
                           await ref
                               .read(placementControllerProvider.notifier)
                               .evaluateListening(
-                                currentQuestion.id,
-                                userAnswer,
+                                questionId: currentQuestion.id,
+                                userAnswer: userAnswer,
                               );
                         },
                       ),

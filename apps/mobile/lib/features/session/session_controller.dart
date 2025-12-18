@@ -23,8 +23,13 @@ class SessionUiState {
     required this.sessionId,
     required this.scenario,
     required this.messages,
+    required this.roundTarget,
+    required this.completedRounds,
     required this.goalsTotal,
     required this.goalsAchieved,
+    required this.goalsStatus,
+    required this.endPromptReason,
+    required this.dismissedGoalsCompletedPrompt,
     this.isLoadingTurn = false,
     this.shouldEndSession = false,
   });
@@ -32,15 +37,25 @@ class SessionUiState {
   final int sessionId;
   final ScenarioModel scenario;
   final List<MessageItem> messages;
+  final int? roundTarget;
+  final int? completedRounds;
   final int? goalsTotal;
   final int? goalsAchieved;
+  final List<int>? goalsStatus;
+  final String? endPromptReason; // user_intent | goals_completed
+  final bool dismissedGoalsCompletedPrompt;
   final bool isLoadingTurn;
   final bool shouldEndSession;
 
   SessionUiState copyWith({
     List<MessageItem>? messages,
+    int? roundTarget,
+    int? completedRounds,
     int? goalsTotal,
     int? goalsAchieved,
+    List<int>? goalsStatus,
+    String? endPromptReason,
+    bool? dismissedGoalsCompletedPrompt,
     bool? isLoadingTurn,
     bool? shouldEndSession,
   }) {
@@ -48,8 +63,14 @@ class SessionUiState {
       sessionId: sessionId,
       scenario: scenario,
       messages: messages ?? this.messages,
+      roundTarget: roundTarget ?? this.roundTarget,
+      completedRounds: completedRounds ?? this.completedRounds,
       goalsTotal: goalsTotal ?? this.goalsTotal,
       goalsAchieved: goalsAchieved ?? this.goalsAchieved,
+      goalsStatus: goalsStatus ?? this.goalsStatus,
+      endPromptReason: endPromptReason ?? this.endPromptReason,
+      dismissedGoalsCompletedPrompt:
+          dismissedGoalsCompletedPrompt ?? this.dismissedGoalsCompletedPrompt,
       isLoadingTurn: isLoadingTurn ?? this.isLoadingTurn,
       shouldEndSession: shouldEndSession ?? this.shouldEndSession,
     );
@@ -75,9 +96,21 @@ class SessionController extends AsyncNotifier<SessionUiState> {
       sessionId: 0,
       scenario: placeholderScenario,
       messages: const [],
+      roundTarget: null,
+      completedRounds: null,
       goalsTotal: null,
       goalsAchieved: null,
+      goalsStatus: null,
+      endPromptReason: null,
+      dismissedGoalsCompletedPrompt: false,
     );
+  }
+
+  int? _defaultGoalsTotalForScenario(int scenarioId) {
+    // Backend defines up to 3 goals per scenario id (1..21). Keep this list in sync
+    // with the UI task labels mapping in `SessionTaskChecklistCard`.
+    if (scenarioId <= 0) return null;
+    return 3;
   }
 
   Future<int> startNewSession({
@@ -108,8 +141,18 @@ class SessionController extends AsyncNotifier<SessionUiState> {
         sessionId: res.sessionId,
         scenario: res.scenario,
         messages: messages,
-        goalsTotal: null,
-        goalsAchieved: null,
+        roundTarget: res.roundTarget,
+        completedRounds: 0,
+        goalsTotal: _defaultGoalsTotalForScenario(res.scenario.id),
+        goalsAchieved: 0,
+        goalsStatus: _defaultGoalsTotalForScenario(res.scenario.id) == null
+            ? null
+            : List<int>.filled(
+                _defaultGoalsTotalForScenario(res.scenario.id)!,
+                0,
+              ),
+        endPromptReason: null,
+        dismissedGoalsCompletedPrompt: false,
       ),
     );
 
@@ -145,13 +188,24 @@ class SessionController extends AsyncNotifier<SessionUiState> {
       final newMessages = List<MessageItem>.from(updatedMessages)
         ..add(aiMessage);
 
+      final nextReason = turn.endPromptReason;
+      final isGoalsCompletedReason = nextReason == 'goals_completed';
+      final shouldPrompt = turn.shouldEndSession &&
+          !(isGoalsCompletedReason && current.dismissedGoalsCompletedPrompt);
+
       state = AsyncData(
         current.copyWith(
           messages: newMessages,
           isLoadingTurn: false,
+          roundTarget: turn.sessionStatus?.roundTarget ?? current.roundTarget,
+          completedRounds: turn.sessionStatus?.completedRounds ??
+              current.completedRounds ??
+              turn.roundIndex,
           goalsTotal: turn.goalsTotal ?? current.goalsTotal,
           goalsAchieved: turn.goalsAchieved ?? current.goalsAchieved,
-          shouldEndSession: turn.shouldEndSession,
+          goalsStatus: turn.goalsStatus ?? current.goalsStatus,
+          shouldEndSession: shouldPrompt,
+          endPromptReason: nextReason,
         ),
       );
     } catch (error, stackTrace) {
@@ -171,6 +225,24 @@ class SessionController extends AsyncNotifier<SessionUiState> {
       throw StateError('No active session to end');
     }
     return _api.endSession(sessionId: current.sessionId);
+  }
+
+  /// 「終了提案」モーダルを閉じて会話を継続したいときに呼ぶ。
+  /// shouldEndSession をクリアし、再表示ループを防ぐ。
+  void dismissEndPrompt() {
+    final current = state.valueOrNull;
+    if (current == null) return;
+    if (!current.shouldEndSession) return;
+    final dismissedGoals = current.endPromptReason == 'goals_completed'
+        ? true
+        : current.dismissedGoalsCompletedPrompt;
+    state = AsyncData(
+      current.copyWith(
+        shouldEndSession: false,
+        endPromptReason: null,
+        dismissedGoalsCompletedPrompt: dismissedGoals,
+      ),
+    );
   }
 }
 

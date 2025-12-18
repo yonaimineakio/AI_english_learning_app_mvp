@@ -139,6 +139,8 @@ class OpenAIConversationProvider(ConversationProvider):
                 "role": "assistant",
                 "content": (
                     f"難易度: {difficulty}。ユーザーの入力に応答してください。\n\n"
+                    "重要: AIの返答（AI: 行）に含める質問は1個までです。\n"
+                    "複数の質問（? を複数含む、または複数の疑問文）を入れてはいけません。\n"
                     "フィードバックと改善例文は、必ずユーザーの入力に対して実施してください。\n"
                     "出力形式を以下のように厳密に守ってください：\n"
                     "AI: [英語での自然な応答のみ]\n"

@@ -151,6 +151,7 @@ class TurnResponseModel {
     this.provider,
     this.sessionStatus,
     this.shouldEndSession = false,
+    this.endPromptReason,
     this.goalsTotal,
     this.goalsAchieved,
     this.goalsStatus,
@@ -165,6 +166,7 @@ class TurnResponseModel {
   final String? provider;
   final SessionStatusResponseModel? sessionStatus;
   final bool shouldEndSession;
+  final String? endPromptReason; // user_intent | goals_completed
   final int? goalsTotal;
   final int? goalsAchieved;
   final List<int>? goalsStatus;
@@ -194,6 +196,7 @@ class TurnResponseModel {
             )
           : null,
       shouldEndSession: (json['should_end_session'] as bool?) ?? false,
+      endPromptReason: json['end_prompt_reason'] as String?,
       goalsTotal: json['goals_total'] as int?,
       goalsAchieved: json['goals_achieved'] as int?,
       goalsStatus: (json['goals_status'] as List<dynamic>?)

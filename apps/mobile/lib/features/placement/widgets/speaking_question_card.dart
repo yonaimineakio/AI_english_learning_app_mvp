@@ -10,12 +10,16 @@ class SpeakingQuestionCard extends ConsumerStatefulWidget {
     super.key,
     required this.question,
     required this.onEvaluate,
+    required this.onRetry,
     this.evaluationResult,
+    this.transcript,
   });
 
   final PlacementQuestionModel question;
   final Future<void> Function(String transcript) onEvaluate;
+  final VoidCallback onRetry;
   final PlacementSpeakingEvaluateResponseModel? evaluationResult;
+  final String? transcript;
 
   @override
   ConsumerState<SpeakingQuestionCard> createState() =>
@@ -27,7 +31,8 @@ class _SpeakingQuestionCardState extends ConsumerState<SpeakingQuestionCard> {
   bool _isEvaluating = false;
 
   Future<void> _handleEvaluate() async {
-    if (_transcript == null || _transcript!.isEmpty) {
+    final text = _transcript?.trim() ?? '';
+    if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('発話を録音してください')),
       );
@@ -36,7 +41,7 @@ class _SpeakingQuestionCardState extends ConsumerState<SpeakingQuestionCard> {
 
     setState(() => _isEvaluating = true);
     try {
-      await widget.onEvaluate(_transcript!);
+      await widget.onEvaluate(text);
     } finally {
       if (mounted) {
         setState(() => _isEvaluating = false);
@@ -49,6 +54,9 @@ class _SpeakingQuestionCardState extends ConsumerState<SpeakingQuestionCard> {
     final audioState = ref.watch(audioControllerProvider);
     final audioController = ref.read(audioControllerProvider.notifier);
     final result = widget.evaluationResult;
+    final evaluatedTranscript = widget.transcript?.trim().isNotEmpty == true
+        ? widget.transcript!.trim()
+        : (_transcript?.trim().isNotEmpty == true ? _transcript!.trim() : null);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -123,37 +131,52 @@ class _SpeakingQuestionCardState extends ConsumerState<SpeakingQuestionCard> {
 
           // 評価結果がある場合は表示
           if (result != null) ...[
-            _buildEvaluationResult(result),
+            _buildEvaluationResult(result, evaluatedTranscript),
           ] else ...[
             // 音声録音ボタン
             Center(
               child: Column(
                 children: [
-                  GestureDetector(
-                    onLongPressStart: (_) async {
-                      if (!audioState.isRecording &&
-                          !audioState.isTranscribing) {
-                        await audioController.startRecording();
-                      }
-                    },
-                    onLongPressEnd: (_) async {
-                      if (audioState.isRecording) {
-                        final text = await audioController.stopAndTranscribe();
-                        setState(() => _transcript = text);
-                      }
-                    },
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: audioState.isRecording ? Colors.red : Colors.blue,
-                      ),
-                      child: Icon(
-                        audioState.isRecording ? Icons.stop : Icons.mic,
-                        size: 40,
-                        color: Colors.white,
-                      ),
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: audioState.isRecording ? Colors.red : Colors.blue,
+                    ),
+                    child: IconButton(
+                      onPressed: audioState.isTranscribing
+                          ? null
+                          : () async {
+                              try {
+                                if (audioState.isRecording) {
+                                  final text = await audioController.stopAndTranscribe();
+                                  if (!context.mounted) return;
+                                  setState(() => _transcript = text);
+                                } else {
+                                  await audioController.startRecording();
+                                }
+                              } catch (e) {
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('マイク操作に失敗しました: $e')),
+                                );
+                              }
+                            },
+                      icon: audioState.isTranscribing
+                          ? const SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Icon(
+                              audioState.isRecording ? Icons.stop : Icons.mic,
+                              size: 40,
+                              color: Colors.white,
+                            ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -161,8 +184,8 @@ class _SpeakingQuestionCardState extends ConsumerState<SpeakingQuestionCard> {
                     audioState.isTranscribing
                         ? '認識中...'
                         : audioState.isRecording
-                            ? '録音中... 離すと停止'
-                            : '長押しで録音',
+                            ? '録音中...'
+                            : 'タップして録音',
                     style: const TextStyle(fontSize: 14),
                   ),
                 ],
@@ -214,7 +237,10 @@ class _SpeakingQuestionCardState extends ConsumerState<SpeakingQuestionCard> {
     );
   }
 
-  Widget _buildEvaluationResult(PlacementSpeakingEvaluateResponseModel result) {
+  Widget _buildEvaluationResult(
+    PlacementSpeakingEvaluateResponseModel result,
+    String? transcript,
+  ) {
     return Card(
       color: result.isCorrect ? Colors.green.shade50 : Colors.orange.shade50,
       child: Padding(
@@ -262,39 +288,80 @@ class _SpeakingQuestionCardState extends ConsumerState<SpeakingQuestionCard> {
             ),
             const SizedBox(height: 16),
 
-            // 単語一致表示
             const Text(
-              '単語一致',
+              'あなたの発話',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: result.matchingWords.map((m) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        m.matched ? Colors.green.shade100 : Colors.red.shade100,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    m.word,
-                    style: TextStyle(
-                      color: m.matched ? Colors.green : Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                );
-              }).toList(),
+            if (transcript != null && transcript.isNotEmpty)
+              _buildHighlightedTranscript(transcript, result)
+            else
+              const Text('（発話テキストがありません）'),
+
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () {
+                  setState(() => _transcript = null);
+                  widget.onRetry();
+                },
+                child: const Text('Retry'),
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildHighlightedTranscript(
+    String transcript,
+    PlacementSpeakingEvaluateResponseModel result,
+  ) {
+    // 可能ならバックエンドが返した matching_words を優先して使う
+    if (result.matchingWords.isNotEmpty) {
+      return Wrap(
+        children: result.matchingWords.map((m) {
+          return Padding(
+            padding: const EdgeInsets.only(right: 6, bottom: 4),
+            child: Text(
+              m.word,
+              style: TextStyle(
+                color: m.matched ? Colors.green.shade700 : Colors.grey.shade500,
+                fontWeight: m.matched ? FontWeight.w600 : FontWeight.normal,
+                decoration: m.matched ? null : TextDecoration.lineThrough,
+              ),
+            ),
+          );
+        }).toList(),
+      );
+    }
+
+    // フォールバック: ターゲット文に含まれる単語を緑（表示用の近似）
+    final targetWords = (result.targetSentence)
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toSet();
+    final words = transcript.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+
+    return Wrap(
+      children: words.map((w) {
+        final normalized = w.toLowerCase();
+        final matched = targetWords.contains(normalized);
+        return Padding(
+          padding: const EdgeInsets.only(right: 6, bottom: 4),
+          child: Text(
+            w,
+            style: TextStyle(
+              color: matched ? Colors.green.shade700 : Colors.grey.shade500,
+              fontWeight: matched ? FontWeight.w600 : FontWeight.normal,
+              decoration: matched ? null : TextDecoration.lineThrough,
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

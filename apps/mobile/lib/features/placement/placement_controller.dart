@@ -10,6 +10,7 @@ class PlacementState {
     required this.currentIndex,
     required this.speakingResults,
     required this.listeningResults,
+    required this.transcripts,
     this.isSubmitting = false,
     this.isCompleted = false,
     this.submitResult,
@@ -19,6 +20,8 @@ class PlacementState {
   final int currentIndex;
   final Map<int, PlacementSpeakingEvaluateResponseModel> speakingResults;
   final Map<int, PlacementListeningEvaluateResponseModel> listeningResults;
+  final Map<int, String> transcripts; // questionId -> STT text
+
   final bool isSubmitting;
   final bool isCompleted;
   final PlacementSubmitResponseModel? submitResult;
@@ -28,6 +31,7 @@ class PlacementState {
     int? currentIndex,
     Map<int, PlacementSpeakingEvaluateResponseModel>? speakingResults,
     Map<int, PlacementListeningEvaluateResponseModel>? listeningResults,
+    Map<int, String>? transcripts,
     bool? isSubmitting,
     bool? isCompleted,
     PlacementSubmitResponseModel? submitResult,
@@ -37,27 +41,42 @@ class PlacementState {
       currentIndex: currentIndex ?? this.currentIndex,
       speakingResults: speakingResults ?? this.speakingResults,
       listeningResults: listeningResults ?? this.listeningResults,
+      transcripts: transcripts ?? this.transcripts,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       isCompleted: isCompleted ?? this.isCompleted,
       submitResult: submitResult ?? this.submitResult,
     );
   }
 
-  /// 全問題の回答リストを生成
+  int get totalQuestions => questions.length;
+
+  PlacementQuestionModel? get currentQuestion {
+    if (questions.isEmpty) return null;
+    if (currentIndex < 0 || currentIndex >= questions.length) return null;
+    return questions[currentIndex];
+  }
+
+  bool get isLastQuestion => totalQuestions > 0 && currentIndex == totalQuestions - 1;
+
+  /// 0.0 - 1.0 (progress bar)
+  double get progress {
+    if (totalQuestions == 0) return 0;
+    return currentIndex / totalQuestions;
+  }
+
+  bool hasResultForQuestion(PlacementQuestionModel q) {
+    if (q.type == 'speaking') return speakingResults.containsKey(q.id);
+    return listeningResults.containsKey(q.id);
+  }
+
+  /// 全問題の回答リストを生成（submit用）
   List<PlacementAnswerModel> get answers {
-    final list = <PlacementAnswerModel>[];
-    for (final q in questions) {
-      int score = 0;
-      if (q.type == 'speaking') {
-        final result = speakingResults[q.id];
-        score = result?.score ?? 0;
-      } else {
-        final result = listeningResults[q.id];
-        score = result?.score ?? 0;
-      }
-      list.add(PlacementAnswerModel(questionId: q.id, score: score));
-    }
-    return list;
+    return questions.map((q) {
+      final score = q.type == 'speaking'
+          ? (speakingResults[q.id]?.score ?? 0)
+          : (listeningResults[q.id]?.score ?? 0);
+      return PlacementAnswerModel(questionId: q.id, score: score);
+    }).toList();
   }
 }
 
@@ -71,88 +90,122 @@ class PlacementController extends AsyncNotifier<PlacementState> {
     return PlacementState(
       questions: questions,
       currentIndex: 0,
-      speakingResults: {},
-      listeningResults: {},
+      speakingResults: const {},
+      listeningResults: const {},
+      transcripts: const {},
     );
   }
 
-  /// スピーキング問題を評価
-  Future<void> evaluateSpeaking(int questionId, String transcript) async {
+  Future<PlacementSpeakingEvaluateResponseModel> evaluateSpeaking({
+    required int questionId,
+    required String transcript,
+  }) async {
     final current = state.valueOrNull;
-    if (current == null) return;
+    if (current == null) {
+      throw StateError('Placement state is not ready');
+    }
+    if (transcript.trim().isEmpty) {
+      throw ArgumentError('transcript must not be empty');
+    }
 
-    try {
-      final result = await _api.evaluateSpeaking(
-        questionId: questionId,
-        userTranscription: transcript,
+    final result = await _api.evaluateSpeaking(
+      questionId: questionId,
+      userTranscription: transcript,
     );
 
-      final updatedResults =
-          Map<int, PlacementSpeakingEvaluateResponseModel>.from(
-        current.speakingResults,
-      )..[questionId] = result;
+    final updatedResults = Map<int, PlacementSpeakingEvaluateResponseModel>.from(
+      current.speakingResults,
+    )..[questionId] = result;
+    final updatedTranscripts = Map<int, String>.from(current.transcripts)
+      ..[questionId] = transcript;
 
-      state = AsyncData(current.copyWith(speakingResults: updatedResults));
-    } catch (e) {
-      // エラー時は状態を変更しない（UIでエラー表示）
-      rethrow;
-    }
+    state = AsyncData(
+      current.copyWith(
+        speakingResults: updatedResults,
+        transcripts: updatedTranscripts,
+      ),
+    );
+    return result;
   }
 
-  /// リスニング問題を評価
-  Future<void> evaluateListening(int questionId, List<String> userAnswer) async {
+  Future<PlacementListeningEvaluateResponseModel> evaluateListening({
+    required int questionId,
+    required List<String> userAnswer,
+  }) async {
+    final current = state.valueOrNull;
+    if (current == null) {
+      throw StateError('Placement state is not ready');
+    }
+    if (userAnswer.isEmpty) {
+      throw ArgumentError('userAnswer must not be empty');
+    }
+
+    final result = await _api.evaluateListening(
+      questionId: questionId,
+      userAnswer: userAnswer,
+    );
+
+    final updatedResults = Map<int, PlacementListeningEvaluateResponseModel>.from(
+      current.listeningResults,
+    )..[questionId] = result;
+
+    state = AsyncData(current.copyWith(listeningResults: updatedResults));
+    return result;
+  }
+
+  void retryQuestion(int questionId) {
     final current = state.valueOrNull;
     if (current == null) return;
 
-    try {
-      final result = await _api.evaluateListening(
-        questionId: questionId,
-        userAnswer: userAnswer,
-      );
+    final updatedSpeaking = Map<int, PlacementSpeakingEvaluateResponseModel>.from(current.speakingResults)
+      ..remove(questionId);
+    final updatedListening = Map<int, PlacementListeningEvaluateResponseModel>.from(current.listeningResults)
+      ..remove(questionId);
+    final updatedTranscripts = Map<int, String>.from(current.transcripts)
+      ..remove(questionId);
 
-      final updatedResults =
-          Map<int, PlacementListeningEvaluateResponseModel>.from(
-        current.listeningResults,
-      )..[questionId] = result;
-
-      state = AsyncData(current.copyWith(listeningResults: updatedResults));
-    } catch (e) {
-      // エラー時は状態を変更しない（UIでエラー表示）
-      rethrow;
-    }
+    state = AsyncData(
+      current.copyWith(
+        speakingResults: updatedSpeaking,
+        listeningResults: updatedListening,
+        transcripts: updatedTranscripts,
+      ),
+    );
   }
 
-  /// 次の問題へ進む
   void goToNextQuestion() {
     final current = state.valueOrNull;
     if (current == null) return;
 
     final nextIndex = current.currentIndex + 1;
     if (nextIndex >= current.questions.length) {
-      // 全問完了
       state = AsyncData(current.copyWith(isCompleted: true));
-    } else {
-      state = AsyncData(current.copyWith(currentIndex: nextIndex));
-  }
+      return;
+    }
+    state = AsyncData(current.copyWith(currentIndex: nextIndex));
   }
 
-  /// 結果を送信
-  Future<void> submit() async {
+  Future<PlacementSubmitResponseModel> submit() async {
     final current = state.valueOrNull;
-    if (current == null) return;
+    if (current == null) {
+      throw StateError('Placement state is not ready');
+    }
 
     state = AsyncData(current.copyWith(isSubmitting: true));
-
     try {
       final result = await _api.submitAnswers(current.answers);
-    state = AsyncData(
-      current.copyWith(
-        isSubmitting: false,
+      final latest = state.valueOrNull ?? current;
+      state = AsyncData(
+        latest.copyWith(
+          isSubmitting: false,
+          isCompleted: true,
           submitResult: result,
-      ),
-    );
+        ),
+      );
+      return result;
     } catch (e) {
-      state = AsyncData(current.copyWith(isSubmitting: false));
+      final latest = state.valueOrNull ?? current;
+      state = AsyncData(latest.copyWith(isSubmitting: false));
       rethrow;
     }
   }
