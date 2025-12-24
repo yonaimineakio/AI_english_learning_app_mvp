@@ -50,6 +50,9 @@ class User(Base):
     longest_streak = Column(Integer, default=0)
     last_activity_date = Column(Date, nullable=True)
 
+    # Points fields
+    total_points = Column(Integer, default=0)
+
     # Relationships
     sessions = relationship("Session", back_populates="user")
     review_items = relationship("ReviewItem", back_populates="user")

@@ -372,6 +372,22 @@ class SessionService:
             
             # セッションの完了ラウンド数を更新
             session.completed_rounds = current_round
+
+            # ポイント付与（1ラウンド完了ごと）
+            try:
+                from app.services.points.point_service import PointService
+
+                user = self.db.query(User).filter(User.id == user_id).first()
+                if user:
+                    current_streak = user.current_streak or 0
+                    round_points = PointService(self.db).calculate_round_points(
+                        session_difficulty,
+                        current_streak,
+                    )
+                    user.total_points = (user.total_points or 0) + round_points
+            except Exception as e:
+                # ポイント付与に失敗しても会話自体は継続させる（MVPの堅牢性優先）
+                logger.warning(f"Failed to award round points: {str(e)}")
             
             self.db.commit()
             self.db.refresh(session)
@@ -488,6 +504,22 @@ class SessionService:
                 jst = pytz.timezone('Asia/Tokyo')
                 activity_date = datetime.now(jst).date()
                 StreakService(self.db).update_streak(user_id, activity_date)
+
+                # セッション完了ボーナス（規定ラウンド到達時のみ）
+                try:
+                    if session.completed_rounds >= session.round_target:
+                        from app.services.points.point_service import PointService
+
+                        user = self.db.query(User).filter(User.id == user_id).first()
+                        if user:
+                            current_streak = user.current_streak or 0
+                            session_bonus = PointService(self.db).calculate_session_completion_points(
+                                self._to_str(session.difficulty),
+                                current_streak,
+                            )
+                            user.total_points = (user.total_points or 0) + session_bonus
+                except Exception as e:
+                    logger.warning(f"Failed to award session completion points: {str(e)}")
 
                 self.db.commit()
                 self.db.refresh(session)
