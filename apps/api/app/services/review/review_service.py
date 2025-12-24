@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -86,6 +86,43 @@ class ReviewService:
             .limit(limit)
             .all()
         )
+
+    def get_stats(self, user_id: int) -> Dict[str, float]:
+        """累計の復習統計を取得する
+
+        Returns:
+            dict: {
+                "total_items": 累計復習アイテム数,
+                "completed_items": 完了した復習アイテム数,
+                "completion_rate": 完了率 (0.0 - 100.0)
+            }
+        """
+        total_items = (
+            self.db.query(func.count(ReviewItem.id))
+            .filter(ReviewItem.user_id == user_id)
+            .scalar()
+            or 0
+        )
+
+        completed_items = (
+            self.db.query(func.count(ReviewItem.id))
+            .filter(
+                ReviewItem.user_id == user_id,
+                ReviewItem.is_completed.is_(True),
+            )
+            .scalar()
+            or 0
+        )
+
+        completion_rate = 0.0
+        if total_items > 0:
+            completion_rate = round((completed_items / total_items) * 100, 1)
+
+        return {
+            "total_items": total_items,
+            "completed_items": completed_items,
+            "completion_rate": completion_rate,
+        }
 
     def complete_review_item(self, user_id: int, item_id: int, result: str) -> Tuple[ReviewItem, bool]:
         """復習結果を保存する。

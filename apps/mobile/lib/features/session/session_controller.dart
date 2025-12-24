@@ -10,12 +10,16 @@ class MessageItem {
     required this.text,
     this.feedbackShort,
     this.improvedSentence,
+    this.roundIndex,
+    this.userInputForRound,
   });
 
   final bool isUser;
   final String text;
   final String? feedbackShort;
   final String? improvedSentence;
+  final int? roundIndex;
+  final String? userInputForRound; // AI応答に対応するユーザー入力
 }
 
 class SessionUiState {
@@ -183,6 +187,8 @@ class SessionController extends AsyncNotifier<SessionUiState> {
         text: turn.aiReplyText,
         feedbackShort: turn.feedbackShort,
         improvedSentence: turn.improvedSentence,
+        roundIndex: turn.roundIndex,
+        userInputForRound: text,
       );
 
       final newMessages = List<MessageItem>.from(updatedMessages)

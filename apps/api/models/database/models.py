@@ -53,6 +53,7 @@ class User(Base):
     # Relationships
     sessions = relationship("Session", back_populates="user")
     review_items = relationship("ReviewItem", back_populates="user")
+    saved_phrases = relationship("SavedPhrase", back_populates="user")
 
 
 class Scenario(Base):
@@ -88,6 +89,7 @@ class Session(Base):
     user = relationship("User", back_populates="sessions")
     scenario = relationship("Scenario", back_populates="sessions")
     session_rounds = relationship("SessionRound", back_populates="session", cascade="all, delete-orphan")
+    saved_phrases = relationship("SavedPhrase", back_populates="session")
 
 
 class SessionRound(Base):
@@ -128,3 +130,23 @@ class ReviewItem(Base):
 
     # Relationships
     user = relationship("User", back_populates="review_items")
+
+
+class SavedPhrase(Base):
+    """ユーザーが手動で保存した改善フレーズ"""
+    __tablename__ = "saved_phrases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    phrase = Column(Text, nullable=False)  # improved_sentence
+    explanation = Column(Text, nullable=False)  # feedback_short
+    original_input = Column(Text, nullable=True)  # ユーザーの元発話
+    session_id = Column(Integer, ForeignKey("sessions.id"), nullable=True)
+    round_index = Column(Integer, nullable=True)
+    converted_to_review_id = Column(Integer, ForeignKey("review_items.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User", back_populates="saved_phrases")
+    session = relationship("Session", back_populates="saved_phrases")
+    converted_review = relationship("ReviewItem")

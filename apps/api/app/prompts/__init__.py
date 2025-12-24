@@ -26,6 +26,7 @@ from .contract_negotiation_detail import CONTRACT_NEGOTIATION_PROMPT
 from .customer_survey_presentation import CUSTOMER_SURVEY_PRESENTATION_PROMPT
 from .apologize_delay import APOLOGIZE_DELAY_PROMPT
 from .sick_leave import SICK_LEAVE_PROMPT
+from .conversation_system import get_conversation_system_prompt
 
 # シナリオIDとプロンプトのマッピング
 SCENARIO_PROMPTS: Dict[int, str] = {
@@ -179,4 +180,5 @@ __all__ = [
     'get_prompts_by_difficulty',
     'get_all_prompts',
     'get_available_combinations',
+    'get_conversation_system_prompt',
 ]

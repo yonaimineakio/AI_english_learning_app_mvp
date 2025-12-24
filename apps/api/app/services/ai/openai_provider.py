@@ -1,19 +1,24 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from typing import List
 
 import httpx
 
 from app.core.config import settings
+from app.core.logging_config import get_logger
+from app.core.cost_tracker import calculate_openai_cost
 from models.schemas.schemas import DifficultyLevel, ScenarioCategory
 
 from .types import ConversationProvider, ConversationResponse
-from app.prompts import get_prompt_by_category_difficulty, get_prompt_by_scenario_id
+from app.prompts import (
+    get_prompt_by_category_difficulty,
+    get_prompt_by_scenario_id,
+    get_conversation_system_prompt,
+)
 import json
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/responses"
 
@@ -77,6 +82,20 @@ class OpenAIConversationProvider(ConversationProvider):
                             texts.append(txt)
             content = "".join(texts)
 
+            # トークン使用量を取得して料金計算
+            usage = data.get("usage", {})
+            input_tokens = usage.get("input_tokens", 0)
+            output_tokens = usage.get("output_tokens", 0)
+            latency_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
+            
+            if input_tokens > 0 or output_tokens > 0:
+                calculate_openai_cost(
+                    model=settings.OPENAI_MODEL_NAME,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    latency_ms=latency_ms,
+                )
+
             logger.info("OpenAI response: %s", content)
             ai_reply, feedback_short, improved_sentence, should_end_session = self._parse_response(content)
         except httpx.ReadTimeout as exc:
@@ -134,20 +153,15 @@ class OpenAIConversationProvider(ConversationProvider):
                 ]
             )
 
+        # 会話システムプロンプト（外部ファイルから取得）
+        conversation_prompt = get_conversation_system_prompt(
+            difficulty=difficulty,
+            user_input=user_input,
+        )
         messages.append(
             {
                 "role": "assistant",
-                "content": (
-                    f"難易度: {difficulty}。ユーザーの入力に応答してください。\n\n"
-                    "重要: AIの返答（AI: 行）に含める質問は1個までです。\n"
-                    "複数の質問（? を複数含む、または複数の疑問文）を入れてはいけません。\n"
-                    "フィードバックと改善例文は、必ずユーザーの入力に対して実施してください。\n"
-                    "出力形式を以下のように厳密に守ってください：\n"
-                    "AI: [英語での自然な応答のみ]\n"
-                    "Feedback: [日本語でのフィードバック要約（最大120文字）]\n"
-                    "Improved: [ユーザーの入力に対して改善された英語例文1つ]\n\n"
-                    f"ユーザー入力: {user_input}"
-                ),
+                "content": conversation_prompt,
             }
         )
 

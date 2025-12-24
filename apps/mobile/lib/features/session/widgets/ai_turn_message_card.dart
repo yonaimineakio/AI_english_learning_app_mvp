@@ -6,11 +6,17 @@ class AiTurnMessageCard extends StatelessWidget {
     required this.message,
     required this.feedbackShort,
     required this.improvedSentence,
+    this.onSavePhrase,
+    this.isSaved = false,
+    this.isSaving = false,
   });
 
   final String message;
   final String? feedbackShort;
   final String? improvedSentence;
+  final VoidCallback? onSavePhrase;
+  final bool isSaved;
+  final bool isSaving;
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +133,7 @@ class AiTurnMessageCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Text(
-                        '“$improved”',
+                        '"$improved"',
                         style: const TextStyle(
                           fontSize: 18,
                           height: 1.3,
@@ -137,6 +143,74 @@ class AiTurnMessageCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    // 保存ボタン
+                    if (onSavePhrase != null) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (isSaved)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDCFCE7), // green-100
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.check_circle,
+                                    size: 16,
+                                    color: Color(0xFF16A34A), // green-600
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    '保存済み',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF16A34A),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            ElevatedButton.icon(
+                              onPressed: isSaving ? null : onSavePhrase,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF3B82F6),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              icon: isSaving
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.bookmark_border, size: 16),
+                              label: Text(
+                                isSaving ? '保存中...' : '保存する',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
                   ],
                 ],
               ),

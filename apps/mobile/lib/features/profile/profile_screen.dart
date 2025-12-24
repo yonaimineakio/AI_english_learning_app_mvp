@@ -1,0 +1,295 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../auth/auth_providers.dart';
+import '../home/streak_widget.dart';
+
+/// プロフィール画面
+class ProfileScreen extends ConsumerWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Profile'),
+        centerTitle: true,
+      ),
+      body: authState.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (state) => SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // プロフィールヘッダー
+              _ProfileHeader(
+                name: state.userName ?? 'ユーザー',
+                email: state.email,
+              ),
+              const SizedBox(height: 24),
+
+              // ストリーク情報
+              const StreakWidget(),
+              const SizedBox(height: 16),
+
+              // 設定メニュー
+              _SettingsSection(
+                title: '学習設定',
+                items: [
+                  _SettingsItem(
+                    icon: Icons.translate,
+                    label: '学習言語',
+                    value: '英語',
+                    onTap: () {},
+                  ),
+                  _SettingsItem(
+                    icon: Icons.speed,
+                    label: '難易度',
+                    value: '中級',
+                    onTap: () {},
+                  ),
+                  _SettingsItem(
+                    icon: Icons.notifications_outlined,
+                    label: '復習リマインダー',
+                    value: 'ON',
+                    onTap: () {},
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              _SettingsSection(
+                title: 'アカウント',
+                items: [
+                  _SettingsItem(
+                    icon: Icons.person_outline,
+                    label: 'プロフィール編集',
+                    onTap: () {},
+                  ),
+                  _SettingsItem(
+                    icon: Icons.help_outline,
+                    label: 'ヘルプ・お問い合わせ',
+                    onTap: () {},
+                  ),
+                  _SettingsItem(
+                    icon: Icons.info_outline,
+                    label: 'アプリについて',
+                    value: 'v1.0.0',
+                    onTap: () {},
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // ログアウトボタン
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    await ref.read(authStateProvider.notifier).logout();
+                  },
+                  icon: const Icon(Icons.logout, color: Colors.red),
+                  label: const Text(
+                    'ログアウト',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// プロフィールヘッダー
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({
+    required this.name,
+    this.email,
+  });
+
+  final String name;
+  final String? email;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // アバター
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: const Color(0xFF4169E1),
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              name.isNotEmpty ? name[0].toUpperCase() : '?',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          name,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        if (email != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            email!,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// 設定セクション
+class _SettingsSection extends StatelessWidget {
+  const _SettingsSection({
+    required this.title,
+    required this.items,
+  });
+
+  final String title;
+  final List<_SettingsItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: items
+                .asMap()
+                .entries
+                .map(
+                  (entry) => Column(
+                    children: [
+                      entry.value,
+                      if (entry.key < items.length - 1)
+                        Divider(
+                          height: 1,
+                          indent: 56,
+                          color: Colors.grey.shade200,
+                        ),
+                    ],
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 設定項目
+class _SettingsItem extends StatelessWidget {
+  const _SettingsItem({
+    required this.icon,
+    required this.label,
+    this.value,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String? value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                size: 20,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+            if (value != null)
+              Text(
+                value!,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: Colors.grey.shade400,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/placement/placement_screen.dart';
-import '../features/scenario_selection/scenario_selection_screen.dart';
+import '../features/main/main_shell_screen.dart';
 import '../features/session/session_screen.dart';
 import '../features/summary/summary_screen.dart';
 import '../features/review/review_screen.dart';
@@ -22,7 +22,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/',
-        builder: (context, state) => const ScenarioSelectionScreen(),
+        builder: (context, state) => const MainShellScreen(),
       ),
       GoRoute(
         path: '/placement',

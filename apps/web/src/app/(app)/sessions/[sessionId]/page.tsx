@@ -10,6 +10,7 @@ import { ExtendModal } from '@/components/session/extend-modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useSessionConversation } from '@/hooks/use-session-conversation'
+import { createSavedPhrase } from '@/lib/saved-phrases'
 import { getScenarioDetail } from '@/lib/scenarios'
 import { formatMinutes } from '@/lib/utils'
 
@@ -28,6 +29,8 @@ export default function SessionConversationPage(): JSX.Element {
   const [isAutoEnd, setIsAutoEnd] = useState(false)
   const [audioError, setAudioError] = useState<string | null>(null)
   const [isLearningGoalsOpen, setIsLearningGoalsOpen] = useState(false)
+  const [savedTurnIds, setSavedTurnIds] = useState<Set<string>>(new Set())
+  const [savingTurnIds, setSavingTurnIds] = useState<Set<string>>(new Set())
 
   const {
     turns,
@@ -104,6 +107,34 @@ export default function SessionConversationPage(): JSX.Element {
     setAudioError(error)
   }, [])
 
+  const handleSavePhrase = useCallback(
+    async (turnId: string, roundIndex: number, phrase: string, explanation: string, originalInput: string) => {
+      if (savedTurnIds.has(turnId) || savingTurnIds.has(turnId)) return
+
+      setSavingTurnIds((prev) => new Set(prev).add(turnId))
+
+      try {
+        await createSavedPhrase({
+          phrase,
+          explanation,
+          originalInput,
+          sessionId,
+          roundIndex,
+        })
+        setSavedTurnIds((prev) => new Set(prev).add(turnId))
+      } catch (err) {
+        console.error('Failed to save phrase:', err)
+      } finally {
+        setSavingTurnIds((prev) => {
+          const next = new Set(prev)
+          next.delete(turnId)
+          return next
+        })
+      }
+    },
+    [sessionId, savedTurnIds, savingTurnIds]
+  )
+
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-white via-blue-50 to-blue-100">
       <header className="border-b border-blue-100 bg-white/80">
@@ -140,6 +171,20 @@ export default function SessionConversationPage(): JSX.Element {
                     onToggleDetails={() =>
                       setExpandedTurnId((prev) => (prev === turn.id ? null : turn.id))
                     }
+                    onSavePhrase={
+                      turn.roundIndex > 0
+                        ? () =>
+                            handleSavePhrase(
+                              turn.id,
+                              turn.roundIndex,
+                              turn.aiReply.improvedSentence,
+                              turn.aiReply.feedbackShort,
+                              turn.userMessage
+                            )
+                        : undefined
+                    }
+                    isSaved={savedTurnIds.has(turn.id)}
+                    isSaving={savingTurnIds.has(turn.id)}
                   />
                 ))}
               </div>

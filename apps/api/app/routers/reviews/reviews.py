@@ -17,6 +17,7 @@ from models.schemas.schemas import (
     ReviewQuestionsResponse,
     ReviewEvaluateRequest,
     ReviewEvaluateResponse,
+    ReviewStatsResponse,
     WordMatch,
 )
 
@@ -40,6 +41,21 @@ def get_next_reviews(
     items = service.get_due_items(current_user.id)
     total = service.count_due_items(current_user.id)
     return ReviewNextResponse(review_items=items, total_count=total)
+
+
+@router.get("/stats", response_model=ReviewStatsResponse)
+def get_review_stats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """累計の復習完了率を取得する"""
+    service = ReviewService(db)
+    stats = service.get_stats(current_user.id)
+    return ReviewStatsResponse(
+        total_items=stats["total_items"],
+        completed_items=stats["completed_items"],
+        completion_rate=stats["completion_rate"],
+    )
 
 
 @router.post("/{review_id}/complete", response_model=ReviewItem)

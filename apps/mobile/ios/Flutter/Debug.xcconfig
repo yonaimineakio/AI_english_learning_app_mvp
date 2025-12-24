@@ -1,2 +1,10 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "Generated.xcconfig"
+
+// Flutter --dart-define equivalents for Xcode builds.
+// DART_DEFINES is a comma-separated list of base64-encoded "KEY=VALUE" pairs.
+//
+// API_BASE_URL should be provided via:
+// - `flutter run/build --dart-define=API_BASE_URL=...`
+// - `flutter run/build --dart-define-from-file=...`
+DART_DEFINES=$(inherited)

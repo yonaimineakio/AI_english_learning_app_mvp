@@ -379,6 +379,47 @@ class ReviewNextResponse(BaseModel):
     total_count: int
 
 
+# SavedPhrase schemas
+class SavedPhraseBase(BaseModel):
+    phrase: str
+    explanation: str
+    original_input: Optional[str] = None
+
+
+class SavedPhraseCreate(SavedPhraseBase):
+    session_id: Optional[int] = None
+    round_index: Optional[int] = None
+
+
+class SavedPhrase(SavedPhraseBase):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    user_id: int
+    session_id: Optional[int] = None
+    round_index: Optional[int] = None
+    converted_to_review_id: Optional[int] = None
+    created_at: datetime
+
+
+class SavedPhrasesListResponse(BaseModel):
+    saved_phrases: List[SavedPhrase]
+    total_count: int
+
+
+class ConvertToReviewResponse(BaseModel):
+    saved_phrase_id: int
+    review_item: ReviewItem
+
+
+# ReviewStats schemas
+class ReviewStatsResponse(BaseModel):
+    """復習統計情報"""
+    total_items: int
+    completed_items: int
+    completion_rate: float  # 0.0 - 100.0
+
+
 # Error schemas
 class ErrorResponse(BaseModel):
     detail: str

@@ -11,6 +11,10 @@ from google.cloud import speech
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.core.logging_config import get_logger
+from app.core.cost_tracker import calculate_google_stt_cost
+
+logger = get_logger(__name__)
 
 
 class TranscriptionAlternative(BaseModel):
@@ -112,6 +116,16 @@ class GoogleSpeechProvider:
             raise ValueError("音声認識処理中に予期せぬエラーが発生しました") from exc
 
         duration = asyncio.get_running_loop().time() - start_time
+        latency_ms = int(duration * 1000)
+
+        # 音声時間を推定（WAVの場合は正確に計算、それ以外はファイルサイズから推定）
+        audio_duration_seconds = self._estimate_audio_duration(audio_file, encoding)
+        
+        # 料金計算
+        calculate_google_stt_cost(
+            audio_duration_seconds=audio_duration_seconds,
+            latency_ms=latency_ms,
+        )
 
         segments: List[str] = []
         alternatives: List[TranscriptionAlternative] = []
@@ -193,6 +207,29 @@ class GoogleSpeechProvider:
                 return wav_file.getframerate()
         except Exception:
             return None
+
+    def _estimate_audio_duration(
+        self,
+        audio_file: bytes,
+        encoding: speech.RecognitionConfig.AudioEncoding,
+    ) -> float:
+        """音声ファイルの長さを推定する（秒）"""
+        # WAVファイルの場合は正確に計算
+        if encoding == speech.RecognitionConfig.AudioEncoding.LINEAR16:
+            try:
+                with wave.open(io.BytesIO(audio_file)) as wav_file:
+                    frames = wav_file.getnframes()
+                    rate = wav_file.getframerate()
+                    if rate > 0:
+                        return frames / rate
+            except Exception:
+                pass
+        
+        # その他の形式はファイルサイズから概算（平均ビットレート128kbps想定）
+        # 128kbps = 16KB/sec
+        estimated_bitrate_kbps = 128
+        file_size_kb = len(audio_file) / 1024
+        return file_size_kb / (estimated_bitrate_kbps / 8)
 
     async def __aenter__(self) -> "GoogleSpeechProvider":
         return self

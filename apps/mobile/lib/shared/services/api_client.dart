@@ -70,6 +70,18 @@ class ApiClient {
       options: _withAuth(options),
     );
   }
+
+  Future<Response<T>> deleteJson<T>(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) {
+    return _dio.delete<T>(
+      path,
+      queryParameters: queryParameters,
+      options: _withAuth(options),
+    );
+  }
 }
 
 

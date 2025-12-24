@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import os
+import time
 from typing import Optional
 
 from google.api_core import exceptions as google_exceptions
 from google.cloud import texttospeech
 
 from app.core.config import settings
+from app.core.logging_config import get_logger
+from app.core.cost_tracker import calculate_google_tts_cost
+
+logger = get_logger(__name__)
 
 
 class GoogleTTSProvider:
@@ -66,6 +71,8 @@ class GoogleTTSProvider:
             speaking_rate=rate,
         )
 
+        start_time = time.perf_counter()
+        
         try:
             response = self._client.synthesize_speech(
                 input=input_text,
@@ -78,6 +85,14 @@ class GoogleTTSProvider:
             raise ValueError("Google Text-to-Speech APIの再試行が上限に達しました") from exc
         except Exception as exc:  # pragma: no cover
             raise ValueError("音声合成中に予期せぬエラーが発生しました") from exc
+
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
+        
+        # 料金計算（使用した文字数）
+        calculate_google_tts_cost(
+            character_count=len(normalized),
+            latency_ms=latency_ms,
+        )
 
         return response.audio_content
 

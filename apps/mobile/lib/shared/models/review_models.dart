@@ -35,6 +35,105 @@ class ReviewItemModel {
   }
 }
 
+/// 保存した表現
+class SavedPhraseModel {
+  const SavedPhraseModel({
+    required this.id,
+    required this.userId,
+    required this.phrase,
+    required this.explanation,
+    this.originalInput,
+    this.sessionId,
+    this.roundIndex,
+    this.convertedToReviewId,
+    required this.createdAt,
+  });
+
+  final int id;
+  final int userId;
+  final String phrase;
+  final String explanation;
+  final String? originalInput;
+  final int? sessionId;
+  final int? roundIndex;
+  final int? convertedToReviewId;
+  final DateTime createdAt;
+
+  factory SavedPhraseModel.fromJson(Map<String, dynamic> json) {
+    return SavedPhraseModel(
+      id: json['id'] as int,
+      userId: json['user_id'] as int,
+      phrase: json['phrase'] as String,
+      explanation: json['explanation'] as String,
+      originalInput: json['original_input'] as String?,
+      sessionId: json['session_id'] as int?,
+      roundIndex: json['round_index'] as int?,
+      convertedToReviewId: json['converted_to_review_id'] as int?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+}
+
+/// 保存した表現一覧レスポンス
+class SavedPhrasesListResponseModel {
+  const SavedPhrasesListResponseModel({
+    required this.savedPhrases,
+  });
+
+  final List<SavedPhraseModel> savedPhrases;
+
+  factory SavedPhrasesListResponseModel.fromJson(Map<String, dynamic> json) {
+    return SavedPhrasesListResponseModel(
+      savedPhrases: (json['saved_phrases'] as List<dynamic>)
+          .map(
+            (e) => SavedPhraseModel.fromJson(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+/// 保存済みチェックのレスポンス
+class SavedPhraseCheckResponseModel {
+  const SavedPhraseCheckResponseModel({
+    required this.isSaved,
+    this.savedPhraseId,
+  });
+
+  final bool isSaved;
+  final int? savedPhraseId;
+
+  factory SavedPhraseCheckResponseModel.fromJson(Map<String, dynamic> json) {
+    return SavedPhraseCheckResponseModel(
+      isSaved: json['is_saved'] as bool,
+      savedPhraseId: json['saved_phrase_id'] as int?,
+    );
+  }
+}
+
+/// 復習統計
+class ReviewStatsModel {
+  const ReviewStatsModel({
+    required this.totalReviewItems,
+    required this.completedReviewItems,
+    required this.completionRate,
+  });
+
+  final int totalReviewItems;
+  final int completedReviewItems;
+  final double completionRate;
+
+  factory ReviewStatsModel.fromJson(Map<String, dynamic> json) {
+    return ReviewStatsModel(
+      totalReviewItems: json['total_items'] as int,
+      completedReviewItems: json['completed_items'] as int,
+      completionRate: (json['completion_rate'] as num).toDouble(),
+    );
+  }
+}
+
 class ReviewNextResponseModel {
   const ReviewNextResponseModel({
     required this.reviewItems,

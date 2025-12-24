@@ -41,14 +41,4 @@ AIRPORT_CHECKIN_PROMPT = """
 - 旅行者を困惑させる質問
 - 個人的な質問やプライベートな内容
 
-## 会話終了判定
-ユーザーの発話から会話を終了したい意図が明確に読み取れる場合、応答の最後に「[END_SESSION]」マーカーを付けてください。
-
-終了意図の例：
-- 感謝の表現: "Thank you", "Thanks a lot", "ありがとうございました"
-- 別れの挨拶: "Goodbye", "Bye", "See you", "さようなら"
-- 満足の表現: "That's all", "That's everything", "これで十分です", "もう大丈夫です"
-- 時間の制約: "I have to go", "I need to leave", "時間が来ました"
-
-注意: 会話の途中での軽い感謝（"Thanks for the information"など）は終了意図とみなさない。明確に会話を終わらせる意図がある場合のみマーカーを付ける。
 """

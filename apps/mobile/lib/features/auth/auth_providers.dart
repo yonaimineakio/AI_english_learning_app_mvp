@@ -12,24 +12,28 @@ class AuthState {
     required this.isLoggedIn,
     this.token,
     this.userName,
+    this.email,
     this.placementCompletedAt,
   });
 
   final bool isLoggedIn;
   final String? token;
   final String? userName;
+  final String? email;
   final DateTime? placementCompletedAt;
 
   AuthState copyWith({
     bool? isLoggedIn,
     String? token,
     String? userName,
+    String? email,
     DateTime? placementCompletedAt,
   }) {
     return AuthState(
       isLoggedIn: isLoggedIn ?? this.isLoggedIn,
       token: token ?? this.token,
       userName: userName ?? this.userName,
+      email: email ?? this.email,
       placementCompletedAt: placementCompletedAt ?? this.placementCompletedAt,
     );
   }
@@ -69,6 +73,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         isLoggedIn: true,
         token: accessToken,
         userName: me.name,
+        email: me.email,
         placementCompletedAt: me.placementCompletedAt,
       );
       state = AsyncData(newState);

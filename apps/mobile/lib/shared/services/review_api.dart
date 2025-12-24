@@ -75,4 +75,12 @@ class ReviewApi {
       Map<String, dynamic>.from(res.data as Map),
     );
   }
+
+  /// 復習統計を取得する
+  Future<ReviewStatsModel> getReviewStats() async {
+    final Response<dynamic> res = await _client.getJson('/reviews/stats');
+    return ReviewStatsModel.fromJson(
+      Map<String, dynamic>.from(res.data as Map),
+    );
+  }
 }

@@ -1,14 +1,29 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../shared/models/review_models.dart';
 import '../../shared/services/api_client.dart';
 import '../../shared/services/review_api.dart';
+import '../../shared/services/saved_phrases_api.dart';
 import '../audio/audio_controller.dart';
+
+String _formatDateTime(DateTime dt) {
+  final y = dt.year;
+  final m = dt.month.toString().padLeft(2, '0');
+  final d = dt.day.toString().padLeft(2, '0');
+  final h = dt.hour.toString().padLeft(2, '0');
+  final min = dt.minute.toString().padLeft(2, '0');
+  return '$y/$m/$d $h:$min';
+}
 
 final _reviewApiProvider = Provider<ReviewApi>(
   (ref) => ReviewApi(ApiClient()),
+);
+
+final _savedPhrasesApiProvider = Provider<SavedPhrasesApi>(
+  (ref) => SavedPhrasesApi(ApiClient()),
 );
 
 final _reviewItemsProvider =
@@ -17,24 +32,234 @@ final _reviewItemsProvider =
   return api.getNextReviews();
 });
 
-class ReviewScreen extends ConsumerWidget {
+final _reviewStatsProvider = FutureProvider<ReviewStatsModel>((ref) async {
+  final api = ref.watch(_reviewApiProvider);
+  return api.getReviewStats();
+});
+
+final _savedPhrasesProvider =
+    FutureProvider<SavedPhrasesListResponseModel>((ref) async {
+  final api = ref.watch(_savedPhrasesApiProvider);
+  return api.getSavedPhrases();
+});
+
+class ReviewScreen extends ConsumerStatefulWidget {
   const ReviewScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final asyncItems = ref.watch(_reviewItemsProvider);
+  ConsumerState<ReviewScreen> createState() => _ReviewScreenState();
+}
+
+class _ReviewScreenState extends ConsumerState<ReviewScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final asyncStats = ref.watch(_reviewStatsProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('復習'),
+        actions: [
+          IconButton(
+            tooltip: 'シナリオ選択へ',
+            onPressed: () => context.go('/'),
+            icon: const Icon(Icons.home),
+          ),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: '今日の復習'),
+            Tab(text: '保存した表現'),
+          ],
+        ),
       ),
-      body: asyncItems.when(
+      body: Column(
+        children: [
+          // 統計表示
+          asyncStats.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('統計取得エラー: $e'),
+            ),
+            data: (stats) => _buildStatsCard(stats),
+          ),
+          // タブコンテンツ
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _TodayReviewTab(ref: ref),
+                _SavedPhrasesTab(ref: ref),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsCard(ReviewStatsModel stats) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // 円形進捗バー
+          SizedBox(
+            width: 60,
+            height: 60,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 60,
+                  height: 60,
+                  child: CircularProgressIndicator(
+                    value: stats.completionRate / 100,
+                    strokeWidth: 6,
+                    backgroundColor: Colors.grey.shade200,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      stats.completionRate >= 70
+                          ? Colors.green
+                          : stats.completionRate >= 40
+                              ? Colors.orange
+                              : Colors.blue,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${stats.completionRate.toStringAsFixed(0)}%',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '累計完了率',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${stats.completedReviewItems} / ${stats.totalReviewItems} アイテム完了',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 今日の復習タブ
+class _TodayReviewTab extends StatelessWidget {
+  const _TodayReviewTab({required this.ref});
+
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context) {
+    final asyncItems = ref.watch(_reviewItemsProvider);
+
+    return asyncItems.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Error: $e'),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => context.go('/'),
+                  icon: const Icon(Icons.home),
+                  label: const Text('シナリオ選択へ'),
+                ),
+              ],
+            ),
+          ),
+        ),
         data: (data) {
           if (data.reviewItems.isEmpty) {
-            return const Center(
-              child: Text('本日の復習フレーズはありません'),
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    size: 64,
+                    color: Colors.green.shade400,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '本日の復習フレーズはありません',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '会話セッション終了後に復習フレーズが自動で追加されます',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () => context.go('/'),
+                      icon: const Icon(Icons.home),
+                      label: const Text('シナリオ選択へ'),
+                    ),
+                  ],
+                ),
+              ),
             );
           }
 
@@ -52,32 +277,33 @@ class ReviewScreen extends ConsumerWidget {
                           reviewItem: item,
                           onComplete: () {
                             ref.invalidate(_reviewItemsProvider);
+                          ref.invalidate(_reviewStatsProvider);
                           },
                         ),
                       ),
                     );
                   },
-                child: Padding(
+                  child: Padding(
                     padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.phrase,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.phrase,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        item.explanation,
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
+                        const SizedBox(height: 8),
+                        Text(
+                          item.explanation,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
                           mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
+                          children: [
                             Text(
                               'タップして問題を開始 →',
                               style: TextStyle(
@@ -86,16 +312,221 @@ class ReviewScreen extends ConsumerWidget {
                               ),
                             ),
                           ],
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
             },
           );
         },
+    );
+  }
+}
+
+/// 保存した表現タブ
+class _SavedPhrasesTab extends StatefulWidget {
+  const _SavedPhrasesTab({required this.ref});
+
+  final WidgetRef ref;
+
+  @override
+  State<_SavedPhrasesTab> createState() => _SavedPhrasesTabState();
+}
+
+class _SavedPhrasesTabState extends State<_SavedPhrasesTab> {
+  int? _processingPhraseId;
+
+  Future<void> _deletePhrase(int phraseId) async {
+    setState(() {
+      _processingPhraseId = phraseId;
+    });
+
+    try {
+      final api = widget.ref.read(_savedPhrasesApiProvider);
+      await api.deleteSavedPhrase(phraseId: phraseId);
+      widget.ref.invalidate(_savedPhrasesProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('フレーズを削除しました')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('削除に失敗しました: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _processingPhraseId = null;
+        });
+      }
+    }
+  }
+
+  void _showConfirmDialog({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    required VoidCallback onConfirm,
+    bool isDestructive = false,
+  }) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              onConfirm();
+            },
+            style: isDestructive
+                ? ElevatedButton.styleFrom(backgroundColor: Colors.red)
+                : null,
+            child: Text(confirmLabel),
+          ),
+        ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final asyncPhrases = widget.ref.watch(_savedPhrasesProvider);
+
+    return asyncPhrases.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Error: $e'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () =>
+                    widget.ref.invalidate(_savedPhrasesProvider),
+                child: const Text('再読み込み'),
+              ),
+            ],
+          ),
+        ),
+      ),
+      data: (data) {
+        if (data.savedPhrases.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.bookmark_border,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '保存した表現はありません',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '会話セッション中に「保存する」ボタンでフレーズを追加しましょう',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          itemCount: data.savedPhrases.length,
+          itemBuilder: (context, index) {
+            final phrase = data.savedPhrases[index];
+            final isProcessing = _processingPhraseId == phrase.id;
+
+            return Card(
+              margin: const EdgeInsets.all(12),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      phrase.phrase,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      phrase.explanation,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    if (phrase.originalInput != null &&
+                        phrase.originalInput!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'あなたの発話: ${phrase.originalInput}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Text(
+                      '保存日: ${_formatDateTime(phrase.createdAt)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: isProcessing
+                              ? null
+                              : () => _showConfirmDialog(
+                                    title: 'フレーズを削除',
+                                    message: 'このフレーズを削除してもよろしいですか？この操作は元に戻せません。',
+                                    confirmLabel: '削除',
+                                    isDestructive: true,
+                                    onConfirm: () => _deletePhrase(phrase.id),
+                                  ),
+                          icon: const Icon(Icons.delete_outline, size: 16),
+                          label: const Text(
+                            '削除',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

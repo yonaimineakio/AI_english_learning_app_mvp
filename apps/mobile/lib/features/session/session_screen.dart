@@ -2,10 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../shared/services/api_client.dart';
+import '../../shared/services/saved_phrases_api.dart';
 import '../audio/audio_controller.dart';
 import 'session_controller.dart';
 import 'widgets/ai_turn_message_card.dart';
 import 'widgets/session_task_checklist_card.dart';
+
+final _savedPhrasesApiProvider = Provider<SavedPhrasesApi>(
+  (ref) => SavedPhrasesApi(ApiClient()),
+);
 
 class SessionScreen extends ConsumerStatefulWidget {
   const SessionScreen({super.key, required this.sessionId});
@@ -22,6 +28,10 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
   ProviderSubscription<AsyncValue<SessionUiState>>? _sessionSub;
   bool _navigatingToSummary = false;
   bool _showingEndDialog = false;
+
+  // 保存済みのラウンドインデックスを管理（key: roundIndex）
+  final Set<int> _savedRoundIndexes = {};
+  int? _savingRoundIndex;
 
   void _maybeSpeakLatestAi(AsyncValue<SessionUiState> next) {
     final current = next.valueOrNull;
@@ -60,6 +70,57 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
     _sessionSub?.close();
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _savePhrase({
+    required int sessionId,
+    required int roundIndex,
+    required String phrase,
+    required String explanation,
+    required String originalInput,
+  }) async {
+    if (_savedRoundIndexes.contains(roundIndex) ||
+        _savingRoundIndex == roundIndex) {
+      return;
+    }
+
+    setState(() {
+      _savingRoundIndex = roundIndex;
+    });
+
+    try {
+      final api = ref.read(_savedPhrasesApiProvider);
+      await api.createSavedPhrase(
+        phrase: phrase,
+        explanation: explanation,
+        originalInput: originalInput,
+        sessionId: sessionId,
+        roundIndex: roundIndex,
+      );
+      setState(() {
+        _savedRoundIndexes.add(roundIndex);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('フレーズを保存しました'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('保存に失敗しました: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _savingRoundIndex = null;
+        });
+      }
+    }
   }
 
   @override
@@ -141,14 +202,45 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
 
               if (res == true) {
                 _navigatingToSummary = true;
+
+                // 終了フラグをクリアして再表示を防ぐ
+                ref.read(sessionControllerProvider.notifier).dismissEndPrompt();
+
+                // ローディングダイアログを表示（閉じられない）
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (ctx) => PopScope(
+                    canPop: false,
+                    child: AlertDialog(
+                      content: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          CircularProgressIndicator(),
+                          SizedBox(width: 16),
+                          Text('会話を分析中...'),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+
                 try {
                   final end = await ref
                       .read(sessionControllerProvider.notifier)
                       .endCurrentSession();
                   if (!mounted || !context.mounted) return;
+
+                  // ローディングダイアログを閉じる
+                  Navigator.of(context).pop();
+
                   context.go('/summary', extra: end);
                 } catch (e) {
                   if (!mounted || !context.mounted) return;
+
+                  // ローディングダイアログを閉じる
+                  Navigator.of(context).pop();
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('セッション終了処理に失敗しました: $e'),
@@ -218,6 +310,15 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                       );
                     }
 
+                    final roundIndex = m.roundIndex;
+                    final hasImproved = m.improvedSentence != null &&
+                        m.improvedSentence!.trim().isNotEmpty;
+                    final canSave = roundIndex != null && hasImproved;
+                    final isSaved = roundIndex != null &&
+                        _savedRoundIndexes.contains(roundIndex);
+                    final isSaving = roundIndex != null &&
+                        _savingRoundIndex == roundIndex;
+
                     return Align(
                       alignment: Alignment.centerLeft,
                       child: Padding(
@@ -226,6 +327,17 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                           message: m.text,
                           feedbackShort: m.feedbackShort,
                           improvedSentence: m.improvedSentence,
+                          onSavePhrase: canSave
+                              ? () => _savePhrase(
+                                    sessionId: data.sessionId,
+                                    roundIndex: roundIndex,
+                                    phrase: m.improvedSentence!,
+                                    explanation: m.feedbackShort ?? '',
+                                    originalInput: m.userInputForRound ?? '',
+                                  )
+                              : null,
+                          isSaved: isSaved,
+                          isSaving: isSaving,
                         ),
                       ),
                     );
@@ -235,6 +347,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     IconButton(
                       icon: audio.isTranscribing
@@ -276,6 +389,10 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                     Expanded(
                       child: TextField(
                         controller: _controller,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        minLines: 1,
+                        maxLines: 5,
                         decoration: const InputDecoration(
                           hintText: '英語で話しかけてみましょう',
                           border: OutlineInputBorder(),
