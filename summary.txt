@@ -253,4 +253,44 @@
 
 日付: 2025-12-06
 - 今後重要になる課題を整理してissueを作成。４つ
-- BEロジックに沿ったUI設計をfigma Makeで実装。 
+- BEロジックに沿ったUI設計をfigma Makeで実装。
+
+日付: 2025-12-23
+
+今日の取り組み:
+- 復習機能の大幅改善を実装。「改善文の手動保存」「保存した表現一覧」「復習完了率の表示」機能を追加。
+
+バックエンド実装:
+- `SavedPhrase` テーブルを新規作成。ユーザーがセッション中に気になった改善例文を手動で保存できるようにした。
+  - フィールド: id, user_id, phrase, explanation, original_input, session_id, round_index, converted_to_review_id, created_at
+  - User / Session との関連付け（外部キー）を設定
+- Alembic マイグレーションを作成・実行（`a1b2c3d4e5f6_add_saved_phrases_table.py`）
+- `/saved-phrases` ルーター（CRUD操作 + 復習アイテムへの変換）を新規実装
+  - POST /saved-phrases: 改善文を保存
+  - GET /saved-phrases: 保存した表現一覧を取得
+  - DELETE /saved-phrases/{id}: 保存した表現を削除
+  - POST /saved-phrases/{id}/convert-to-review: 保存した表現を復習アイテムに変換
+  - GET /saved-phrases/check/{session_id}/{round_index}: 保存状態を確認
+- `/reviews/stats` エンドポイントを追加。累計の復習完了率（完了数/総数）を返す
+- ReviewService に `get_stats()` メソッドを追加
+
+フロントエンド実装:
+- 型定義を拡張（`SavedPhrase`, `SavedPhrasesListResponse`, `ReviewStats` など）
+- `/lib/saved-phrases.ts` に API クライアント関数を追加（createSavedPhrase, fetchSavedPhrases, deleteSavedPhrase, convertToReview, fetchReviewStats）
+- セッション画面（`/sessions/[sessionId]`）の改善例文セクションに「保存」ボタンを追加
+  - 保存済みの場合はチェックマーク付きの「保存済み」バッジを表示
+  - 保存中はローディング状態を表示
+- 復習一覧画面（`/review`）を大幅改修
+  - タブUI（「今日の復習」「保存した表現」）を追加
+  - 累計復習完了率を円グラフで表示（ヘッダー右側）
+- 保存した表現一覧コンポーネント（`SavedPhrasesList`）を新規作成
+  - 一覧表示（未復習/復習済みバッジ付き）
+  - 詳細モーダル（元発話・改善例文・フィードバック表示）
+  - 「復習問題にする」ボタンで ReviewItem に変換可能
+  - 削除機能
+
+主な成果:
+- MVPの4つの価値のうち「④徹底した復習」をさらに強化。
+- ユーザーが能動的に改善例文を保存し、任意のタイミングで復習できるワークフローを実現。
+- 累計完了率の可視化により、学習の進捗を一目で把握できるようになった。
+- 動線: セッション画面で保存 → 復習一覧「保存した表現」タブ → 詳細モーダル → 「復習問題にする」→ 翌日から復習一覧に表示

@@ -6,6 +6,7 @@ from app.core.config import settings
 from models.schemas.schemas import DifficultyLevel, ScenarioCategory
 from .mock_provider import MockConversationProvider
 from .openai_provider import OpenAIConversationProvider
+from .groq_provider import GroqConversationProvider
 from .provider_registry import AIProviderRegistry
 from .types import ConversationProvider, ConversationResponse
 import httpx
@@ -15,10 +16,10 @@ def initialize_providers() -> None:
     AIProviderRegistry.register("mock", MockConversationProvider)
     if settings.OPENAI_API_KEY:
         AIProviderRegistry.register("openai", OpenAIConversationProvider)
-        AIProviderRegistry.set_default(settings.AI_PROVIDER_DEFAULT)
-    else:
-        AIProviderRegistry.set_default("mock")
-
+    if settings.GROQ_API_KEY:
+        AIProviderRegistry.register("groq", GroqConversationProvider)
+    # フォールバック用にデフォルトをmockに設定
+    AIProviderRegistry.set_default("mock")
 
 async def generate_conversation_response(
     user_input: str,
@@ -54,7 +55,7 @@ async def generate_conversation_response(
             raise
 
         default_name = AIProviderRegistry.default_provider()
-        if default_name == "openai":
+        if default_name == "openai" or default_name == "groq":
             # OpenAI失敗時はログだけ残してMockへフォールバック
             from .mock_provider import MockConversationProvider  # ローカルimportで循環依存を回避
 

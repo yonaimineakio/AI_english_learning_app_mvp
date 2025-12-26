@@ -350,6 +350,7 @@ class SessionService:
                 round_index=current_round,
                 context=context,
                 scenario_id=scenario_id,
+                provider_name="groq",
             )
             latency_ms = conversation_result.latency_ms
             if latency_ms is None:

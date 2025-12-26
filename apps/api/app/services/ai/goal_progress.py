@@ -12,8 +12,6 @@ from app.prompts.goal_progress_evaluation import GOAL_PROGRESS_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
-OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/responses"
-
 
 async def evaluate_goal_progress(goals: List[str], history: List[dict]) -> List[int]:
     """
@@ -70,7 +68,7 @@ async def evaluate_goal_progress(goals: List[str], history: List[dict]) -> List[
             },
             timeout=httpx.Timeout(30.0, connect=5.0, read=30.0),
         ) as client:
-            response = await client.post(OPENAI_CHAT_COMPLETIONS_URL, json=payload)
+            response = await client.post(settings.OPENAI_CHAT_COMPLETIONS_URL, json=payload)
             response.raise_for_status()
             data = response.json()
 

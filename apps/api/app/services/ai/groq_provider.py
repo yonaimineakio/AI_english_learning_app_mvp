@@ -7,7 +7,7 @@ import httpx
 
 from app.core.config import settings
 from app.core.logging_config import get_logger
-from app.core.cost_tracker import calculate_openai_cost
+from app.core.cost_tracker import calculate_groq_cost
 from models.schemas.schemas import DifficultyLevel, ScenarioCategory
 
 from .types import ConversationProvider, ConversationResponse
@@ -16,17 +16,16 @@ from app.prompts import (
     get_prompt_by_scenario_id,
     get_conversation_system_prompt,
 )
-import json
 
 logger = get_logger(__name__)
 
-class OpenAIConversationProvider(ConversationProvider):
+class GroqConversationProvider(ConversationProvider):
     def __init__(self) -> None:
-        if not settings.OPENAI_API_KEY:
-            raise ValueError("OPENAI_API_KEY is not configured")
+        if not settings.GROQ_API_KEY:
+            raise ValueError("GROQ_API_KEY is not configured")
         self._client = httpx.AsyncClient(
             headers={
-                "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
+                "Authorization": f"Bearer {settings.GROQ_API_KEY}",
                 "Content-Type": "application/json",
             },
             # 全体60秒、接続5秒、読み取り60秒に延長
@@ -44,7 +43,7 @@ class OpenAIConversationProvider(ConversationProvider):
     ) -> ConversationResponse:
         start_time = asyncio.get_event_loop().time()
         logger.info(
-            "OpenAI request payload: user_input=%s, difficulty=%s, "
+            "Groq request payload: user_input=%s, difficulty=%s, "
             "scenario_category=%s, round_index=%s, scenario_id=%s, context=%s",
             user_input,
             difficulty,
@@ -62,46 +61,42 @@ class OpenAIConversationProvider(ConversationProvider):
         )
 
         try:
-            response = await self._client.post(settings.OPENAI_CHAT_COMPLETIONS_URL, json=payload)
+            response = await self._client.post(settings.GROQ_CHAT_COMPLETIONS_URL, json=payload)
             response.raise_for_status()
             data = response.json()
-            texts: list[str] = []
-            outputs = data.get("output", [])
-            for out in outputs:
-                contents = out.get("content") or []
-                for item in contents:
-                    t = item.get("type")
-                    if t in ("output_text", "text"):
-                        txt = item.get("text")
-                        if txt:
-                            texts.append(txt)
-            content = "".join(texts)
+            
+            # OpenAI互換APIのレスポンス形式
+            choices = data.get("choices", [])
+            if choices:
+                content = choices[0].get("message", {}).get("content", "")
+            else:
+                content = ""
 
             # トークン使用量を取得して料金計算
             usage = data.get("usage", {})
-            input_tokens = usage.get("input_tokens", 0)
-            output_tokens = usage.get("output_tokens", 0)
+            input_tokens = usage.get("input_tokens", usage.get("prompt_tokens", 0))
+            output_tokens = usage.get("output_tokens", usage.get("completion_tokens", 0))
             latency_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
             
             if input_tokens > 0 or output_tokens > 0:
-                calculate_openai_cost(
-                    model=settings.OPENAI_MODEL_NAME,
+                calculate_groq_cost(
+                    model=settings.GROQ_MODEL_NAME,
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
                     latency_ms=latency_ms,
                 )
 
-            logger.info("OpenAI response: %s", content)
+            logger.info("Groq response: %s", content)
             ai_reply, feedback_short, improved_sentence, should_end_session = self._parse_response(content)
         except httpx.ReadTimeout as exc:
             # OpenAI側のタイムアウトはアプリ側で扱いやすいように TimeoutError にラップして伝播させる
-            logger.warning("OpenAI request timed out: %s", exc)
-            raise TimeoutError("OpenAI request timed out") from exc
+            logger.warning("Groq request timed out: %s", exc)
+            raise TimeoutError("Groq request timed out") from exc
         except httpx.HTTPError as exc:
-            logger.exception("HTTP error while calling OpenAI: %s", exc)
+            logger.exception("HTTP error while calling Groq: %s", exc)
             raise
         except Exception as exc:  # noqa: BLE001
-            logger.exception("Failed to generate AI response via OpenAI: %s", exc)
+            logger.exception("Failed to generate AI response via Groq: %s", exc)
             raise
 
         tags = ["conversation", f"round_{round_index}", difficulty] + [scenario_category]
@@ -117,7 +112,7 @@ class OpenAIConversationProvider(ConversationProvider):
             details=details,
             scores=scores,
             latency_ms=latency_ms,
-            provider="openai",
+            provider="groq",
             should_end_session=should_end_session,
         )
 
@@ -138,7 +133,16 @@ class OpenAIConversationProvider(ConversationProvider):
         # シナリオIDで取得できなかった場合は、カテゴリ×難易度でのプロンプトにフォールバック
         if not system_prompt:
             system_prompt = get_prompt_by_category_difficulty(scenario_category, difficulty) or ""
-        messages = [{"role": "assistant", "content": system_prompt}]
+        
+        # 会話システムプロンプト（外部ファイルから取得）を結合
+        conversation_prompt = get_conversation_system_prompt(
+            difficulty=difficulty,
+            user_input=user_input,
+        )
+        full_system_prompt = f"{system_prompt}\n\n{conversation_prompt}"
+        
+        # OpenAI互換形式のメッセージ配列
+        messages = [{"role": "system", "content": full_system_prompt}]
 
         for turn in context[-2:]:  # Include last two rounds as context
             messages.extend(
@@ -148,21 +152,12 @@ class OpenAIConversationProvider(ConversationProvider):
                 ]
             )
 
-        # 会話システムプロンプト（外部ファイルから取得）
-        conversation_prompt = get_conversation_system_prompt(
-            difficulty=difficulty,
-            user_input=user_input,
-        )
-        messages.append(
-            {
-                "role": "assistant",
-                "content": conversation_prompt,
-            }
-        )
+        # ユーザー入力を追加
+        messages.append({"role": "user", "content": user_input})
 
         return {
-            "model": settings.OPENAI_MODEL_NAME,
-            "input": json.dumps(messages, ensure_ascii=False)
+            "model": settings.GROQ_MODEL_NAME,
+            "messages": messages,
         }
 
     def _parse_response(self, content: str) -> tuple[str, str, str, bool]:
@@ -198,7 +193,7 @@ class OpenAIConversationProvider(ConversationProvider):
 
         return ai_reply, feedback_short, improved_sentence, should_end_session
 
-    async def __aenter__(self) -> OpenAIConversationProvider:
+    async def __aenter__(self) -> GroqConversationProvider:
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
@@ -206,9 +201,9 @@ class OpenAIConversationProvider(ConversationProvider):
 
 
 async def warm_up_provider() -> None:
-    if not settings.OPENAI_API_KEY:
+    if not settings.GROQ_API_KEY:
         return
-    provider = OpenAIConversationProvider()
+    provider = GroqConversationProvider()
     try:
         await provider.generate_response(
             user_input="Hello",
@@ -219,7 +214,7 @@ async def warm_up_provider() -> None:
             scenario_id=2,
         )
     except Exception:  # noqa: BLE001
-        logger.info("OpenAI warm-up failed (expected if key invalid)" )
+        logger.info("Groq warm-up failed (expected if key invalid)" )
     finally:
         await provider._client.aclose()
 
