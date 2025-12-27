@@ -119,7 +119,10 @@ async def exchange_token(
             detail="Authorization code is required",
         )
 
-    if settings.DEBUG or code.startswith("mock_auth_code_"):
+    # Simple rule:
+    # - DEBUG=true  -> mock login
+    # - DEBUG=false -> real Google OAuth
+    if settings.DEBUG:
         mock_user_data = {
             "sub": "mock_user_123",
             "name": "Test User",
@@ -152,6 +155,12 @@ async def exchange_token(
                 "picture": mock_user_data["picture"],
             },
         }
+
+    if code.startswith("mock_auth_code_"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mock auth code is only allowed when DEBUG=true",
+        )
 
     if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET or not settings.GOOGLE_REDIRECT_URI:
         raise HTTPException(
