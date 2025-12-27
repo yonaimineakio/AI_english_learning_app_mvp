@@ -88,7 +88,7 @@ cd AI_english_learning_app_mvp
 #### バックエンド用環境変数
 ```bash
 # apps/api/.env を作成
-cp infra/env/backend.env.example apps/api/.env
+cp apps/api/.env.example apps/api/.env
 
 # 以下の値を実際の値に更新
 # - OPENAI_API_KEY: OpenAI APIキー（会話生成用）
@@ -101,10 +101,10 @@ cp infra/env/backend.env.example apps/api/.env
 #### フロントエンド用環境変数
 ```bash
 # apps/web/.env.local を作成
-cp infra/env/frontend.env.example apps/web/.env.local
+cp apps/web/.env.local.example apps/web/.env.local
 
 # 以下の値を実際の値に更新
-# - NEXT_PUBLIC_GOOGLE_CLIENT_ID: Google OAuth クライアントID
+# - NEXT_PUBLIC_API_BASE_URL: バックエンドURL（/api/v1 まで含める）
 ```
 
 ### 3. 依存関係のインストール

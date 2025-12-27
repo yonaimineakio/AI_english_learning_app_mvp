@@ -18,10 +18,15 @@ class Settings(BaseSettings):
     
     # Auth / OAuth Configuration
     AUTH_USE_MOCK: bool = False
-    GOOGLE_CLIENT_ID: str = "85372847730-vogng3qs66idtuqeaasvmmoghm9nj9k8.apps.googleusercontent.com"
-    GOOGLE_CLIENT_SECRET: str = "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"
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
+    # NOTE: Do not hardcode OAuth credentials in code.
+    # Set these via apps/api/.env (see apps/api/.env.example).
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_REDIRECT_URI: Optional[str] = None
     FRONTEND_BASE_URL: str = "http://localhost:3000"
+    # Development-only bypass: allow API usage without Authorization header.
+    # Keep this OFF by default; use AUTH_USE_MOCK for deterministic demo login.
+    DEV_AUTH_BYPASS: bool = False
     
     # API
     API_V1_STR: str = "/api/v1"

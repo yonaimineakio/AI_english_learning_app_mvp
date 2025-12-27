@@ -49,7 +49,7 @@ async def get_user_stats(
 @router.get("/login")
 async def login(
     request: Request,
-    client_id: str,
+    client_id: Optional[str] = None,
     redirect_uri: Optional[str] = None,
     response_type: str = "code",
     scope: str = "openid profile email"
@@ -62,6 +62,12 @@ async def login(
         target_redirect = redirect_uri or f"{settings.FRONTEND_BASE_URL.rstrip('/')}/callback"
         redirect_url = f"{target_redirect}?code={mock_code}&state={state}"
         return RedirectResponse(url=redirect_url)
+
+    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_REDIRECT_URI:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Google OAuth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_REDIRECT_URI (and GOOGLE_CLIENT_SECRET for /auth/token).",
+        )
 
     authorization_url = "https://accounts.google.com/o/oauth2/v2/auth"
     state = secrets.token_urlsafe(32)
@@ -144,20 +150,11 @@ async def exchange_token(
             },
         }
 
-    if code.startswith("mock_auth_code_"):
-        return {
-            "access_token": f"mock_jwt_token_{secrets.token_urlsafe(32)}",
-            "refresh_token": None,
-            "token_type": "bearer",
-            "expires_in": 3600,
-            "id_token": None,
-            "user": {
-                "id": "mock",
-                "name": "Mock User",
-                "email": "mock@example.com",
-                "picture": "https://via.placeholder.com/150",
-            },
-        }
+    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET or not settings.GOOGLE_REDIRECT_URI:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Google OAuth is not configured. Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URI.",
+        )
 
     token_endpoint = "https://oauth2.googleapis.com/token"
     async with httpx.AsyncClient() as client:
