@@ -56,7 +56,10 @@ async def login(
 ):
     """Initiate OAuth login flow"""
 
-    if settings.AUTH_USE_MOCK:
+    # Simple rule:
+    # - DEBUG=true  -> mock login
+    # - DEBUG=false -> real Google OAuth
+    if settings.DEBUG:
         state = secrets.token_urlsafe(32)
         mock_code = f"mock_auth_code_{secrets.token_urlsafe(16)}"
         target_redirect = redirect_uri or f"{settings.FRONTEND_BASE_URL.rstrip('/')}/callback"
@@ -116,7 +119,7 @@ async def exchange_token(
             detail="Authorization code is required",
         )
 
-    if settings.AUTH_USE_MOCK or code.startswith("mock_auth_code_"):
+    if settings.DEBUG or code.startswith("mock_auth_code_"):
         mock_user_data = {
             "sub": "mock_user_123",
             "name": "Test User",

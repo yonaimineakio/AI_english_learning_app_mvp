@@ -94,6 +94,7 @@ cp apps/api/.env.example apps/api/.env
 # - OPENAI_API_KEY: OpenAI APIキー（会話生成用）
 # - GOOGLE_CLOUD_PROJECT_ID: Google Cloud プロジェクトID（音声認識用）
 # - GOOGLE_APPLICATION_CREDENTIALS: GoogleサービスアカウントJSONファイルへの絶対パス（バックエンドのみ）
+# - DEBUG: true=モックログイン / false=Google認証ログイン
 # - GOOGLE_CLIENT_ID: Google OAuth クライアントID
 # - GOOGLE_CLIENT_SECRET: Google OAuth クライアントシークレット
 ```

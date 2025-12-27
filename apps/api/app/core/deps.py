@@ -35,8 +35,6 @@ async def get_current_user(
     """Get current authenticated user"""
 
     if credentials is None:
-        if settings.DEV_AUTH_BYPASS:
-            return _get_or_create_dev_user(db)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication credentials were not provided",
@@ -81,8 +79,6 @@ async def get_current_user_optional(
 ) -> Optional[User]:
     """Get current user if authenticated, otherwise return None"""
     if not credentials:
-        if settings.DEV_AUTH_BYPASS:
-            return _get_or_create_dev_user(db)
         return None
     
     try:

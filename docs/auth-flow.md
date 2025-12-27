@@ -41,7 +41,7 @@ async def login(
     response_type: str = "code",
     scope: str = "openid profile email"
 ):
-    if settings.AUTH_USE_MOCK:
+    if settings.DEBUG:
         # モック認証（開発用）
         state = secrets.token_urlsafe(32)
         mock_code = f"mock_auth_code_{secrets.token_urlsafe(16)}"
@@ -68,7 +68,7 @@ async def login(
 ```
 
 **処理内容**:
-- 開発環境（`AUTH_USE_MOCK=true`）の場合：モック認証コードを生成してフロントエンドにリダイレクト
+- 開発環境（`DEBUG=true`）の場合：モック認証コードを生成してフロントエンドにリダイレクト
 - 本番環境の場合：Google の認証画面にリダイレクト
 - セキュリティのため `state` パラメータを生成
 
@@ -169,7 +169,7 @@ async def exchange_token(
     body = await request.json()
     code = body.get("code")
     
-    if settings.AUTH_USE_MOCK or code.startswith("mock_auth_code_"):
+    if settings.DEBUG or code.startswith("mock_auth_code_"):
         # モック認証処理
         mock_user_data = {
             "sub": "mock_user_123",
@@ -403,8 +403,7 @@ NEXT_PUBLIC_APP_BASE_URL=http://localhost:3000
 ### バックエンド環境変数
 
 ```bash
-AUTH_USE_MOCK=false
-DEV_AUTH_BYPASS=false
+DEBUG=false
 GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
 GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
@@ -444,7 +443,7 @@ http://localhost:8000/api/v1/auth/google/callback
 
 ### モック認証
 
-開発時は `AUTH_USE_MOCK=true` に設定することで、Google 認証をスキップしてモックユーザーでログインできます。
+開発時は `DEBUG=true` に設定することで、Google 認証をスキップしてモックユーザーでログインできます。
 
 ### テスト手順
 
