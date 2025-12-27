@@ -20,122 +20,9 @@ from models.schemas.schemas import (
 
 from app.services.ai import generate_conversation_response
 from app.services.ai.goal_progress import evaluate_goal_progress
+from app.prompts.scenario_goals import SCENARIO_GOALS, get_goals_for_scenario
 
 logger = logging.getLogger(__name__)
-
-
-SCENARIO_GOALS: Dict[int, List[str]] = {
-    1: [
-        "予約名を伝えてチェックインを開始する",
-        "座席の希望（窓側・通路側）を伝える",
-        "荷物の預け入れについて確認する",
-    ],
-    2: [
-        "会議の冒頭で自分の意見を述べる",
-        "他の参加者の提案に賛成・反対を表明する",
-        "次のアクションアイテムを確認する",
-    ],
-    3: [
-        "ウェイターを呼んでメニューを依頼する",
-        "おすすめ料理やサイドメニューについて尋ねる",
-        "アレルギーや食材の制限を伝える",
-    ],
-    4: [
-        "会議の冒頭で自己紹介とアイスブレイクを行う",
-        "自社の提案内容を簡潔に説明する",
-        "相手の質問に答えて懸念点を解消する",
-    ],
-    5: [
-        "予約名を伝えてチェックイン手続きを開始する",
-        "部屋のアップグレードや追加リクエストを依頼する",
-        "ホテルの設備やサービスについて質問する",
-    ],
-    6: [
-        "行きたい旅行先とその理由を説明する",
-        "滞在期間と予算の希望を伝える",
-        "おすすめのアクティビティや観光地を尋ねる",
-    ],
-    7: [
-        "訪問したい観光地を提案して魅力を説明する",
-        "移動手段（電車・バス・タクシー）と所要時間を伝える",
-        "相手の興味や好みを聞いて計画を調整する",
-    ],
-    8: [
-        "訪問目的（観光・ビジネス）と滞在期間を答える",
-        "滞在先のホテル名と住所を伝える",
-        "持ち込み品の申告や追加質問に対応する",
-    ],
-    9: [
-        "行きたい場所と日程の候補を提案する",
-        "相手の都合や希望を聞いて調整する",
-        "予算とやりたいアクティビティを共有する",
-    ],
-    10: [
-        "いつどこで財布を無くしたかを説明する",
-        "財布の色・形・中身（カード・現金）を伝える",
-        "遺失物届の手続きについて確認する",
-    ],
-    11: [
-        "商品の不具合や問題点を具体的に説明する",
-        "返品・交換・返金のいずれかを依頼する",
-        "担当者の提案を確認して対応を決める",
-    ],
-    12: [
-        "おすすめのドリンクや季節限定メニューを尋ねる",
-        "店の雰囲気やインテリアについてコメントする",
-        "天気や最近の出来事について軽く話す",
-    ],
-    13: [
-        "希望の日時と人数を伝える",
-        "座席の種類（前方・中央・後方）と価格を確認する",
-        "空席がない場合は別の日時を相談する",
-    ],
-    14: [
-        "天気や公園の雰囲気について話しかける",
-        "相手の趣味やこの公園に来る頻度を尋ねる",
-        "別れ際に「また会いましょう」と挨拶する",
-    ],
-    15: [
-        "予定変更が必要な理由を簡潔に伝える",
-        "代替の日時候補を2〜3つ提案する",
-        "相手の都合を確認して謝罪の言葉を添える",
-    ],
-    16: [
-        "会議の目的と所要時間を伝える",
-        "複数の候補日時を提示する",
-        "参加者全員の都合を確認して日程を確定する",
-    ],
-    17: [
-        "会議の冒頭でアジェンダを提示する",
-        "各議題で参加者の意見を引き出す",
-        "決定事項とアクションアイテムを確認する",
-    ],
-    18: [
-        "価格・納期・支払い条件について確認する",
-        "自社の希望条件と譲歩できる範囲を伝える",
-        "相手の提案に対して代替案を提示する",
-    ],
-    19: [
-        "調査の概要（期間・対象・方法）を説明する",
-        "主要な数値結果とその変化を伝える",
-        "結果から導かれる改善提案を述べる",
-    ],
-    20: [
-        "遅延の事実と原因を正直に説明する",
-        "謝罪の言葉と責任の所在を明確にする",
-        "新しいスケジュールと再発防止策を提示する",
-    ],
-    21: [
-        "体調不良の症状（熱・頭痛など）を伝える",
-        "休みたい日数と復帰予定を説明する",
-        "担当業務の引き継ぎ先を相談する",
-    ],
-}
-
-
-def get_goals_for_scenario(scenario_id: int) -> List[str]:
-    """Return learning goals for a given scenario id (up to 3 goals)."""
-    return SCENARIO_GOALS.get(scenario_id, [])
 
 
 class SessionService:
@@ -350,6 +237,7 @@ class SessionService:
                 round_index=current_round,
                 context=context,
                 scenario_id=scenario_id,
+                provider_name="groq",
             )
             latency_ms = conversation_result.latency_ms
             if latency_ms is None:
@@ -409,6 +297,9 @@ class SessionService:
             else:
                 end_prompt_reason = None
 
+            # ゴールラベルを取得
+            goals_labels = get_goals_for_scenario(session.scenario_id) if session.scenario_id else None
+
             return TurnResponse(
                 round_index=current_round,
                 ai_reply={
@@ -432,6 +323,7 @@ class SessionService:
                 goals_total=goals_total,
                 goals_achieved=goals_achieved,
                 goals_status=goals_status or None,
+                goals_labels=goals_labels or None,
             )
             
         except Exception as e:
@@ -539,6 +431,9 @@ class SessionService:
             # セッション全体の学習ゴール達成率を計算
             goals_total, goals_achieved, goals_status = await self._calculate_goal_progress(session)
 
+            # ゴールラベルを取得
+            goals_labels = get_goals_for_scenario(session.scenario_id) if session.scenario_id else None
+
             return SessionEndResponse(
                 session_id=session_id,
                 completed_rounds=session.completed_rounds,
@@ -550,6 +445,7 @@ class SessionService:
                 goals_total=goals_total,
                 goals_achieved=goals_achieved,
                 goals_status=goals_status or None,
+                goals_labels=goals_labels or None,
             )
             
         except Exception as e:

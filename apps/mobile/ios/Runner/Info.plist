@@ -34,6 +34,12 @@
 	</dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>英会話練習のためにマイクを使用します。</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>ローカルサーバーへの接続に使用します。</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_http._tcp</string>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

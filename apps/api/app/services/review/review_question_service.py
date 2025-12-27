@@ -15,8 +15,6 @@ from app.prompts.review_listening_question import get_listening_question_prompt
 
 logger = logging.getLogger(__name__)
 
-OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/responses"
-
 
 @dataclass
 class GeneratedQuestion:
@@ -92,7 +90,7 @@ class ReviewQuestionService:
         }
         
         try:
-            response = await self._client.post(OPENAI_CHAT_COMPLETIONS_URL, json=payload)
+            response = await self._client.post(settings.OPENAI_CHAT_COMPLETIONS_URL, json=payload)
             response.raise_for_status()
             data = response.json()
             

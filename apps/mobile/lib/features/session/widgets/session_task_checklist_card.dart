@@ -8,6 +8,7 @@ class SessionTaskChecklistCard extends StatefulWidget {
     required this.goalsStatus,
     required this.goalsTotal,
     required this.goalsAchieved,
+    this.goalsLabels,
   });
 
   final int scenarioId;
@@ -15,6 +16,7 @@ class SessionTaskChecklistCard extends StatefulWidget {
   final List<int>? goalsStatus; // 0/1 per task
   final int? goalsTotal;
   final int? goalsAchieved;
+  final List<String>? goalsLabels; // APIから取得したゴールラベル
 
   @override
   State<SessionTaskChecklistCard> createState() =>
@@ -24,129 +26,21 @@ class SessionTaskChecklistCard extends StatefulWidget {
 class _SessionTaskChecklistCardState extends State<SessionTaskChecklistCard> {
   bool _expanded = true;
 
-  List<String> _labelsForScenario(int id) {
-    // NOTE: Backend stores goals in Japanese (SCENARIO_GOALS). The mobile UI shows
-    // short English task labels (like the screenshot). Keep these aligned by index.
-    // Fallback: generic "Task n" when unknown.
-    const m = <int, List<String>>{
-      1: [
-        'Start check-in with your reservation name',
-        'State your seat preference (window/aisle)',
-        'Ask about checking in baggage',
-      ],
-      2: [
-        'Share your opinion at the start of the meeting',
-        'Agree or disagree with a proposal',
-        'Confirm the next action items',
-      ],
-      3: [
-        'Call the waiter and ask for the menu',
-        'Ask about recommendations / sides',
-        'Mention any allergies or restrictions',
-      ],
-      4: [
-        'Introduce yourself and break the ice',
-        'Explain your proposal briefly',
-        'Answer questions and address concerns',
-      ],
-      5: [
-        'Start check-in with your reservation name',
-        'Request an upgrade or extra needs',
-        'Ask about hotel facilities/services',
-      ],
-      6: [
-        'Explain your destination and why',
-        'Share your dates and budget',
-        'Ask about recommended activities',
-      ],
-      7: [
-        'Suggest a place to visit and explain why',
-        'Explain transport options and time',
-        'Adjust the plan based on preferences',
-      ],
-      8: [
-        'Answer purpose of visit and duration',
-        'Share your hotel name and address',
-        'Respond to extra questions honestly',
-      ],
-      9: [
-        'Suggest dates and a destination',
-        'Ask their availability and adjust',
-        'Share budget and activities you want',
-      ],
-      10: [
-        'Explain when/where you lost your wallet',
-        'Describe the wallet (color/contents)',
-        'Ask about the lost-item report process',
-      ],
-      11: [
-        'Describe the problem clearly',
-        'Request refund/exchange/return',
-        'Confirm options and decide next steps',
-      ],
-      12: [
-        "Ask about recommended drinks (seasonal too)",
-        'Comment on the atmosphere',
-        'Make light small talk (weather, etc.)',
-      ],
-      13: [
-        'Tell the date/time and number of tickets',
-        'Ask about seat types and prices',
-        'Discuss other dates if sold out',
-      ],
-      14: [
-        'Comment on the weather/park',
-        'Ask about hobbies and how often they come',
-        'Say goodbye politely (“See you again!”)',
-      ],
-      15: [
-        'Explain the reason briefly',
-        'Offer 2–3 alternative times',
-        'Apologize and confirm their availability',
-      ],
-      16: [
-        'Share the purpose and expected duration',
-        'Propose multiple candidate times',
-        "Confirm everyone's availability",
-      ],
-      17: [
-        'Share the agenda at the beginning',
-        "Invite opinions on each topic",
-        'Confirm decisions and action items',
-      ],
-      18: [
-        'Ask about price/delivery/payment terms',
-        'Share your preferred terms and flexibility',
-        'Offer an alternative proposal',
-      ],
-      19: [
-        'Explain the survey overview',
-        'Share key numbers and changes',
-        'Propose improvements based on results',
-      ],
-      20: [
-        'Explain the delay and its cause',
-        'Apologize and clarify responsibility',
-        'Share a new plan and prevention steps',
-      ],
-      21: [
-        'Describe your symptoms',
-        'Share expected leave duration and return',
-        'Discuss handover/coverage',
-      ],
-    };
+  List<String> _getLabels() {
+    // APIから取得したラベルを優先的に使用
+    if (widget.goalsLabels != null && widget.goalsLabels!.isNotEmpty) {
+      return widget.goalsLabels!;
+    }
 
-    final labels = m[id];
-    if (labels != null && labels.isNotEmpty) return labels;
-
+    // フォールバック: ゴール数に基づいて汎用ラベルを生成
     final total = widget.goalsTotal ?? widget.goalsStatus?.length ?? 0;
     if (total <= 0) return const [];
-    return List<String>.generate(total, (i) => 'Task ${i + 1}');
+    return List<String>.generate(total, (i) => 'タスク ${i + 1}');
   }
 
   @override
   Widget build(BuildContext context) {
-    final labels = _labelsForScenario(widget.scenarioId);
+    final labels = _getLabels();
     final total = labels.isNotEmpty
         ? labels.length
         : (widget.goalsTotal ?? widget.goalsStatus?.length ?? 0);
@@ -193,7 +87,7 @@ class _SessionTaskChecklistCardState extends State<SessionTaskChecklistCard> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Tasks ($achieved/$total completed)',
+                        'タスク ($achieved/$total 完了)',
                         style: TextStyle(
                           color: baseTextColor,
                           fontSize: 16,
@@ -216,7 +110,7 @@ class _SessionTaskChecklistCardState extends State<SessionTaskChecklistCard> {
                   firstChild: Column(
                     children: List<Widget>.generate(total, (idx) {
                       final label =
-                          idx < labels.length ? labels[idx] : 'Task ${idx + 1}';
+                          idx < labels.length ? labels[idx] : 'タスク ${idx + 1}';
                       final done = idx < status.length && status[idx] == 1;
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 6),
@@ -264,4 +158,3 @@ class _SessionTaskChecklistCardState extends State<SessionTaskChecklistCard> {
     );
   }
 }
-

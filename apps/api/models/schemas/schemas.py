@@ -358,6 +358,7 @@ class TurnResponse(BaseModel):
     goals_total: Optional[int] = None
     goals_achieved: Optional[int] = None
     goals_status: Optional[List[int]] = None
+    goals_labels: Optional[List[str]] = None  # 各ゴールのラベル（テキスト）
 
 
 class SessionEndResponse(BaseModel):
@@ -372,6 +373,7 @@ class SessionEndResponse(BaseModel):
     goals_total: Optional[int] = None
     goals_achieved: Optional[int] = None
     goals_status: Optional[List[int]] = None
+    goals_labels: Optional[List[str]] = None  # 各ゴールのラベル（テキスト）
 
 
 class ReviewNextResponse(BaseModel):

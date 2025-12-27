@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     # AI Service
     OPENAI_API_KEY: Optional[str] = None
     OPENAI_MODEL_NAME: str = "gpt-4o-mini"
+    OPENAI_CHAT_COMPLETIONS_URL: Optional[str] = None
+
+    GROQ_API_KEY: Optional[str] = None
+    GROQ_CHAT_COMPLETIONS_URL: Optional[str] = None
+    GROQ_MODEL_NAME: str = "openai/gpt-oss-120b"
     AI_PROVIDER_DEFAULT: str = "mock"
 
     # Google Cloud Speech-to-Text
