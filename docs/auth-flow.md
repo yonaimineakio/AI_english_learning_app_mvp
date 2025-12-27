@@ -20,24 +20,13 @@
 ```typescript
 const login = () => {
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-  const redirectUri = window.location.origin + '/callback'
-  
-  const params = new URLSearchParams({
-    client_id: clientId,
-    redirect_uri: redirectUri,
-    response_type: 'code',
-    scope: 'openid profile email',
-  })
-  
-  window.location.href = `${apiBaseUrl}/auth/login?${params.toString()}`
+  window.location.href = `${apiBaseUrl}/auth/login`
 }
 ```
 
 **処理内容**:
 - ユーザーがログインボタンをクリック
-- バックエンドの `/api/v1/auth/login` エンドポイントにリダイレクト
-- 必要なパラメータ（client_id, redirect_uri, response_type, scope）を付与
+- バックエンドの `/api/v1/auth/login` エンドポイントにリダイレクト（Google OAuth設定はバックエンド側の `.env` に集約）
 
 ### 2. バックエンド認証開始
 
@@ -47,12 +36,12 @@ const login = () => {
 @router.get("/login")
 async def login(
     request: Request,
-    client_id: str,
+    client_id: Optional[str] = None,
     redirect_uri: Optional[str] = None,
     response_type: str = "code",
     scope: str = "openid profile email"
 ):
-    if settings.AUTH_USE_MOCK:
+    if settings.DEBUG:
         # モック認証（開発用）
         state = secrets.token_urlsafe(32)
         mock_code = f"mock_auth_code_{secrets.token_urlsafe(16)}"
@@ -79,7 +68,7 @@ async def login(
 ```
 
 **処理内容**:
-- 開発環境（`AUTH_USE_MOCK=true`）の場合：モック認証コードを生成してフロントエンドにリダイレクト
+- 開発環境（`DEBUG=true`）の場合：モック認証コードを生成してフロントエンドにリダイレクト
 - 本番環境の場合：Google の認証画面にリダイレクト
 - セキュリティのため `state` パラメータを生成
 
@@ -180,7 +169,7 @@ async def exchange_token(
     body = await request.json()
     code = body.get("code")
     
-    if settings.AUTH_USE_MOCK or code.startswith("mock_auth_code_"):
+    if settings.DEBUG or code.startswith("mock_auth_code_"):
         # モック認証処理
         mock_user_data = {
             "sub": "mock_user_123",
@@ -408,16 +397,15 @@ async def logout(
 
 ```bash
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=85372847730-vogng3qs66idtuqeaasvmmoghm9nj9k8.apps.googleusercontent.com
 NEXT_PUBLIC_APP_BASE_URL=http://localhost:3000
 ```
 
 ### バックエンド環境変数
 
 ```bash
-AUTH_USE_MOCK=false
-GOOGLE_CLIENT_ID=85372847730-vogng3qs66idtuqeaasvmmoghm9nj9k8.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
+DEBUG=false
+GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
 GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/google/callback
 FRONTEND_BASE_URL=http://localhost:3000
 ```
@@ -455,7 +443,7 @@ http://localhost:8000/api/v1/auth/google/callback
 
 ### モック認証
 
-開発時は `AUTH_USE_MOCK=true` に設定することで、Google 認証をスキップしてモックユーザーでログインできます。
+開発時は `DEBUG=true` に設定することで、Google 認証をスキップしてモックユーザーでログインできます。
 
 ### テスト手順
 
