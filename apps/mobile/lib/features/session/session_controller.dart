@@ -32,6 +32,7 @@ class SessionUiState {
     required this.goalsTotal,
     required this.goalsAchieved,
     required this.goalsStatus,
+    required this.goalsLabels,
     required this.endPromptReason,
     required this.dismissedGoalsCompletedPrompt,
     this.isLoadingTurn = false,
@@ -46,6 +47,7 @@ class SessionUiState {
   final int? goalsTotal;
   final int? goalsAchieved;
   final List<int>? goalsStatus;
+  final List<String>? goalsLabels; // 各ゴールのラベル（テキスト）
   final String? endPromptReason; // user_intent | goals_completed
   final bool dismissedGoalsCompletedPrompt;
   final bool isLoadingTurn;
@@ -58,6 +60,7 @@ class SessionUiState {
     int? goalsTotal,
     int? goalsAchieved,
     List<int>? goalsStatus,
+    List<String>? goalsLabels,
     String? endPromptReason,
     bool? dismissedGoalsCompletedPrompt,
     bool? isLoadingTurn,
@@ -72,6 +75,7 @@ class SessionUiState {
       goalsTotal: goalsTotal ?? this.goalsTotal,
       goalsAchieved: goalsAchieved ?? this.goalsAchieved,
       goalsStatus: goalsStatus ?? this.goalsStatus,
+      goalsLabels: goalsLabels ?? this.goalsLabels,
       endPromptReason: endPromptReason ?? this.endPromptReason,
       dismissedGoalsCompletedPrompt:
           dismissedGoalsCompletedPrompt ?? this.dismissedGoalsCompletedPrompt,
@@ -105,6 +109,7 @@ class SessionController extends AsyncNotifier<SessionUiState> {
       goalsTotal: null,
       goalsAchieved: null,
       goalsStatus: null,
+      goalsLabels: null,
       endPromptReason: null,
       dismissedGoalsCompletedPrompt: false,
     );
@@ -155,6 +160,7 @@ class SessionController extends AsyncNotifier<SessionUiState> {
                 _defaultGoalsTotalForScenario(res.scenario.id)!,
                 0,
               ),
+        goalsLabels: null, // 最初のターンでAPIから取得
         endPromptReason: null,
         dismissedGoalsCompletedPrompt: false,
       ),
@@ -210,6 +216,7 @@ class SessionController extends AsyncNotifier<SessionUiState> {
           goalsTotal: turn.goalsTotal ?? current.goalsTotal,
           goalsAchieved: turn.goalsAchieved ?? current.goalsAchieved,
           goalsStatus: turn.goalsStatus ?? current.goalsStatus,
+          goalsLabels: turn.goalsLabels ?? current.goalsLabels,
           shouldEndSession: shouldPrompt,
           endPromptReason: nextReason,
         ),

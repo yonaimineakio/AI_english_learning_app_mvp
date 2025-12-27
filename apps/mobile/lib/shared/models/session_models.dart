@@ -155,6 +155,7 @@ class TurnResponseModel {
     this.goalsTotal,
     this.goalsAchieved,
     this.goalsStatus,
+    this.goalsLabels,
   });
 
   final int roundIndex;
@@ -170,6 +171,7 @@ class TurnResponseModel {
   final int? goalsTotal;
   final int? goalsAchieved;
   final List<int>? goalsStatus;
+  final List<String>? goalsLabels; // 各ゴールのラベル（テキスト）
 
   factory TurnResponseModel.fromJson(Map<String, dynamic> json) {
     final aiReply = json['ai_reply'];
@@ -201,6 +203,9 @@ class TurnResponseModel {
       goalsAchieved: json['goals_achieved'] as int?,
       goalsStatus: (json['goals_status'] as List<dynamic>?)
           ?.map((e) => e as int)
+          .toList(),
+      goalsLabels: (json['goals_labels'] as List<dynamic>?)
+          ?.map((e) => e.toString())
           .toList(),
     );
   }
@@ -238,6 +243,7 @@ class SessionEndResponseModel {
     this.goalsTotal,
     this.goalsAchieved,
     this.goalsStatus,
+    this.goalsLabels,
   });
 
   final int sessionId;
@@ -250,6 +256,7 @@ class SessionEndResponseModel {
   final int? goalsTotal;
   final int? goalsAchieved;
   final List<int>? goalsStatus;
+  final List<String>? goalsLabels; // 各ゴールのラベル（テキスト）
 
   factory SessionEndResponseModel.fromJson(Map<String, dynamic> json) {
     return SessionEndResponseModel(
@@ -273,8 +280,9 @@ class SessionEndResponseModel {
       goalsStatus: (json['goals_status'] as List<dynamic>?)
           ?.map((e) => e as int)
           .toList(),
+      goalsLabels: (json['goals_labels'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
     );
   }
 }
-
-

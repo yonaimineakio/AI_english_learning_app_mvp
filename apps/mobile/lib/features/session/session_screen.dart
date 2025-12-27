@@ -273,6 +273,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                   goalsStatus: data.goalsStatus,
                   goalsTotal: data.goalsTotal,
                   goalsAchieved: data.goalsAchieved,
+                  goalsLabels: data.goalsLabels,
                 ),
               Expanded(
                 child: ListView.builder(

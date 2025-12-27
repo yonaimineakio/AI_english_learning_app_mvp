@@ -27,6 +27,7 @@ from .customer_survey_presentation import CUSTOMER_SURVEY_PRESENTATION_PROMPT
 from .apologize_delay import APOLOGIZE_DELAY_PROMPT
 from .sick_leave import SICK_LEAVE_PROMPT
 from .conversation_system import get_conversation_system_prompt
+from .scenario_goals import SCENARIO_GOALS, get_goals_for_scenario
 
 # シナリオIDとプロンプトのマッピング
 SCENARIO_PROMPTS: Dict[int, str] = {
@@ -171,6 +172,7 @@ def get_available_combinations() -> list[tuple[str, str]]:
 # エクスポートする関数と変数
 __all__ = [
     'SCENARIO_PROMPTS',
+    'SCENARIO_GOALS',
     'CATEGORY_DIFFICULTY_PROMPTS',
     'CATEGORY_PROMPTS',
     'DIFFICULTY_PROMPTS',
@@ -181,4 +183,5 @@ __all__ = [
     'get_all_prompts',
     'get_available_combinations',
     'get_conversation_system_prompt',
+    'get_goals_for_scenario',
 ]
