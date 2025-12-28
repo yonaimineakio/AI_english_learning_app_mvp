@@ -69,18 +69,7 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   const login = () => {
     // Googleログイン処理
     const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '')
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '85372847730-vogng3qs66idtuqeaasvmmoghm9nj9k8.apps.googleusercontent.com'
-    const appBaseUrl = (process.env.NEXT_PUBLIC_APP_BASE_URL || window.location.origin).replace(/\/$/, '')
-    const redirectUri = `${appBaseUrl}/callback`
-
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: 'openid profile email',
-    })
-
-    window.location.href = `${apiBaseUrl}/auth/login?${params.toString()}`
+    window.location.href = `${apiBaseUrl}/auth/login`
   }
 
   const logout = () => {
@@ -93,10 +82,9 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     
     // ログアウト処理
     const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '')
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '85372847730-vogng3qs66idtuqeaasvmmoghm9nj9k8.apps.googleusercontent.com'
     const returnTo = encodeURIComponent(window.location.origin)
 
-    window.location.href = `${apiBaseUrl}/auth/logout?client_id=${clientId}&return_to=${returnTo}`
+    window.location.href = `${apiBaseUrl}/auth/logout?return_to=${returnTo}`
   }
 
   // トークン期限切れチェック
