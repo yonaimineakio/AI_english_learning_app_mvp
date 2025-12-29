@@ -11,6 +11,10 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
+  # External browser OAuth + deep links
+  url_launcher: ^6.3.2
+  app_links: ^6.4.0
+
   # State management
   flutter_riverpod: ^2.5.1
 

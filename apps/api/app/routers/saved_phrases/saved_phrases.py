@@ -8,7 +8,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.core.deps import get_current_user, get_db
-from models.database.models import User, SavedPhrase as SavedPhraseModel, ReviewItem as ReviewItemModel
+from models.database.models import (
+    User,
+    SavedPhrase as SavedPhraseModel,
+    ReviewItem as ReviewItemModel,
+    Session as SessionModel,
+    Scenario as ScenarioModel,
+)
 from models.schemas.schemas import (
     SavedPhrase,
     SavedPhraseCreate,
@@ -57,7 +63,33 @@ def create_saved_phrase(
     db.commit()
     db.refresh(saved_phrase)
     
-    return saved_phrase
+    scenario_id = None
+    scenario_name = None
+    if saved_phrase.session_id:
+        row = (
+            db.query(SessionModel.scenario_id, ScenarioModel.name)
+            .join(ScenarioModel, ScenarioModel.id == SessionModel.scenario_id)
+            .filter(SessionModel.id == saved_phrase.session_id)
+            .first()
+        )
+        if row:
+            scenario_id = row[0]
+            scenario_name = row[1]
+
+    # Return as dict so extra fields are included in the response schema.
+    return {
+        "id": saved_phrase.id,
+        "user_id": saved_phrase.user_id,
+        "phrase": saved_phrase.phrase,
+        "explanation": saved_phrase.explanation,
+        "original_input": saved_phrase.original_input,
+        "session_id": saved_phrase.session_id,
+        "round_index": saved_phrase.round_index,
+        "scenario_id": scenario_id,
+        "scenario_name": scenario_name,
+        "converted_to_review_id": saved_phrase.converted_to_review_id,
+        "created_at": saved_phrase.created_at,
+    }
 
 
 @router.get("", response_model=SavedPhrasesListResponse)
@@ -69,13 +101,36 @@ def list_saved_phrases(
 ):
     """保存した表現一覧を取得する"""
     query = (
-        db.query(SavedPhraseModel)
+        db.query(
+            SavedPhraseModel,
+            ScenarioModel.id.label("scenario_id"),
+            ScenarioModel.name.label("scenario_name"),
+        )
+        .outerjoin(SessionModel, SessionModel.id == SavedPhraseModel.session_id)
+        .outerjoin(ScenarioModel, ScenarioModel.id == SessionModel.scenario_id)
         .filter(SavedPhraseModel.user_id == current_user.id)
         .order_by(SavedPhraseModel.created_at.desc())
     )
     
     total_count = query.count()
-    saved_phrases = query.offset(offset).limit(limit).all()
+    rows = query.offset(offset).limit(limit).all()
+    saved_phrases = []
+    for sp, scenario_id, scenario_name in rows:
+        saved_phrases.append(
+            {
+                "id": sp.id,
+                "user_id": sp.user_id,
+                "phrase": sp.phrase,
+                "explanation": sp.explanation,
+                "original_input": sp.original_input,
+                "session_id": sp.session_id,
+                "round_index": sp.round_index,
+                "scenario_id": scenario_id,
+                "scenario_name": scenario_name,
+                "converted_to_review_id": sp.converted_to_review_id,
+                "created_at": sp.created_at,
+            }
+        )
     
     return SavedPhrasesListResponse(
         saved_phrases=saved_phrases,

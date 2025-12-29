@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/login_screen.dart';
+import '../features/auth/callback_screen.dart';
 import '../features/auth/auth_providers.dart';
 import '../features/placement/placement_screen.dart';
 import '../features/main/main_shell_screen.dart';
@@ -19,6 +20,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/callback',
+        builder: (context, state) {
+          final code = state.uri.queryParameters['code'];
+          return CallbackScreen(code: code);
+        },
       ),
       GoRoute(
         path: '/',
@@ -55,10 +63,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           authState?.placementCompletedAt != null;
 
       final loggingIn = state.matchedLocation == '/login';
+      final inCallback = state.matchedLocation == '/callback';
       final goingPlacement = state.matchedLocation == '/placement';
 
       // 未ログイン → /login へ
-      if (!isLoggedIn && !loggingIn) {
+      if (!isLoggedIn && !loggingIn && !inCallback) {
         return '/login';
       }
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../shared/models/user_model.dart';
@@ -85,6 +86,40 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     }
   }
 
+  Future<AuthState> loginWithAuthCode(String code) async {
+    state = const AsyncLoading();
+    try {
+      final tokenRes = await _authApi.exchangeCodeForToken(code);
+
+      final accessToken = tokenRes.accessToken;
+      ApiClient().updateToken(accessToken);
+
+      // /auth/me でユーザー情報を取得
+      final UserModel me = await _authApi.getMe();
+
+      final newState = AuthState(
+        isLoggedIn: true,
+        token: accessToken,
+        userName: me.name,
+        email: me.email,
+        placementCompletedAt: me.placementCompletedAt,
+      );
+      state = AsyncData(newState);
+      _controller.add(newState);
+      return newState;
+    } catch (e, st) {
+      // Surface FastAPI error detail for 400s.
+      if (e is DioException) {
+        // ignore: avoid_print
+        print(
+          'loginWithAuthCode failed: status=${e.response?.statusCode} data=${e.response?.data}',
+        );
+      }
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
+
   void applyPlacementResult(PlacementSubmitResponseModel result) {
     final current = state.valueOrNull;
     if (current == null) return;
@@ -100,6 +135,27 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     const newState = AuthState(isLoggedIn: false);
     state = const AsyncData(newState);
     _controller.add(newState);
+  }
+
+  Future<void> updateProfileName(String name) async {
+    final current = state.valueOrNull;
+    if (current == null || !current.isLoggedIn) {
+      throw StateError('Not logged in');
+    }
+    state = const AsyncLoading();
+    try {
+      final me = await _authApi.updateMe(name: name);
+      final updated = current.copyWith(
+        userName: me.name,
+        email: me.email,
+        placementCompletedAt: me.placementCompletedAt,
+      );
+      state = AsyncData(updated);
+      _controller.add(updated);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
   }
 }
 

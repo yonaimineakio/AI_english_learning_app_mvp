@@ -8,6 +8,82 @@ import '../home/streak_widget.dart';
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
+  Future<void> _showEditProfileDialog(
+    BuildContext context,
+    WidgetRef ref,
+    AuthState state,
+  ) async {
+    final controller = TextEditingController(text: state.userName ?? '');
+    bool saving = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !saving,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return AlertDialog(
+              title: const Text('プロフィール編集'),
+              content: TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  labelText: '表示名',
+                  hintText: '例: Akio',
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.of(ctx).pop(),
+                  child: const Text('キャンセル'),
+                ),
+                ElevatedButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          final name = controller.text.trim();
+                          if (name.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('表示名を入力してください')),
+                            );
+                            return;
+                          }
+                          setState(() => saving = true);
+                          try {
+                            await ref
+                                .read(authStateProvider.notifier)
+                                .updateProfileName(name);
+                            if (context.mounted) {
+                              Navigator.of(ctx).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('プロフィールを更新しました')),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('更新に失敗しました: $e')),
+                              );
+                            }
+                          } finally {
+                            if (ctx.mounted) setState(() => saving = false);
+                          }
+                        },
+                  child: saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('保存'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
@@ -67,7 +143,7 @@ class ProfileScreen extends ConsumerWidget {
                   _SettingsItem(
                     icon: Icons.person_outline,
                     label: 'プロフィール編集',
-                    onTap: () {},
+                    onTap: () => _showEditProfileDialog(context, ref, state),
                   ),
                   _SettingsItem(
                     icon: Icons.help_outline,

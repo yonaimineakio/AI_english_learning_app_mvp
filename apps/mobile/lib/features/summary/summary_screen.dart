@@ -78,7 +78,7 @@ class SummaryScreen extends StatelessWidget {
                           onPressed: () {
                             context.go('/');
                           },
-                          child: const Text('新しいセッションを開始'),
+                          child: const Text('新規セッションを開始'),
                         ),
                       ),
                     ],

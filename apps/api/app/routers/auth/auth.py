@@ -8,7 +8,7 @@ from app.core.deps import get_current_user, get_current_user_optional
 from datetime import timedelta
 
 from models.database.models import User
-from models.schemas.schemas import User as UserSchema, UserStatsResponse
+from models.schemas.schemas import User as UserSchema, UserStatsResponse, UserUpdate
 from typing import Optional
 import httpx
 from urllib.parse import urlencode
@@ -31,6 +31,35 @@ async def get_current_user_info(
 ):
     """Get current user information"""
     return current_user
+
+
+@router.patch("/me", response_model=UserSchema)
+async def update_current_user_info(
+    payload: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update current user profile (MVP: allow updating name only)."""
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # MVP: only name is editable from the app UI.
+    if payload.name is not None:
+        name = payload.name.strip()
+        if not name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="name must not be empty",
+            )
+        user.name = name
+
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 @router.get("/me/stats", response_model=UserStatsResponse)

@@ -4,17 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../scenario_selection/scenario_selection_screen.dart';
 import '../review/review_screen.dart';
 import '../profile/profile_screen.dart';
+import 'main_tab_state.dart';
 
 /// メインのボトムナビゲーション付きシェル画面
-class MainShellScreen extends ConsumerStatefulWidget {
+class MainShellScreen extends ConsumerWidget {
   const MainShellScreen({super.key});
-
-  @override
-  ConsumerState<MainShellScreen> createState() => _MainShellScreenState();
-}
-
-class _MainShellScreenState extends ConsumerState<MainShellScreen> {
-  int _currentIndex = 0;
 
   final List<Widget> _screens = const [
     ScenarioSelectionScreen(),
@@ -23,10 +17,12 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentIndex = ref.watch(mainTabIndexProvider);
+
     return Scaffold(
       body: IndexedStack(
-        index: _currentIndex,
+        index: currentIndex,
         children: _screens,
       ),
       bottomNavigationBar: Container(
@@ -49,20 +45,20 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
                 _NavItem(
                   icon: Icons.graphic_eq,
                   label: 'Home',
-                  isSelected: _currentIndex == 0,
-                  onTap: () => setState(() => _currentIndex = 0),
+                  isSelected: currentIndex == 0,
+                  onTap: () => ref.read(mainTabIndexProvider.notifier).state = 0,
                 ),
                 _NavItem(
                   icon: Icons.bolt,
                   label: 'Review',
-                  isSelected: _currentIndex == 1,
-                  onTap: () => setState(() => _currentIndex = 1),
+                  isSelected: currentIndex == 1,
+                  onTap: () => ref.read(mainTabIndexProvider.notifier).state = 1,
                 ),
                 _NavItem(
                   icon: Icons.person_outline,
                   label: 'Profile',
-                  isSelected: _currentIndex == 2,
-                  onTap: () => setState(() => _currentIndex = 2),
+                  isSelected: currentIndex == 2,
+                  onTap: () => ref.read(mainTabIndexProvider.notifier).state = 2,
                 ),
               ],
             ),

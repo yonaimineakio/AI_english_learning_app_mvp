@@ -8,6 +8,7 @@ import '../../shared/services/api_client.dart';
 import '../../shared/services/review_api.dart';
 import '../../shared/services/saved_phrases_api.dart';
 import '../audio/audio_controller.dart';
+import '../main/main_tab_state.dart';
 
 String _formatDateTime(DateTime dt) {
   final y = dt.year;
@@ -76,7 +77,12 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen>
         actions: [
           IconButton(
             tooltip: 'シナリオ選択へ',
-            onPressed: () => context.go('/'),
+            onPressed: () {
+              // When this screen is shown inside `MainShellScreen` (IndexedStack),
+              // switching tabs is not driven by routing. Use the shared tab index.
+              ref.read(mainTabIndexProvider.notifier).state = 0;
+              context.go('/');
+            },
             icon: const Icon(Icons.home),
           ),
         ],
@@ -488,6 +494,18 @@ class _SavedPhrasesTabState extends State<_SavedPhrasesTab> {
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                    if (phrase.scenarioName != null &&
+                        phrase.scenarioName!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        '保存元シナリオ: ${phrase.scenarioName}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],

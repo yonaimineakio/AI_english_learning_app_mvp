@@ -35,6 +35,8 @@ class SessionUiState {
     required this.goalsLabels,
     required this.endPromptReason,
     required this.dismissedGoalsCompletedPrompt,
+    required this.canExtend,
+    required this.extensionOffered,
     this.isLoadingTurn = false,
     this.shouldEndSession = false,
   });
@@ -50,6 +52,8 @@ class SessionUiState {
   final List<String>? goalsLabels; // 各ゴールのラベル（テキスト）
   final String? endPromptReason; // user_intent | goals_completed
   final bool dismissedGoalsCompletedPrompt;
+  final bool canExtend;
+  final bool extensionOffered;
   final bool isLoadingTurn;
   final bool shouldEndSession;
 
@@ -63,6 +67,8 @@ class SessionUiState {
     List<String>? goalsLabels,
     String? endPromptReason,
     bool? dismissedGoalsCompletedPrompt,
+    bool? canExtend,
+    bool? extensionOffered,
     bool? isLoadingTurn,
     bool? shouldEndSession,
   }) {
@@ -79,6 +85,8 @@ class SessionUiState {
       endPromptReason: endPromptReason ?? this.endPromptReason,
       dismissedGoalsCompletedPrompt:
           dismissedGoalsCompletedPrompt ?? this.dismissedGoalsCompletedPrompt,
+      canExtend: canExtend ?? this.canExtend,
+      extensionOffered: extensionOffered ?? this.extensionOffered,
       isLoadingTurn: isLoadingTurn ?? this.isLoadingTurn,
       shouldEndSession: shouldEndSession ?? this.shouldEndSession,
     );
@@ -112,6 +120,8 @@ class SessionController extends AsyncNotifier<SessionUiState> {
       goalsLabels: null,
       endPromptReason: null,
       dismissedGoalsCompletedPrompt: false,
+      canExtend: false,
+      extensionOffered: false,
     );
   }
 
@@ -134,6 +144,10 @@ class SessionController extends AsyncNotifier<SessionUiState> {
       mode: mode,
     );
 
+    final goalsLabels = res.goalsLabels;
+    final goalsTotal =
+        (goalsLabels != null && goalsLabels.isNotEmpty) ? goalsLabels.length : _defaultGoalsTotalForScenario(res.scenario.id);
+
     final messages = <MessageItem>[];
     if (res.initialAiMessage != null &&
         res.initialAiMessage!.trim().isNotEmpty) {
@@ -152,17 +166,19 @@ class SessionController extends AsyncNotifier<SessionUiState> {
         messages: messages,
         roundTarget: res.roundTarget,
         completedRounds: 0,
-        goalsTotal: _defaultGoalsTotalForScenario(res.scenario.id),
+        goalsTotal: goalsTotal,
         goalsAchieved: 0,
-        goalsStatus: _defaultGoalsTotalForScenario(res.scenario.id) == null
+        goalsStatus: goalsTotal == null
             ? null
             : List<int>.filled(
-                _defaultGoalsTotalForScenario(res.scenario.id)!,
+                goalsTotal,
                 0,
               ),
-        goalsLabels: null, // 最初のターンでAPIから取得
+        goalsLabels: goalsLabels, // start時点でAPIから取得
         endPromptReason: null,
         dismissedGoalsCompletedPrompt: false,
+        canExtend: false,
+        extensionOffered: false,
       ),
     );
 
@@ -205,6 +221,24 @@ class SessionController extends AsyncNotifier<SessionUiState> {
       final shouldPrompt = turn.shouldEndSession &&
           !(isGoalsCompletedReason && current.dismissedGoalsCompletedPrompt);
 
+      // Keep goals monotonic: once achieved, never revert to 0 during the session UI.
+      List<int>? mergedGoalsStatus;
+      if (turn.goalsStatus != null && current.goalsStatus != null) {
+        final a = current.goalsStatus!;
+        final b = turn.goalsStatus!;
+        final n = a.length > b.length ? a.length : b.length;
+        mergedGoalsStatus = List<int>.generate(n, (i) {
+          final av = i < a.length ? a[i] : 0;
+          final bv = i < b.length ? b[i] : 0;
+          return (av == 1 || bv == 1) ? 1 : 0;
+        });
+      } else {
+        mergedGoalsStatus = turn.goalsStatus ?? current.goalsStatus;
+      }
+      final mergedGoalsAchieved = mergedGoalsStatus == null
+          ? (turn.goalsAchieved ?? current.goalsAchieved)
+          : mergedGoalsStatus.where((v) => v == 1).length;
+
       state = AsyncData(
         current.copyWith(
           messages: newMessages,
@@ -214,9 +248,12 @@ class SessionController extends AsyncNotifier<SessionUiState> {
               current.completedRounds ??
               turn.roundIndex,
           goalsTotal: turn.goalsTotal ?? current.goalsTotal,
-          goalsAchieved: turn.goalsAchieved ?? current.goalsAchieved,
-          goalsStatus: turn.goalsStatus ?? current.goalsStatus,
+          goalsAchieved: mergedGoalsAchieved,
+          goalsStatus: mergedGoalsStatus,
           goalsLabels: turn.goalsLabels ?? current.goalsLabels,
+          canExtend: turn.sessionStatus?.canExtend ?? current.canExtend,
+          extensionOffered:
+              turn.sessionStatus?.extensionOffered ?? current.extensionOffered,
           shouldEndSession: shouldPrompt,
           endPromptReason: nextReason,
         ),
@@ -238,6 +275,24 @@ class SessionController extends AsyncNotifier<SessionUiState> {
       throw StateError('No active session to end');
     }
     return _api.endSession(sessionId: current.sessionId);
+  }
+
+  Future<void> extendCurrentSession() async {
+    final current = state.valueOrNull;
+    if (current == null) {
+      throw StateError('No active session to extend');
+    }
+    final status = await _api.extendSession(sessionId: current.sessionId);
+    state = AsyncData(
+      current.copyWith(
+        roundTarget: status.roundTarget,
+        completedRounds: status.completedRounds,
+        canExtend: status.canExtend,
+        extensionOffered: status.extensionOffered,
+        shouldEndSession: false,
+        endPromptReason: null,
+      ),
+    );
   }
 
   /// 「終了提案」モーダルを閉じて会話を継続したいときに呼ぶ。

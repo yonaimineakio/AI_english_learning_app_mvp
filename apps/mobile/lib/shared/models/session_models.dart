@@ -32,6 +32,7 @@ class SessionStartResponseModel {
     required this.difficulty,
     required this.mode,
     this.initialAiMessage,
+    this.goalsLabels,
   });
 
   final int sessionId;
@@ -40,6 +41,7 @@ class SessionStartResponseModel {
   final String difficulty;
   final String mode;
   final String? initialAiMessage;
+  final List<String>? goalsLabels; // APIから取得したゴールラベル
 
   factory SessionStartResponseModel.fromJson(Map<String, dynamic> json) {
     return SessionStartResponseModel(
@@ -49,6 +51,9 @@ class SessionStartResponseModel {
       difficulty: json['difficulty'] as String,
       mode: json['mode'] as String,
       initialAiMessage: json['initial_ai_message'] as String?,
+      goalsLabels: (json['goals_labels'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
     );
   }
 }

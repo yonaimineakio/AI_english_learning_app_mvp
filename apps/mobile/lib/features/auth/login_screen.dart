@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'auth_providers.dart';
+import '../../config/app_config.dart';
 
 class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});
@@ -30,20 +31,18 @@ class LoginScreen extends ConsumerWidget {
             }
             return ElevatedButton(
               onPressed: () async {
-                final notifier =
-                    ref.read(authStateProvider.notifier);
-                final newState = await notifier.loginWithMock();
-
-                // placement_completed_at が無い場合はレベルテストへ、
-                // ある場合はシナリオ選択へ遷移
-                if (!context.mounted) return;
-                if (newState.placementCompletedAt == null) {
-                  context.go('/placement');
-                } else {
-                  context.go('/');
+                final url = Uri.parse('${AppConfig.apiBaseUrl}/auth/login');
+                final ok = await launchUrl(
+                  url,
+                  mode: LaunchMode.externalApplication,
+                );
+                if (!ok && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to open: $url')),
+                  );
                 }
               },
-              child: const Text('Login as demo user'),
+              child: const Text('Login with Google'),
             );
           },
           loading: () => const CircularProgressIndicator(),

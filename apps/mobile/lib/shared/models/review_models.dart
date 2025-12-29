@@ -45,6 +45,8 @@ class SavedPhraseModel {
     this.originalInput,
     this.sessionId,
     this.roundIndex,
+    this.scenarioId,
+    this.scenarioName,
     this.convertedToReviewId,
     required this.createdAt,
   });
@@ -56,6 +58,8 @@ class SavedPhraseModel {
   final String? originalInput;
   final int? sessionId;
   final int? roundIndex;
+  final int? scenarioId;
+  final String? scenarioName;
   final int? convertedToReviewId;
   final DateTime createdAt;
 
@@ -68,6 +72,8 @@ class SavedPhraseModel {
       originalInput: json['original_input'] as String?,
       sessionId: json['session_id'] as int?,
       roundIndex: json['round_index'] as int?,
+      scenarioId: json['scenario_id'] as int?,
+      scenarioName: json['scenario_name'] as String?,
       convertedToReviewId: json['converted_to_review_id'] as int?,
       createdAt: DateTime.parse(json['created_at'] as String),
     );

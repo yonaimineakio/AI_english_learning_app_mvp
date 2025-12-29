@@ -38,6 +38,19 @@ class AuthApi {
     );
   }
 
+  Future<UserModel> updateMe({required String name}) async {
+    final Response<dynamic> res = await _client.postJson(
+      '/auth/me',
+      data: {
+        'name': name,
+      },
+      options: Options(method: 'PATCH'),
+    );
+    return UserModel.fromJson(
+      Map<String, dynamic>.from(res.data as Map),
+    );
+  }
+
   Future<UserStatsModel> getUserStats() async {
     final Response<dynamic> res = await _client.getJson('/auth/me/stats');
     return UserStatsModel.fromJson(

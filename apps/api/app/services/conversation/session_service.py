@@ -171,6 +171,7 @@ class SessionService:
             )
 
             initial_message = self._get_initial_message(scenario)
+            goals_labels = get_goals_for_scenario(scenario.id)
 
             return SessionStartResponse(
                 session_id=db_session.id,
@@ -179,6 +180,7 @@ class SessionService:
                 difficulty=self._to_str(db_session.difficulty),
                 mode=self._to_str(db_session.mode),
                 initial_ai_message=initial_message,
+                goals_labels=goals_labels,
             )
             
         except Exception as e:
@@ -288,12 +290,17 @@ class SessionService:
             goals_total, goals_achieved, goals_status = await self._calculate_goal_progress(session)
 
             goals_completed = goals_total > 0 and goals_achieved == goals_total
-            suggest_end = bool(conversation_result.should_end_session) or goals_completed
+            round_limit_reached = session.completed_rounds >= session.round_target
+            # NOTE: should_end_session は「終了提案」フラグ。実際の終了はクライアントが
+            # /sessions/{id}/end を呼んだときにのみ行う（ユーザー承認が必要）。
+            suggest_end = bool(conversation_result.should_end_session) or goals_completed or round_limit_reached
             end_prompt_reason: str | None
             if conversation_result.should_end_session:
                 end_prompt_reason = "user_intent"
             elif goals_completed:
                 end_prompt_reason = "goals_completed"
+            elif round_limit_reached:
+                end_prompt_reason = "round_limit"
             else:
                 end_prompt_reason = None
 

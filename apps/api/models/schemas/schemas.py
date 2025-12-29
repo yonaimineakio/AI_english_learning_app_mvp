@@ -314,6 +314,8 @@ class SessionStartResponse(BaseModel):
     mode: Literal["quick", "standard", "deep", "custom"]
     # セッション開始時に表示するシナリオ別の初期AIメッセージ（任意）
     initial_ai_message: Optional[str] = None
+    # 各ゴールのラベル（テキスト）
+    goals_labels: Optional[List[str]] = None
 
 
 class SessionStatusResponse(BaseModel):
@@ -353,7 +355,12 @@ class TurnResponse(BaseModel):
     session_status: Optional[SessionStatusResponse] = None
     should_end_session: Optional[bool] = False
     # 終了提案の理由（UIで文言や再表示制御に使う）
-    end_prompt_reason: Optional[Literal["user_intent", "goals_completed"]] = None
+    # - user_intent: ユーザーが終了意図を示した
+    # - goals_completed: 学習ゴール達成
+    # - round_limit: ラウンド上限に到達（+3延長提示）
+    end_prompt_reason: Optional[
+        Literal["user_intent", "goals_completed", "round_limit"]
+    ] = None
     # 学習ゴール達成率（達成率判定機能用）
     goals_total: Optional[int] = None
     goals_achieved: Optional[int] = None
@@ -400,6 +407,8 @@ class SavedPhrase(SavedPhraseBase):
     user_id: int
     session_id: Optional[int] = None
     round_index: Optional[int] = None
+    scenario_id: Optional[int] = None
+    scenario_name: Optional[str] = None
     converted_to_review_id: Optional[int] = None
     created_at: datetime
 
