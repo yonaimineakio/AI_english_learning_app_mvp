@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../shared/models/scenario_static.dart';
 import '../auth/auth_providers.dart';
+import '../paywall/pro_status_provider.dart';
 import '../session/session_controller.dart';
 import '../home/streak_widget.dart';
 
@@ -13,6 +14,7 @@ class ScenarioSelectionScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authStateProvider);
+    final pro = ref.watch(proStatusProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -22,11 +24,18 @@ class ScenarioSelectionScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (authState) {
-          final level = authState.placementCompletedAt == null
+          final isPro = pro.valueOrNull ?? false;
+
+          // Free: 固定3シナリオのみ（placementなし）
+          // Pro : placement結果に応じて難易度フィルタ（現状は仮実装）
+          final level = (!isPro || authState.placementCompletedAt == null)
               ? null
               : 'intermediate'; // TODO: 実際のplacement_levelをUserModelから保持
 
           final scenarios = kScenarioList.where((s) {
+            if (!isPro) {
+              return kFreeScenarioIds.contains(s.id);
+            }
             if (level == null) return true;
             if (level == 'beginner') {
               return s.difficulty == 'beginner';
@@ -41,6 +50,32 @@ class ScenarioSelectionScreen extends ConsumerWidget {
           return Column(
             children: [
               const StreakWidget(),
+              if (!isPro)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Card(
+                    color: Colors.blue.shade50,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Icon(Icons.lock_outline, color: Colors.blue.shade600),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Freeプランでは利用できるシナリオは3つのみです。Proで全シナリオ・復習機能が解放されます。',
+                              style: TextStyle(color: Colors.blue.shade800),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => context.push('/paywall'),
+                            child: const Text('Proへ'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(vertical: 16),

@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+FREE_SCENARIO_IDS = {1, 2, 3}
+
 
 @router.post("/start", response_model=SessionStartResponse)
 async def start_session(
@@ -28,6 +30,14 @@ async def start_session(
 ):
     """セッションを開始する"""
     try:
+        # Free users are limited to fixed 3 scenarios.
+        # Pro users (including trial) have no restriction here.
+        if not getattr(current_user, "is_pro", False):
+            if session_data.scenario_id not in FREE_SCENARIO_IDS:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="This scenario is available for Pro users only",
+                )
         
         session_service = SessionService(db)
         result = session_service.start_session(current_user.id, session_data)

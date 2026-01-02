@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user, get_db
+from app.core.deps import get_db, require_pro_user
 from app.services.review.review_service import ReviewService
 from app.services.review.review_question_service import ReviewQuestionService
 from models.database.models import User, ReviewItem as ReviewItemModel
@@ -34,7 +34,7 @@ def _get_cache_key(user_id: int, review_id: int) -> str:
 
 @router.get("/next", response_model=ReviewNextResponse)
 def get_next_reviews(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_pro_user),
     db: Session = Depends(get_db),
 ):
     service = ReviewService(db)
@@ -45,7 +45,7 @@ def get_next_reviews(
 
 @router.get("/stats", response_model=ReviewStatsResponse)
 def get_review_stats(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_pro_user),
     db: Session = Depends(get_db),
 ):
     """累計の復習完了率を取得する"""
@@ -62,7 +62,7 @@ def get_review_stats(
 def complete_review(
     review_id: int,
     payload: ReviewCompleteRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_pro_user),
     db: Session = Depends(get_db),
 ):
     service = ReviewService(db)
@@ -77,7 +77,7 @@ def complete_review(
 @router.get("/{review_id}/questions", response_model=ReviewQuestionsResponse)
 async def get_review_questions(
     review_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_pro_user),
     db: Session = Depends(get_db),
 ):
     """復習アイテムに対するスピーキング・リスニング問題を生成する"""
@@ -151,7 +151,7 @@ async def get_review_questions(
 def evaluate_review(
     review_id: int,
     payload: ReviewEvaluateRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_pro_user),
     db: Session = Depends(get_db),
 ):
     """復習の評価を送信する

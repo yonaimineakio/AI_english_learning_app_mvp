@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../auth/auth_providers.dart';
 import '../home/streak_widget.dart';
@@ -140,6 +141,12 @@ class ProfileScreen extends ConsumerWidget {
               _SettingsSection(
                 title: 'アカウント',
                 items: [
+                  _SettingsItem(
+                    icon: Icons.workspace_premium,
+                    label: 'Proにアップグレード',
+                    value: '7日間無料トライアル',
+                    onTap: () => context.push('/paywall'),
+                  ),
                   _SettingsItem(
                     icon: Icons.person_outline,
                     label: 'プロフィール編集',

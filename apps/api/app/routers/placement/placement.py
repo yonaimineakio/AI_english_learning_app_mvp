@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_db, get_current_user
+from app.core.deps import get_db, require_pro_user
 from app.services.review.review_service import ReviewService
 from models.database.models import User
 from models.schemas.schemas import DifficultyLevel
@@ -262,7 +262,7 @@ def _decide_level(score: int) -> DifficultyLevel:
 
 @router.get("/questions")
 async def get_placement_questions(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_pro_user),
 ) -> dict:
     """レベル判定テスト用の全20問を返す."""
     return {
@@ -284,7 +284,7 @@ async def get_placement_questions(
 @router.post("/evaluate-speaking", response_model=EvaluateSpeakingResponse)
 async def evaluate_speaking(
     payload: EvaluateSpeakingRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_pro_user),
 ) -> EvaluateSpeakingResponse:
     """スピーキング問題を評価する（単語レベル一致率）"""
     question = _get_question_by_id(payload.question_id)
@@ -327,7 +327,7 @@ async def evaluate_speaking(
 @router.post("/evaluate-listening", response_model=EvaluateListeningResponse)
 async def evaluate_listening(
     payload: EvaluateListeningRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_pro_user),
 ) -> EvaluateListeningResponse:
     """リスニング問題を評価する（単語パズル完全一致）"""
     question = _get_question_by_id(payload.question_id)
@@ -366,7 +366,7 @@ async def evaluate_listening(
 @router.post("/submit")
 async def submit_placement_answers(
     payload: PlacementSubmitRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_pro_user),
     db: Session = Depends(get_db),
 ) -> dict:
     """レベル判定テストの回答を受け取り、スコアとレベルを決定して保存する。

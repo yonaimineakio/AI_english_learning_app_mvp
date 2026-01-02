@@ -201,4 +201,9 @@ const List<ScenarioSummary> kScenarioList = [
   ),
 ];
 
+/// Freeプランで解放する固定シナリオ（3つ）
+///
+/// - travel / business / daily を1つずつにして、体験の偏りを防ぐ
+const Set<int> kFreeScenarioIds = {1, 2, 3};
+
 

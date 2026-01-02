@@ -5,10 +5,12 @@ import 'config/app_config.dart';
 import 'config/app_theme.dart';
 import 'features/auth/deep_link_listener.dart';
 import 'router/app_router.dart';
+import 'shared/services/revenuecat/revenuecat_initialize.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppConfig.load();
+  await initializeRevenueCat();
   runApp(const ProviderScope(child: AiEnglishLearningApp()));
 }
 

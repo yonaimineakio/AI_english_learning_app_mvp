@@ -90,3 +90,13 @@ async def get_current_user_optional(
 def require_auth(user: User = Depends(get_current_user)) -> User:
     """Require authentication (used for endpoints that need auth)"""
     return user
+
+
+def require_pro_user(user: User = Depends(get_current_user)) -> User:
+    """Require Pro subscription (MVP: users.is_pro flag)."""
+    if not getattr(user, "is_pro", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Pro subscription is required",
+        )
+    return user

@@ -9,6 +9,7 @@ import '../../shared/services/review_api.dart';
 import '../../shared/services/saved_phrases_api.dart';
 import '../audio/audio_controller.dart';
 import '../main/main_tab_state.dart';
+import '../paywall/pro_status_provider.dart';
 
 String _formatDateTime(DateTime dt) {
   final y = dt.year;
@@ -69,6 +70,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen>
 
   @override
   Widget build(BuildContext context) {
+    final pro = ref.watch(proStatusProvider);
     final asyncStats = ref.watch(_reviewStatsProvider);
 
     return Scaffold(
@@ -94,31 +96,67 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen>
           ],
         ),
       ),
-      body: Column(
-        children: [
-          // 統計表示
-          asyncStats.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, _) => Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text('統計取得エラー: $e'),
-            ),
-            data: (stats) => _buildStatsCard(stats),
-          ),
-          // タブコンテンツ
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _TodayReviewTab(ref: ref),
-                _SavedPhrasesTab(ref: ref),
-              ],
-            ),
-          ),
-        ],
+      body: pro.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (isPro) {
+          if (!isPro) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock_outline, size: 64, color: Colors.blue.shade400),
+                    const SizedBox(height: 16),
+                    const Text(
+                      '復習機能はPro限定です',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Proに登録すると、復習クイズと保存した表現の管理が利用できます。',
+                      style: TextStyle(color: Colors.grey.shade700),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => context.push('/paywall'),
+                      child: const Text('Proにアップグレード'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              // 統計表示
+              asyncStats.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (e, _) => Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text('統計取得エラー: $e'),
+                ),
+                data: (stats) => _buildStatsCard(stats),
+              ),
+              // タブコンテンツ
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _TodayReviewTab(ref: ref),
+                    _SavedPhrasesTab(ref: ref),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

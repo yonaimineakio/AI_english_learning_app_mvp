@@ -51,6 +51,7 @@ class User(UserBase):
     current_streak: Optional[int] = None
     longest_streak: Optional[int] = None
     last_activity_date: Optional[date] = None
+    is_pro: Optional[bool] = None
 
 
 class UserStatsResponse(BaseModel):

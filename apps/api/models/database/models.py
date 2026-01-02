@@ -53,6 +53,11 @@ class User(Base):
     # Points fields
     total_points = Column(Integer, default=0)
 
+    # Subscription / plan fields
+    # NOTE: In MVP we gate features using this flag.
+    # Later, this should be synced from RevenueCat (webhook/API) instead of manual updates.
+    is_pro = Column(Boolean, default=False, nullable=False)
+
     # Relationships
     sessions = relationship("Session", back_populates="user")
     review_items = relationship("ReviewItem", back_populates="user")

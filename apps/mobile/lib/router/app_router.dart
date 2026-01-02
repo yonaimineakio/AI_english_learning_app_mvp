@@ -10,9 +10,12 @@ import '../features/session/session_screen.dart';
 import '../features/summary/summary_screen.dart';
 import '../features/review/review_screen.dart';
 import '../features/rankings/rankings_screen.dart';
+import '../features/paywall/paywall_screen.dart';
+import '../features/paywall/pro_status_provider.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authStateProvider);
+  final isPro = ref.watch(proStatusProvider).valueOrNull ?? false;
 
   return GoRouter(
     initialLocation: '/login',
@@ -55,6 +58,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/rankings',
         builder: (context, state) => const RankingsScreen(),
       ),
+      GoRoute(
+        path: '/paywall',
+        builder: (context, state) => const PaywallScreen(),
+      ),
     ],
     redirect: (context, state) {
       final authState = auth.valueOrNull;
@@ -71,13 +78,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/login';
       }
 
-      // ログイン済みかつ placement 未完了 → /placement へ
-      if (isLoggedIn && !hasPlacement && !goingPlacement) {
+      // Proユーザーのみ placement 必須（Freeは placement なし）
+      if (isLoggedIn && isPro && !hasPlacement && !goingPlacement) {
         return '/placement';
       }
 
       // ログイン済みかつ placement 済みで /login or /placement に来た場合 → ホームへ
-      if (isLoggedIn && hasPlacement && (loggingIn || goingPlacement)) {
+      if (isLoggedIn && (loggingIn || goingPlacement) && (!isPro || hasPlacement)) {
         return '/';
       }
 

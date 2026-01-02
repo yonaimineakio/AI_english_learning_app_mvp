@@ -19,25 +19,63 @@ class AppConfig {
   ///   "API_BASE_URL": "http://172.20.10.10:8000/api/v1"
   /// }
   static late final String apiBaseUrl;
+  // RevenueCat API keys / entitlement
+  static late final String revenueCatIosApiKey;
+  static late final String revenueCatAndroidApiKey;
+  static late final String revenueCatEntitlementId;
 
   static Future<void> load() async {
     // 1) JSON (assets) → 2) dart-define → 3) fallback
     String? fromJson;
+    Map<dynamic, dynamic>? decoded;
     try {
       final raw = await rootBundle.loadString('dart_defines.json');
-      final decoded = jsonDecode(raw);
-      if (decoded is Map && decoded['API_BASE_URL'] is String) {
-        fromJson = (decoded['API_BASE_URL'] as String).trim();
-      }
+      decoded = jsonDecode(raw) is Map ? (jsonDecode(raw) as Map) : null;
     } catch (_) {
       // ignore: fallback below
     }
 
     const fromDefine = String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
+    fromJson = (decoded != null && decoded['API_BASE_URL'] is String)
+        ? (decoded['API_BASE_URL'] as String).trim()
+        : null;
     apiBaseUrl = (fromJson != null && fromJson.isNotEmpty)
         ? fromJson
         : (fromDefine.isNotEmpty ? fromDefine : 'http://localhost:8000/api/v1');
+
+    // RevenueCat keys: JSON → dart-define → fallback("")
+    revenueCatIosApiKey = _loadString(
+      decoded,
+      jsonKey: 'REVENUECAT_IOS_API_KEY',
+      defineKey: 'REVENUECAT_IOS_API_KEY',
+    );
+    revenueCatAndroidApiKey = _loadString(
+      decoded,
+      jsonKey: 'REVENUECAT_ANDROID_API_KEY',
+      defineKey: 'REVENUECAT_ANDROID_API_KEY',
+    );
+    revenueCatEntitlementId = _loadString(
+      decoded,
+      jsonKey: 'REVENUECAT_ENTITLEMENT_ID',
+      defineKey: 'REVENUECAT_ENTITLEMENT_ID',
+      fallback: 'AI English Learning Pro',
+    );
+  }
+
+  static String _loadString(
+    Map<dynamic, dynamic>? decoded, {
+    required String jsonKey,
+    required String defineKey,
+    String fallback = '',
+  }) {
+    final fromJson = (decoded != null && decoded[jsonKey] is String)
+        ? (decoded[jsonKey] as String).trim()
+        : '';
+    final fromDefine = String.fromEnvironment(defineKey, defaultValue: '').trim();
+    if (fromJson.isNotEmpty) return fromJson;
+    if (fromDefine.isNotEmpty) return fromDefine;
+    return fallback;
   }
 
   /// API timeout in seconds.

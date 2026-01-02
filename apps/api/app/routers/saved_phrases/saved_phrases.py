@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from app.core.deps import get_current_user, get_db
+from app.core.deps import get_current_user, get_db, require_pro_user
 from models.database.models import (
     User,
     SavedPhrase as SavedPhraseModel,
@@ -194,7 +194,7 @@ def delete_saved_phrase(
 @router.post("/{saved_phrase_id}/convert-to-review", response_model=ConvertToReviewResponse)
 def convert_to_review(
     saved_phrase_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_pro_user),
     db: Session = Depends(get_db),
 ):
     """保存した表現を復習アイテムに変換する"""

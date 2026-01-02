@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # If true, the app ignores DATABASE_URL and connects via cloud-sql-python-connector.
     CLOUD_SQL_USE_CONNECTOR: bool = True
     CLOUD_SQL_CONNECTION_NAME: Optional[str] = None  # "PROJECT_ID:REGION:INSTANCE_ID"
-    CLOUD_SQL_IP_TYPE: str = "private"  # "private" | "public"
+    CLOUD_SQL_IP_TYPE: str = "public"  # "private" | "public"
     CLOUD_SQL_ENABLE_IAM_AUTH: bool = False
     DB_NAME: Optional[str] = None
     DB_USER: Optional[str] = None

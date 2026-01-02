@@ -5,6 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from sqlalchemy.orm import Session
 from app.db.session import engine
 from models.database.models import Base, Scenario, ScenarioCategory, DifficultyLevel
+from app.db.migrations import upgrade_head
 
 
 def _create_initial_scenarios(db: Session) -> None:
@@ -205,8 +206,9 @@ def _ensure_issue27_additional_scenarios(db: Session) -> None:
 
 def init_db() -> None:
     """Initialize database with tables and initial data"""
-    # Create all tables
-    Base.metadata.create_all(bind=engine)
+    # Always prefer Alembic for schema creation/evolution.
+    # `create_all()` does not add missing columns to existing tables.
+    upgrade_head()
 
     # Create database session
     from app.db.session import SessionLocal

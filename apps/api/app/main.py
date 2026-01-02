@@ -13,6 +13,7 @@ from app.routers.saved_phrases import router as saved_phrases_router
 from app.routers.health import router as health_router
 from app.services.ai import initialize_providers
 from app.db.session import close_cloud_sql_connector
+from app.db.migrations import upgrade_head
 
 # ロギング設定を初期化
 setup_logging()
@@ -52,6 +53,14 @@ app.include_router(health_router, tags=["health"])
 @app.on_event("startup")
 async def startup_event():
     logger.info("Application starting up", extra={"environment": settings.ENVIRONMENT})
+    # In dev, apply Alembic migrations automatically to avoid schema drift
+    # (e.g. missing users.is_pro causing login failures).
+    if settings.DEBUG:
+        try:
+            upgrade_head()
+        except Exception:
+            logger.exception("Database migration on startup failed")
+            raise
     initialize_providers()
     logger.info("AI providers initialized")
 
