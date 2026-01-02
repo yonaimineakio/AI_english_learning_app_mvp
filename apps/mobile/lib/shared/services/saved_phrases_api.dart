@@ -44,6 +44,22 @@ class SavedPhrasesApi {
     await _client.deleteJson('/saved-phrases/$phraseId');
   }
 
+  /// 保存した表現を復習アイテムに変換する
+  ///
+  /// - API: POST /saved-phrases/{id}/convert-to-review
+  /// - 変換済みの場合は 409 が返る想定
+  Future<ConvertToReviewResponseModel> convertToReview({
+    required int savedPhraseId,
+  }) async {
+    final Response<dynamic> res = await _client.postJson(
+      '/saved-phrases/$savedPhraseId/convert-to-review',
+      data: const <String, dynamic>{},
+    );
+    return ConvertToReviewResponseModel.fromJson(
+      Map<String, dynamic>.from(res.data as Map),
+    );
+  }
+
   /// 特定のセッションラウンドの改善文が保存済みかチェックする
   Future<SavedPhraseCheckResponseModel> checkSavedPhrase({
     required int sessionId,

@@ -344,6 +344,37 @@ class _SavedPhrasesTab extends StatefulWidget {
 class _SavedPhrasesTabState extends State<_SavedPhrasesTab> {
   int? _processingPhraseId;
 
+  Future<void> _convertToReview(int savedPhraseId) async {
+    setState(() {
+      _processingPhraseId = savedPhraseId;
+    });
+
+    try {
+      final api = widget.ref.read(_savedPhrasesApiProvider);
+      await api.convertToReview(savedPhraseId: savedPhraseId);
+      widget.ref.invalidate(_savedPhrasesProvider);
+      widget.ref.invalidate(_reviewItemsProvider);
+      widget.ref.invalidate(_reviewStatsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('復習問題に追加しました（翌日以降に出題されます）')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('復習への変換に失敗しました: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _processingPhraseId = null;
+        });
+      }
+    }
+  }
+
   Future<void> _deletePhrase(int phraseId) async {
     setState(() {
       _processingPhraseId = phraseId;
@@ -466,6 +497,7 @@ class _SavedPhrasesTabState extends State<_SavedPhrasesTab> {
           itemBuilder: (context, index) {
             final phrase = data.savedPhrases[index];
             final isProcessing = _processingPhraseId == phrase.id;
+            final isConverted = phrase.convertedToReviewId != null;
 
             return Card(
               margin: const EdgeInsets.all(12),
@@ -474,12 +506,40 @@ class _SavedPhrasesTabState extends State<_SavedPhrasesTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      phrase.phrase,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            phrase.phrase,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isConverted
+                                ? Colors.green.shade100
+                                : Colors.blue.shade100,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            isConverted ? '復習済み' : '未復習',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color:
+                                  isConverted ? Colors.green : Colors.blue,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -520,6 +580,25 @@ class _SavedPhrasesTabState extends State<_SavedPhrasesTab> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
+                        if (!isConverted) ...[
+                          ElevatedButton.icon(
+                            onPressed: isProcessing
+                                ? null
+                                : () => _showConfirmDialog(
+                                      title: '復習問題に追加',
+                                      message:
+                                          'この表現を復習問題に追加しますか？追加すると翌日以降の復習に出題されます。',
+                                      confirmLabel: '追加する',
+                                      onConfirm: () => _convertToReview(phrase.id),
+                                    ),
+                            icon: const Icon(Icons.playlist_add, size: 16),
+                            label: Text(
+                              isProcessing ? '追加中...' : '復習問題にする',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         OutlinedButton.icon(
                           onPressed: isProcessing
                               ? null

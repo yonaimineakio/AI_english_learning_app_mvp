@@ -101,6 +101,26 @@ class SavedPhrasesListResponseModel {
   }
 }
 
+/// 保存した表現 -> 復習アイテム変換レスポンス
+class ConvertToReviewResponseModel {
+  const ConvertToReviewResponseModel({
+    required this.savedPhraseId,
+    required this.reviewItem,
+  });
+
+  final int savedPhraseId;
+  final ReviewItemModel reviewItem;
+
+  factory ConvertToReviewResponseModel.fromJson(Map<String, dynamic> json) {
+    return ConvertToReviewResponseModel(
+      savedPhraseId: json['saved_phrase_id'] as int,
+      reviewItem: ReviewItemModel.fromJson(
+        Map<String, dynamic>.from(json['review_item'] as Map),
+      ),
+    );
+  }
+}
+
 /// 保存済みチェックのレスポンス
 class SavedPhraseCheckResponseModel {
   const SavedPhraseCheckResponseModel({

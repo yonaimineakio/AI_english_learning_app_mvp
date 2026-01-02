@@ -29,6 +29,7 @@ dependencies = [
     "email-validator>=2.1.0",
     "python-json-logger>=2.0.7",
     "groq>=1.0.0",
+    "cloud-sql-python-connector[pymysql]>=1.19.0",
 ]
 
 [project.optional-dependencies]

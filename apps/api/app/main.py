@@ -10,7 +10,9 @@ from app.routers.audio import router as audio_router
 from app.routers.placement import router as placement_router
 from app.routers.rankings import router as rankings_router
 from app.routers.saved_phrases import router as saved_phrases_router
+from app.routers.health import router as health_router
 from app.services.ai import initialize_providers
+from app.db.session import close_cloud_sql_connector
 
 # ロギング設定を初期化
 setup_logging()
@@ -44,6 +46,7 @@ app.include_router(audio_router, prefix=f"{settings.API_V1_STR}/audio", tags=["a
 app.include_router(placement_router, prefix=f"{settings.API_V1_STR}/placement")
 app.include_router(rankings_router, prefix=f"{settings.API_V1_STR}", tags=["rankings"])
 app.include_router(saved_phrases_router, prefix=f"{settings.API_V1_STR}/saved-phrases", tags=["saved-phrases"])
+app.include_router(health_router, tags=["health"])
 
 
 @app.on_event("startup")
@@ -53,21 +56,18 @@ async def startup_event():
     logger.info("AI providers initialized")
 
 
+@app.on_event("shutdown")
+async def shutdown_event():
+    # Ensure Cloud SQL Python Connector is closed (if used).
+    close_cloud_sql_connector()
+
+
 @app.get("/")
 async def root():
     return {
         "message": "AI English Learning App API",
         "version": "1.0.0",
         "docs": "/docs"
-    }
-
-
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "service": "ai-english-learning-api",
-        "version": "1.0.0"
     }
 
 

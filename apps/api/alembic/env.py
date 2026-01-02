@@ -1,6 +1,7 @@
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
+from sqlalchemy import create_engine
 from alembic import context
 import os
 import sys
@@ -8,8 +9,7 @@ import sys
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.db.base import Base
-from models.database.models import *  # Import all models
+from models.database import models as db_models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -22,7 +22,65 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-target_metadata = Base.metadata
+target_metadata = db_models.Base.metadata
+
+# Prefer DATABASE_URL from environment (Cloud Run / CI) over alembic.ini default.
+_env_db_url = os.getenv("DATABASE_URL")
+if _env_db_url:
+    config.set_main_option("sqlalchemy.url", _env_db_url)
+
+def _env_bool(name: str, default: str = "false") -> bool:
+    return (os.getenv(name, default) or default).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _build_cloud_sql_connector_engine():
+    """
+    Build SQLAlchemy engine using cloud-sql-python-connector for Alembic.
+
+    This enables running `alembic upgrade head` against Cloud SQL without a unix-socket DATABASE_URL.
+    """
+    from google.cloud.sql.connector import Connector, IPTypes  # type: ignore
+    try:
+        import pymysql  # type: ignore[import-not-found]  # noqa: F401
+    except ImportError as e:  # pragma: no cover
+        raise RuntimeError("PyMySQL is required for Cloud SQL connector migrations") from e
+
+    connection_name = os.getenv("CLOUD_SQL_CONNECTION_NAME")
+    db_name = os.getenv("DB_NAME")
+    db_user = os.getenv("DB_USER")
+    db_password = os.getenv("DB_PASSWORD")
+
+    if not connection_name or not db_name or not db_user:
+        raise RuntimeError(
+            "Missing required env vars for Cloud SQL connector migrations: "
+            "CLOUD_SQL_CONNECTION_NAME, DB_NAME, DB_USER"
+        )
+
+    ip_type_raw = (os.getenv("CLOUD_SQL_IP_TYPE", "private") or "private").strip().lower()
+    ip_type = IPTypes.PRIVATE if ip_type_raw == "private" else IPTypes.PUBLIC
+    enable_iam_auth = _env_bool("CLOUD_SQL_ENABLE_IAM_AUTH", "false")
+
+    connector = Connector()
+
+    def getconn():
+        return connector.connect(
+            connection_name,
+            "pymysql",
+            user=db_user,
+            password=db_password,
+            db=db_name,
+            enable_iam_auth=enable_iam_auth,
+            ip_type=ip_type,
+        )
+
+    engine = create_engine(
+        "mysql+pymysql://",
+        creator=getconn,
+        poolclass=pool.NullPool,
+    )
+
+    return engine, connector
+
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -61,19 +119,25 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
-
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
+    connector = None
+    if _env_bool("CLOUD_SQL_USE_CONNECTOR", "false"):
+        connectable, connector = _build_cloud_sql_connector_engine()
+    else:
+        connectable = engine_from_config(
+            config.get_section(config.config_ini_section, {}),
+            prefix="sqlalchemy.",
+            poolclass=pool.NullPool,
         )
 
-        with context.begin_transaction():
-            context.run_migrations()
+    try:
+        with connectable.connect() as connection:
+            context.configure(connection=connection, target_metadata=target_metadata)
+
+            with context.begin_transaction():
+                context.run_migrations()
+    finally:
+        if connector is not None:
+            connector.close()
 
 
 if context.is_offline_mode():
