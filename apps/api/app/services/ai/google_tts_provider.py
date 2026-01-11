@@ -2,33 +2,32 @@ from __future__ import annotations
 
 import os
 import time
+import logging
 from typing import Optional
 
 from google.api_core import exceptions as google_exceptions
 from google.cloud import texttospeech
 
-from app.core.config import settings
-from app.core.logging_config import get_logger
 from app.core.cost_tracker import calculate_google_tts_cost
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class GoogleTTSProvider:
     """Google Cloud Text-to-Speech provider."""
 
     def __init__(self) -> None:
-        credentials_path = settings.GOOGLE_APPLICATION_CREDENTIALS or os.environ.get(
-            "GOOGLE_APPLICATION_CREDENTIALS"
-        )
+        # credentials_path = settings.GOOGLE_APPLICATION_CREDENTIALS or os.environ.get(
+        #     "GOOGLE_APPLICATION_CREDENTIALS"
+        # )
 
-        if not credentials_path:
-            raise ValueError("Google Cloud認証情報が設定されていません")
+        # if not credentials_path:
+        #     raise ValueError("Google Cloud認証情報が設定されていません")
 
-        if settings.GOOGLE_APPLICATION_CREDENTIALS:
-            os.environ.setdefault(
-                "GOOGLE_APPLICATION_CREDENTIALS", settings.GOOGLE_APPLICATION_CREDENTIALS
-            )
+        # if settings.GOOGLE_APPLICATION_CREDENTIALS:
+        #     os.environ.setdefault(
+        #         "GOOGLE_APPLICATION_CREDENTIALS", settings.GOOGLE_APPLICATION_CREDENTIALS
+        #     )
 
         try:
             self._client = texttospeech.TextToSpeechClient()
@@ -103,5 +102,3 @@ class GoogleTTSProvider:
         close_method = getattr(self._client, "close", None)
         if callable(close_method):
             close_method()
-
-

@@ -236,6 +236,7 @@ class ConversationProvider(Protocol):
 def initialize_providers() -> None:
     AIProviderRegistry.register("mock", MockConversationProvider)
     AIProviderRegistry.register("openai", OpenAIConversationProvider)
+    AIProviderRegistry.register("groq", GroqConversationProvider)
     AIProviderRegistry.set_default(settings.AI_PROVIDER_DEFAULT)
 
 # 使用側
@@ -246,10 +247,17 @@ async def generate_conversation_response(..., provider_name: str | None = None):
 ```
 
 **メリット：**
-- ✅ 複数のAIプロバイダー（OpenAI、Claude、Geminiなど）に対応可能
+- ✅ 複数のAIプロバイダー（OpenAI、Groq、Claude、Geminiなど）に対応可能
 - ✅ 開発時はMockプロバイダーでオフライン開発
-- ✅ 本番環境では環境変数で切り替え
+- ✅ 本番環境では環境変数で切り替え（`AI_PROVIDER_DEFAULT=openai` または `groq`）
 - ✅ プロバイダー追加時も既存コードに影響なし（Open/Closed Principle）
+
+**現在対応しているプロバイダー：**
+| プロバイダー | クラス | 用途 |
+|-------------|--------|------|
+| mock | `MockConversationProvider` | 開発・テスト用（オフライン） |
+| openai | `OpenAIConversationProvider` | 本番（GPT-4o, GPT-4o-mini等） |
+| groq | `GroqConversationProvider` | 本番（Llama 3.1, Mixtral等、高速推論） |
 
 ---
 
@@ -289,10 +297,40 @@ async def start_session(
 
 ```
 prompts/
+  ├── conversation_system.py        # 共通会話システム
+  ├── goal_progress_evaluation.py   # ゴール達成度評価
+  ├── scenario_goals.py             # シナリオ別ゴール定義
+  │
+  ├── # Travel シナリオ
   ├── airport_checkin.py
-  ├── business_meeting.py
+  ├── hotel_checkin.py
+  ├── immigration_customs.py
   ├── restaurant_ordering.py
-  └── goal_progress_evaluation.py
+  ├── best_vacation.py
+  ├── guide_japan.py
+  ├── travel_planning_friend.py
+  │
+  ├── # Business シナリオ
+  ├── business_meeting.py
+  ├── schedule_meeting.py
+  ├── reschedule_meeting.py
+  ├── run_meeting.py
+  ├── online_negotiation.py
+  ├── contract_negotiation_detail.py
+  ├── customer_survey_presentation.py
+  ├── apologize_delay.py
+  ├── sick_leave.py
+  │
+  ├── # Daily シナリオ
+  ├── cafe_small_talk.py
+  ├── park_small_talk.py
+  ├── customer_service.py
+  ├── show_tickets.py
+  ├── lost_wallet_police.py
+  │
+  └── # 復習問題生成
+  ├── review_speaking_question.py
+  └── review_listening_question.py
 ```
 
 **メリット：**
@@ -625,6 +663,7 @@ except ValueError as e:
 | 日付 | 変更内容 |
 |------|---------|
 | 2025-11-22 | 初版作成（v1.0.0 MVP時点） |
+| 2026-01-11 | Groqプロバイダー追加、プロンプト一覧更新 |
 
 ---
 

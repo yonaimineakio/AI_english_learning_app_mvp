@@ -165,10 +165,10 @@ packages:
     dependency: transitive
     description:
       name: equatable
-      sha256: "567c64b3cb4cf82397aac55f4f0cbd3ca20d77c6c03bedbc4ceaddc08904aef7"
+      sha256: "3e0141505477fd8ad55d6eb4e7776d3fe8430be8e497ccb1521370c3f21a3e2b"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.7"
+    version: "2.0.8"
   fake_async:
     dependency: transitive
     description:
@@ -181,10 +181,10 @@ packages:
     dependency: transitive
     description:
       name: ffi
-      sha256: "289279317b4b16eb2bb7e271abccd4bf84ec9bdcbe999e278a94b804f5630418"
+      sha256: d07d37192dbf97461359c1518788f203b0c9102cfd2c35a716b823741219542c
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.4"
+    version: "2.1.5"
   file:
     dependency: transitive
     description:
@@ -412,18 +412,18 @@ packages:
     dependency: "direct main"
     description:
       name: purchases_flutter
-      sha256: "0a8ce3855dacb8c28e1e8de99cfe5592be2cb350c1210259d6fa4d9d0b152f89"
+      sha256: "29f3469d6c97061795dad1d70b180a70e79e9c54593107e5e7f7db50a749aa8b"
       url: "https://pub.dev"
     source: hosted
-    version: "9.10.2"
+    version: "9.10.4"
   purchases_ui_flutter:
     dependency: "direct main"
     description:
       name: purchases_ui_flutter
-      sha256: cb9eac034536fa2c62beb0c4a9e921a09e505ee7fbe304370a6764044ed9aef2
+      sha256: "80f8385ff0565532106b7b8979541f0272af06d6f2e35d3ef48d1e6cc2a7c871"
       url: "https://pub.dev"
     source: hosted
-    version: "9.10.2"
+    version: "9.10.4"
   record:
     dependency: "direct main"
     description:

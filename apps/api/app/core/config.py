@@ -1,6 +1,5 @@
 from pydantic_settings import BaseSettings
 from typing import Optional, List
-import os
 from pathlib import Path
 
 
@@ -41,36 +40,33 @@ class Settings(BaseSettings):
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
-        "http://localhost:8000",
         "http://localhost",        # iOS Simulator
-        "http://172.20.10.10:8000",  # Flutter app (Mac IP)
-        "http://192.168.11.7:8000",  # Flutter app (previous Mac IP)
+        "http://172.20.10.10:3000",  # Flutter app (iPhone IP)
+        "http://192.168.11.7:3000",  # Flutter app (previous Mac IP)
     ]
     
     # AI Service
-    OPENAI_API_KEY: Optional[str] = None
-    OPENAI_MODEL_NAME: str = "gpt-4o-mini"
-    OPENAI_CHAT_COMPLETIONS_URL: Optional[str] = None
+    OPENAI_API_KEY: str = "sk-proj-1234567890"
+    OPENAI_MODEL_NAME: str = "gpt-5-mini"
+    OPENAI_CHAT_COMPLETIONS_URL: str = "https://api.openai.com/v1/responses"
 
-    GROQ_API_KEY: Optional[str] = None
-    GROQ_CHAT_COMPLETIONS_URL: Optional[str] = None
+    GROQ_API_KEY: str = "grk_1234567890"
+    GROQ_CHAT_COMPLETIONS_URL: str = "https://api.groq.com/openai/v1/chat/completions"
     GROQ_MODEL_NAME: str = "openai/gpt-oss-120b"
-    AI_PROVIDER_DEFAULT: str = "mock"
+    AI_PROVIDER_DEFAULT: str = "openai"
 
     # Google Cloud Speech-to-Text
     GOOGLE_CLOUD_PROJECT_ID: str = "ai-english-learning-452516"
-    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
     GOOGLE_SPEECH_API_ENDPOINT: str = "https://speech.googleapis.com/v1/speech:recognize"
     # Google Cloud Text-to-Speech
     GOOGLE_TTS_LANGUAGE: str = "en-US"
     GOOGLE_TTS_VOICE: Optional[str] = None
     GOOGLE_TTS_SPEAKING_RATE: float = 1.0
-    
-    # Timezone
-    TIMEZONE: str = "Asia/Tokyo"
+
+    REVENUECAT_SECRET_KEY: Optional[str] = None
     
     # Debug
-    DEBUG: bool = True
+    DEBUG: bool = False
     
     class Config:
         # .envファイルのパスを絶対パスで指定

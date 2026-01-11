@@ -7,10 +7,12 @@ import '../../shared/models/user_model.dart';
 import '../../shared/models/placement_models.dart';
 import '../../shared/services/api_client.dart';
 import '../../shared/services/auth_api.dart';
+import '../../shared/services/revenuecat/revenuecat_client.dart';
 
 class AuthState {
   const AuthState({
     required this.isLoggedIn,
+    this.userId,
     this.token,
     this.userName,
     this.email,
@@ -18,6 +20,7 @@ class AuthState {
   });
 
   final bool isLoggedIn;
+  final int? userId;
   final String? token;
   final String? userName;
   final String? email;
@@ -25,6 +28,7 @@ class AuthState {
 
   AuthState copyWith({
     bool? isLoggedIn,
+    int? userId,
     String? token,
     String? userName,
     String? email,
@@ -32,6 +36,7 @@ class AuthState {
   }) {
     return AuthState(
       isLoggedIn: isLoggedIn ?? this.isLoggedIn,
+      userId: userId ?? this.userId,
       token: token ?? this.token,
       userName: userName ?? this.userName,
       email: email ?? this.email,
@@ -70,8 +75,12 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       // /auth/me でユーザー情報を取得
       final UserModel me = await _authApi.getMe();
 
+      // RevenueCat にユーザーIDを紐付ける
+      await const RevenueCatClient().loginUser(me.id.toString());
+
       final newState = AuthState(
         isLoggedIn: true,
+        userId: me.id,
         token: accessToken,
         userName: me.name,
         email: me.email,
@@ -97,8 +106,12 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       // /auth/me でユーザー情報を取得
       final UserModel me = await _authApi.getMe();
 
+      // RevenueCat にユーザーIDを紐付ける
+      await const RevenueCatClient().loginUser(me.id.toString());
+
       final newState = AuthState(
         isLoggedIn: true,
+        userId: me.id,
         token: accessToken,
         userName: me.name,
         email: me.email,
@@ -132,6 +145,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
   Future<void> logout() async {
     ApiClient().updateToken(null);
+    // RevenueCat から匿名ユーザーに戻す
+    await const RevenueCatClient().logoutUser();
     const newState = AuthState(isLoggedIn: false);
     state = const AsyncData(newState);
     _controller.add(newState);

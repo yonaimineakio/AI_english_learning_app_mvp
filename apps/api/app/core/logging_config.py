@@ -41,11 +41,6 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
         if request_id:
             log_record["request_id"] = request_id
 
-        # 不要なフィールドを削除
-        log_record.pop("message", None)
-        if "msg" in log_record:
-            log_record["message"] = log_record.pop("msg")
-
 
 def setup_logging() -> None:
     """
@@ -104,4 +99,3 @@ def set_request_id(request_id: str) -> None:
 def get_request_id() -> str | None:
     """現在のリクエストIDを取得する"""
     return request_id_var.get()
-

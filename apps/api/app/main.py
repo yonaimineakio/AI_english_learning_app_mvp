@@ -11,9 +11,11 @@ from app.routers.placement import router as placement_router
 from app.routers.rankings import router as rankings_router
 from app.routers.saved_phrases import router as saved_phrases_router
 from app.routers.health import router as health_router
+from app.routers.subscriptions import router as subscriptions_router
 from app.services.ai import initialize_providers
 from app.db.session import close_cloud_sql_connector
 from app.db.migrations import upgrade_head
+import os
 
 # ロギング設定を初期化
 setup_logging()
@@ -48,7 +50,7 @@ app.include_router(placement_router, prefix=f"{settings.API_V1_STR}/placement")
 app.include_router(rankings_router, prefix=f"{settings.API_V1_STR}", tags=["rankings"])
 app.include_router(saved_phrases_router, prefix=f"{settings.API_V1_STR}/saved-phrases", tags=["saved-phrases"])
 app.include_router(health_router, tags=["health"])
-
+app.include_router(subscriptions_router, prefix=f"{settings.API_V1_STR}/subscriptions", tags=["subscriptions"])
 
 @app.on_event("startup")
 async def startup_event():
@@ -82,4 +84,5 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)

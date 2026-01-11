@@ -10,9 +10,9 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from app.core.logging_config import get_logger
+import logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class ServiceType(str, Enum):
@@ -252,4 +252,3 @@ def calculate_google_tts_cost(
         cost_usd=total_cost,
         details=details,
     )
-

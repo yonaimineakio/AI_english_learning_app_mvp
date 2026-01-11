@@ -93,7 +93,7 @@ cp apps/api/.env.example apps/api/.env
 # 以下の値を実際の値に更新
 # - OPENAI_API_KEY: OpenAI APIキー（会話生成用）
 # - GOOGLE_CLOUD_PROJECT_ID: Google Cloud プロジェクトID（音声認識用）
-# - GOOGLE_APPLICATION_CREDENTIALS: GoogleサービスアカウントJSONファイルへの絶対パス（バックエンドのみ）
+# - GOOGLE_APPLICATION_CREDENTIALS: ローカルでサービスアカウントキーJSONを使う場合のみ（Cloud Runでは通常不要）
 # - DEBUG: true=モックログイン / false=Google認証ログイン
 # - GOOGLE_CLIENT_ID: Google OAuth クライアントID
 # - GOOGLE_CLIENT_SECRET: Google OAuth クライアントシークレット
@@ -122,8 +122,12 @@ cd apps/api
 # 依存関係を lockfile から再現（dev も含める）
 uv sync --extra dev --frozen
 
-# Google Cloud Speech-to-Text SDK を利用するために環境変数を設定
-export GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/credentials.json
+# Google Cloud (Speech-to-Text / Text-to-Speech) 認証は以下どちらか
+# A) サービスアカウントキーJSONを使う（ローカルのみ推奨）
+# export GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/credentials.json
+# B) ADC を使う（推奨）
+# gcloud auth application-default login
+# gcloud auth application-default set-quota-project your_project_id
 export GOOGLE_CLOUD_PROJECT_ID=your_project_id
 ```
 
@@ -143,6 +147,12 @@ npm install
 ```bash
 cd apps/api
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+#### TTS 動作確認（ローカル）
+```bash
+cd apps/api
+uv run python -m app.scripts.tts_smoke --text "Hello, this is a test." --out ./tts_output.mp3
 ```
 
 #### フロントエンド

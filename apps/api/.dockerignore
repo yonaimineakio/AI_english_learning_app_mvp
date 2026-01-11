@@ -1,0 +1,16 @@
+.env
+.env.*
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite*
+.coverage
+htmlcov/
+tests/
+ai-english-learning-pj-f23c091deb58.json
