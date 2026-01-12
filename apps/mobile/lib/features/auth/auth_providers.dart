@@ -20,7 +20,7 @@ class AuthState {
   });
 
   final bool isLoggedIn;
-  final int? userId;
+  final String? userId; // UUID
   final String? token;
   final String? userName;
   final String? email;
@@ -28,7 +28,7 @@ class AuthState {
 
   AuthState copyWith({
     bool? isLoggedIn,
-    int? userId,
+    String? userId,
     String? token,
     String? userName,
     String? email,
@@ -75,8 +75,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       // /auth/me でユーザー情報を取得
       final UserModel me = await _authApi.getMe();
 
-      // RevenueCat にユーザーIDを紐付ける
-      await const RevenueCatClient().loginUser(me.id.toString());
+      // RevenueCat にユーザーID(UUID)を紐付ける
+      await const RevenueCatClient().loginUser(me.id);
 
       final newState = AuthState(
         isLoggedIn: true,
@@ -106,8 +106,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       // /auth/me でユーザー情報を取得
       final UserModel me = await _authApi.getMe();
 
-      // RevenueCat にユーザーIDを紐付ける
-      await const RevenueCatClient().loginUser(me.id.toString());
+      // RevenueCat にユーザーID(UUID)を紐付ける
+      await const RevenueCatClient().loginUser(me.id);
 
       final newState = AuthState(
         isLoggedIn: true,

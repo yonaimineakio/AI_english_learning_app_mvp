@@ -11,13 +11,15 @@ class SubscriptionService:
         self.db = db
 
     def get_user_by_app_user_id(self, app_user_id: str) -> User:
-        user_id = self.db.query(User).filter(User.user_id == app_user_id).first()
-        if not user_id:
+        """Get user by app_user_id (UUID string)."""
+        user = self.db.query(User).filter(User.id == app_user_id).first()
+        if not user:
             logger.warning(f"User with app_user_id {app_user_id} not found")
             return None
-        return user_id
+        return user
     
-    def update_user_subscription(self, user_id: int, is_pro: bool) -> None:
+    def update_user_subscription(self, user_id: str, is_pro: bool) -> None:
+        """Update user subscription status. user_id is UUID string."""
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
             logger.warning(f"User with id {user_id} not found")

@@ -12,11 +12,12 @@ logger = get_logger(__name__)
 
 @router.post("/webhooks/revenuecat", dependencies=[Depends(verify_revenuecat_webhook)])
 async def process_revenuecat_webhook(request: Request, db: Session = Depends(get_db)):
-    logger.info(f"RevenueCat webhook started")
-    payload = await request.body()
-    event = payload.event
+    logger.info("RevenueCat webhook started")
+    payload = await request.json()
+    event = payload.get("event", {})
     app_user_id = event.get("app_user_id")
-    event_type = (event.get("event_type") or "").upper()
+    # RevenueCatでは "type" フィールドを使用
+    event_type = (event.get("type") or "").upper()
     
     subscription_service = SubscriptionService(db)
     user = subscription_service.get_user_by_app_user_id(app_user_id)
@@ -27,7 +28,7 @@ async def process_revenuecat_webhook(request: Request, db: Session = Depends(get
     if event_type in {"INITIAL_PURCHASE", "RENEWAL", "UNCANCELLATION"}:
         subscription_service.update_user_subscription(user.id, is_pro=True)
         logger.info(f"User {user.id} subscribed to Pro")
-    elif event_type in {"CANCELLED", "EXPIRED"}:
+    elif event_type in {"CANCELLED", "EXPIRED", "EXPIRATION"}:
         subscription_service.update_user_subscription(user.id, is_pro=False)
         logger.info(f"User {user.id} unsubscribed from Pro")
     else:

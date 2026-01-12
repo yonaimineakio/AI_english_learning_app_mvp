@@ -41,7 +41,7 @@ class UserUpdate(BaseModel):
 class User(UserBase):
     model_config = ConfigDict(from_attributes=True)
     
-    id: int
+    id: str  # UUID
     sub: str
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -113,7 +113,7 @@ class Session(SessionBase):
     model_config = ConfigDict(from_attributes=True)
     
     id: int
-    user_id: int
+    user_id: str  # UUID
     completed_rounds: int = 0
     started_at: datetime
     ended_at: Optional[datetime] = None
@@ -166,7 +166,7 @@ class ReviewItemBase(BaseModel):
 
 
 class ReviewItemCreate(ReviewItemBase):
-    user_id: int
+    user_id: str  # UUID
 
 
 class ReviewItemUpdate(BaseModel):
@@ -180,7 +180,7 @@ class ReviewItem(ReviewItemBase):
     model_config = ConfigDict(from_attributes=True)
     
     id: int
-    user_id: int
+    user_id: str  # UUID
     is_completed: bool = False
     created_at: datetime
     completed_at: Optional[datetime] = None
@@ -286,7 +286,7 @@ class UserPointsResponse(BaseModel):
 class RankingEntry(BaseModel):
     """ランキング1行分"""
     rank: int
-    user_id: int
+    user_id: str  # UUID
     user_name: str
     total_points: int
     current_streak: int
@@ -405,7 +405,7 @@ class SavedPhrase(SavedPhraseBase):
     model_config = ConfigDict(from_attributes=True)
     
     id: int
-    user_id: int
+    user_id: str  # UUID
     session_id: Optional[int] = None
     round_index: Optional[int] = None
     scenario_id: Optional[int] = None

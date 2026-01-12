@@ -14,7 +14,7 @@ class UserModel {
     this.lastActivityDate,
   });
 
-  final int id;
+  final String id; // UUID
   final String sub;
   final String name;
   final String email;
@@ -29,7 +29,7 @@ class UserModel {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'] as int,
+      id: json['id'] as String, // UUID
       sub: json['sub'] as String,
       name: json['name'] as String,
       email: json['email'] as String,

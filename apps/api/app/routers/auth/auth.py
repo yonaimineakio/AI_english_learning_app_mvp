@@ -6,6 +6,7 @@ from app.db.session import get_db
 from app.core.config import settings
 from app.core.deps import get_current_user, get_current_user_optional
 from datetime import timedelta
+import uuid
 
 from models.database.models import User
 from models.schemas.schemas import User as UserSchema, UserStatsResponse, UserUpdate
@@ -163,6 +164,7 @@ async def exchange_token(
 
         if not user:
             user = User(
+                id=str(uuid.uuid4()),  # Generate UUID for new user
                 sub=mock_user_data["sub"],
                 name=mock_user_data["name"],
                 email=mock_user_data["email"],
@@ -178,7 +180,7 @@ async def exchange_token(
             "token_type": "bearer",
             "expires_in": 3600,
             "user": {
-                "id": str(user.id),
+                "id": user.id,  # Already a string (UUID)
                 "name": user.name,
                 "email": user.email,
                 "picture": mock_user_data["picture"],
@@ -257,6 +259,7 @@ async def exchange_token(
     user = db.query(User).filter(User.sub == sub).first()
     if not user:
         user = User(
+            id=str(uuid.uuid4()),  # Generate UUID for new user
             sub=sub,
             name=profile.get("name") or profile.get("given_name") or "Google User",
             email=profile.get("email") or "",
@@ -275,7 +278,7 @@ async def exchange_token(
         "id_token": token_data.get("id_token"),
         "provider_access_token": provider_access_token,
         "user": {
-            "id": str(user.id),
+            "id": user.id,  # Already a string (UUID)
             "name": user.name,
             "email": user.email,
             "picture": profile.get("picture"),

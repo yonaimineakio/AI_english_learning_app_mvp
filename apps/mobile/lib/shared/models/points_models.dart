@@ -28,7 +28,7 @@ class RankingEntryModel {
   });
 
   final int rank;
-  final int userId;
+  final String userId; // UUID
   final String userName;
   final int totalPoints;
   final int currentStreak;
@@ -36,7 +36,7 @@ class RankingEntryModel {
   factory RankingEntryModel.fromJson(Map<String, dynamic> json) {
     return RankingEntryModel(
       rank: json['rank'] as int,
-      userId: json['user_id'] as int,
+      userId: json['user_id'] as String, // UUID
       userName: json['user_name'] as String,
       totalPoints: json['total_points'] as int,
       currentStreak: json['current_streak'] as int,

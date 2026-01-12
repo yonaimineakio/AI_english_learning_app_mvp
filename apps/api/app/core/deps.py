@@ -7,6 +7,8 @@ from app.core.security import verify_token
 from models.database.models import User
 from typing import Optional
 from app.core.logging_config import get_logger
+import uuid
+
 # HTTP Bearer token scheme
 bearer = HTTPBearer(auto_error=False)
 logger = get_logger(__name__)
@@ -40,6 +42,7 @@ def _get_or_create_dev_user(db: Session) -> User:
         return user
 
     user = User(
+        id=str(uuid.uuid4()),  # Generate UUID for new user
         sub=dev_sub,
         name="Dev User",
         email="dev@example.com",

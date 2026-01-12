@@ -4,8 +4,14 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 from enum import Enum as PyEnum
+import uuid
 
 Base = declarative_base()
+
+
+def generate_uuid() -> str:
+    """Generate a new UUID string."""
+    return str(uuid.uuid4())
 
 
 class ScenarioCategory(PyEnum):
@@ -30,8 +36,8 @@ class SessionMode(PyEnum):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    sub = Column(String(255), unique=True, index=True, nullable=False)  # Auth0 sub
+    id = Column(String(36), primary_key=True, default=generate_uuid, index=True)
+    sub = Column(String(255), unique=True, index=True, nullable=False)  # OAuth provider sub
     name = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -83,7 +89,7 @@ class Session(Base):
     __tablename__ = "sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     scenario_id = Column(Integer, ForeignKey("scenarios.id"), nullable=False)
     round_target = Column(Integer, nullable=False)  # 4-12 rounds
     completed_rounds = Column(Integer, default=0)
@@ -128,7 +134,7 @@ class ReviewItem(Base):
     __tablename__ = "review_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     phrase = Column(Text, nullable=False)
     explanation = Column(Text, nullable=False)
     due_at = Column(DateTime(timezone=True), nullable=False)
@@ -145,7 +151,7 @@ class SavedPhrase(Base):
     __tablename__ = "saved_phrases"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     phrase = Column(Text, nullable=False)  # improved_sentence
     explanation = Column(Text, nullable=False)  # feedback_short
     original_input = Column(Text, nullable=True)  # ユーザーの元発話

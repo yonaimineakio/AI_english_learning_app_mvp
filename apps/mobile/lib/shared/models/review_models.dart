@@ -11,7 +11,7 @@ class ReviewItemModel {
   });
 
   final int id;
-  final int userId;
+  final String userId; // UUID
   final String phrase;
   final String explanation;
   final DateTime dueAt;
@@ -22,7 +22,7 @@ class ReviewItemModel {
   factory ReviewItemModel.fromJson(Map<String, dynamic> json) {
     return ReviewItemModel(
       id: json['id'] as int,
-      userId: json['user_id'] as int,
+      userId: json['user_id'] as String, // UUID
       phrase: json['phrase'] as String,
       explanation: json['explanation'] as String,
       dueAt: DateTime.parse(json['due_at'] as String),
@@ -52,7 +52,7 @@ class SavedPhraseModel {
   });
 
   final int id;
-  final int userId;
+  final String userId; // UUID
   final String phrase;
   final String explanation;
   final String? originalInput;
@@ -66,7 +66,7 @@ class SavedPhraseModel {
   factory SavedPhraseModel.fromJson(Map<String, dynamic> json) {
     return SavedPhraseModel(
       id: json['id'] as int,
-      userId: json['user_id'] as int,
+      userId: json['user_id'] as String, // UUID
       phrase: json['phrase'] as String,
       explanation: json['explanation'] as String,
       originalInput: json['original_input'] as String?,
