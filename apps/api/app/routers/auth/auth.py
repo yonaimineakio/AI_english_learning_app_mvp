@@ -113,10 +113,11 @@ async def login(
         "access_type": "offline",
         "prompt": "consent"
     }
+    logger.info(f"params: {params}")
 
     query_string = urlencode(params)
     redirect_url = f"{authorization_url}?{query_string}"
-
+    logger.info(f"redirect_url: {redirect_url}")
     return RedirectResponse(url=redirect_url)
 
 
@@ -126,6 +127,8 @@ async def google_callback(
     state: Optional[str] = None,
 ):
     """Forward Google callback to frontend callback page"""
+    logger.info(f"Google callback: code={code}, state={state}")
+    logger.info(f"settings.FRONTEND_BASE_URL: {settings.FRONTEND_BASE_URL}")
     target = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/callback"
     params = {"code": code}
     if state:
@@ -198,6 +201,10 @@ async def exchange_token(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Google OAuth is not configured. Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URI.",
         )
+    logger.info(f"Google token exchange: code={code}")
+    logger.info(f"settings.GOOGLE_CLIENT_ID: {settings.GOOGLE_CLIENT_ID}")
+    logger.info(f"settings.GOOGLE_CLIENT_SECRET: {settings.GOOGLE_CLIENT_SECRET}")
+    logger.info(f"settings.GOOGLE_REDIRECT_URI: {settings.GOOGLE_REDIRECT_URI}")
 
     token_endpoint = "https://oauth2.googleapis.com/token"
     async with httpx.AsyncClient() as client:
