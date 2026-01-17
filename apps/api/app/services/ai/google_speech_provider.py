@@ -46,17 +46,17 @@ class GoogleSpeechProvider:
     }
 
     def __init__(self) -> None:
-        credentials_path = settings.GOOGLE_APPLICATION_CREDENTIALS or os.environ.get(
-            "GOOGLE_APPLICATION_CREDENTIALS"
-        )
+        # credentials_path = settings.GOOGLE_APPLICATION_CREDENTIALS or os.environ.get(
+        #     "GOOGLE_APPLICATION_CREDENTIALS"
+        # )
 
-        if not credentials_path:
-            raise ValueError("Google Cloud認証情報が設定されていません")
+        # if not credentials_path:
+        #     raise ValueError("Google Cloud認証情報が設定されていません")
 
-        if settings.GOOGLE_APPLICATION_CREDENTIALS:
-            os.environ.setdefault(
-                "GOOGLE_APPLICATION_CREDENTIALS", settings.GOOGLE_APPLICATION_CREDENTIALS
-            )
+        # if settings.GOOGLE_APPLICATION_CREDENTIALS:
+        #     os.environ.setdefault(
+        #         "GOOGLE_APPLICATION_CREDENTIALS", settings.GOOGLE_APPLICATION_CREDENTIALS
+        #     )
 
         try:
             self._client = speech.SpeechClient()

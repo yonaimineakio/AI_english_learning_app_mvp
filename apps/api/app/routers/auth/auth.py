@@ -113,11 +113,9 @@ async def login(
         "access_type": "offline",
         "prompt": "consent"
     }
-    logger.info(f"params: {params}")
 
     query_string = urlencode(params)
     redirect_url = f"{authorization_url}?{query_string}"
-    logger.info(f"redirect_url: {redirect_url}")
     return RedirectResponse(url=redirect_url)
 
 
@@ -127,8 +125,6 @@ async def google_callback(
     state: Optional[str] = None,
 ):
     """Forward Google callback to frontend callback page"""
-    logger.info(f"Google callback: code={code}, state={state}")
-    logger.info(f"settings.FRONTEND_BASE_URL: {settings.FRONTEND_BASE_URL}")
     target = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/callback"
     params = {"code": code}
     if state:
