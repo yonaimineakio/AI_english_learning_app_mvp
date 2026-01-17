@@ -1,4 +1,15 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, JSON, Enum, Date
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    DateTime,
+    Boolean,
+    ForeignKey,
+    JSON,
+    Enum,
+    Date,
+)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -37,7 +48,9 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(String(36), primary_key=True, default=generate_uuid, index=True)
-    sub = Column(String(255), unique=True, index=True, nullable=False)  # OAuth provider sub
+    sub = Column(
+        String(255), unique=True, index=True, nullable=False
+    )  # OAuth provider sub
     name = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -76,8 +89,14 @@ class Scenario(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    category = Column(Enum(ScenarioCategory, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
-    difficulty = Column(Enum(DifficultyLevel, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
+    category = Column(
+        Enum(ScenarioCategory, values_callable=lambda obj: [e.value for e in obj]),
+        nullable=False,
+    )
+    difficulty = Column(
+        Enum(DifficultyLevel, values_callable=lambda obj: [e.value for e in obj]),
+        nullable=False,
+    )
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -93,8 +112,14 @@ class Session(Base):
     scenario_id = Column(Integer, ForeignKey("scenarios.id"), nullable=False)
     round_target = Column(Integer, nullable=False)  # 4-12 rounds
     completed_rounds = Column(Integer, default=0)
-    difficulty = Column(Enum(DifficultyLevel, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
-    mode = Column(Enum(SessionMode, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
+    difficulty = Column(
+        Enum(DifficultyLevel, values_callable=lambda obj: [e.value for e in obj]),
+        nullable=False,
+    )
+    mode = Column(
+        Enum(SessionMode, values_callable=lambda obj: [e.value for e in obj]),
+        nullable=False,
+    )
     extension_count = Column(Integer, default=0)  # 延長回数（最大2回）
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     ended_at = Column(DateTime(timezone=True), nullable=True)
@@ -102,7 +127,9 @@ class Session(Base):
     # Relationships
     user = relationship("User", back_populates="sessions")
     scenario = relationship("Scenario", back_populates="sessions")
-    session_rounds = relationship("SessionRound", back_populates="session", cascade="all, delete-orphan")
+    session_rounds = relationship(
+        "SessionRound", back_populates="session", cascade="all, delete-orphan"
+    )
     saved_phrases = relationship("SavedPhrase", back_populates="session")
 
 
@@ -125,9 +152,7 @@ class SessionRound(Base):
     session = relationship("Session", back_populates="session_rounds")
 
     # Unique constraint
-    __table_args__ = (
-        {"extend_existing": True}
-    )
+    __table_args__ = {"extend_existing": True}
 
 
 class ReviewItem(Base):
@@ -148,6 +173,7 @@ class ReviewItem(Base):
 
 class SavedPhrase(Base):
     """ユーザーが手動で保存した改善フレーズ"""
+
     __tablename__ = "saved_phrases"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -157,7 +183,9 @@ class SavedPhrase(Base):
     original_input = Column(Text, nullable=True)  # ユーザーの元発話
     session_id = Column(Integer, ForeignKey("sessions.id"), nullable=True)
     round_index = Column(Integer, nullable=True)
-    converted_to_review_id = Column(Integer, ForeignKey("review_items.id"), nullable=True)
+    converted_to_review_id = Column(
+        Integer, ForeignKey("review_items.id"), nullable=True
+    )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

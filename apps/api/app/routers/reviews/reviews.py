@@ -68,10 +68,14 @@ def complete_review(
     service = ReviewService(db)
 
     try:
-        item, _ = service.complete_review_item(current_user.id, review_id, payload.result)
+        item, _ = service.complete_review_item(
+            current_user.id, review_id, payload.result
+        )
         return item
     except ValueError as exc:  # noqa: PERF203 - simple error mapping
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
 
 
 @router.get("/{review_id}/questions", response_model=ReviewQuestionsResponse)
@@ -84,16 +88,17 @@ async def get_review_questions(
     # 復習アイテムを取得
     item = (
         db.query(ReviewItemModel)
-        .filter(ReviewItemModel.id == review_id, ReviewItemModel.user_id == current_user.id)
+        .filter(
+            ReviewItemModel.id == review_id, ReviewItemModel.user_id == current_user.id
+        )
         .first()
     )
-    
+
     if not item:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Review item not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Review item not found"
         )
-    
+
     # 問題を生成
     try:
         async with ReviewQuestionService() as question_service:
@@ -103,27 +108,25 @@ async def get_review_questions(
             )
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc)
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
     except TimeoutError as exc:
         raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail="AI service timeout"
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="AI service timeout"
         ) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to generate questions"
+            detail="Failed to generate questions",
         ) from exc
-    
+
     # 評価用にキャッシュに保存
     cache_key = _get_cache_key(current_user.id, review_id)
     _questions_cache[cache_key] = {
         "speaking_target": speaking.target_sentence,
         "listening_words": listening.puzzle_words,
     }
-    
+
     return ReviewQuestionsResponse(
         review_item_id=item.id,
         phrase=item.phrase,
@@ -155,30 +158,30 @@ def evaluate_review(
     db: Session = Depends(get_db),
 ):
     """復習の評価を送信する
-    
+
     スピーキング: 発話内容とターゲット文の単語一致率で評価
     リスニング: 単語パズルの完全一致で評価
     """
     service = ReviewService(db)
-    
+
     # キャッシュから問題データを取得
     cache_key = _get_cache_key(current_user.id, review_id)
     cached = _questions_cache.get(cache_key)
-    
+
     if not cached:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Questions not found. Please call GET /questions first."
+            detail="Questions not found. Please call GET /questions first.",
         )
-    
+
     try:
         if payload.question_type == "speaking":
             # スピーキング評価: 単語一致率
             target_sentence = cached.get("speaking_target", "")
             user_transcription = payload.user_transcription or ""
-            
+
             eval_result = service.evaluate_speaking(target_sentence, user_transcription)
-            
+
             # 復習アイテムを更新
             item, is_completed, next_due_at = service.evaluate_and_update(
                 user_id=current_user.id,
@@ -187,7 +190,7 @@ def evaluate_review(
                 score=eval_result.score,
                 is_correct=eval_result.is_correct,
             )
-            
+
             return ReviewEvaluateResponse(
                 review_item_id=item.id,
                 question_type="speaking",
@@ -205,14 +208,14 @@ def evaluate_review(
                 ],
                 correct_answer=eval_result.correct_answer,
             )
-        
+
         elif payload.question_type == "listening":
             # リスニング評価: 単語パズル完全一致
             correct_words = cached.get("listening_words", [])
             user_answer = payload.user_answer or []
-            
+
             eval_result = service.evaluate_listening(correct_words, user_answer)
-            
+
             # 復習アイテムを更新
             item, is_completed, next_due_at = service.evaluate_and_update(
                 user_id=current_user.id,
@@ -221,10 +224,10 @@ def evaluate_review(
                 score=eval_result.score,
                 is_correct=eval_result.is_correct,
             )
-            
+
             # キャッシュをクリア（両方の問題が完了）
             _questions_cache.pop(cache_key, None)
-            
+
             return ReviewEvaluateResponse(
                 review_item_id=item.id,
                 question_type="listening",
@@ -235,15 +238,13 @@ def evaluate_review(
                 matching_words=None,
                 correct_answer=eval_result.correct_answer,
             )
-        
+
         else:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid question type"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid question type"
             )
-            
+
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc)
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc

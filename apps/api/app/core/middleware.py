@@ -20,7 +20,7 @@ logger = get_logger(__name__)
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """
     リクエストロギングミドルウェア
-    
+
     - リクエストIDの生成と伝播
     - リクエスト/レスポンスのログ出力
     - 処理時間の計測
@@ -81,4 +81,3 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         )
 
         return response
-

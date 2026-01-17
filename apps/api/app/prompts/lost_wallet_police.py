@@ -40,5 +40,3 @@ LOST_WALLET_POLICE_PROMPT = """
 - 過度に恐怖を与えるような発言
 
 """
-
-

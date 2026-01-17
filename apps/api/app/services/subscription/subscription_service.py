@@ -17,7 +17,7 @@ class SubscriptionService:
             logger.warning(f"User with app_user_id {app_user_id} not found")
             return None
         return user
-    
+
     def update_user_subscription(self, user_id: str, is_pro: bool) -> None:
         """Update user subscription status. user_id is UUID string."""
         user = self.db.query(User).filter(User.id == user_id).first()

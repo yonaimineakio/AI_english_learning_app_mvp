@@ -26,7 +26,7 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version="1.0.0",
     description="AI English Learning App API",
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
 )
 
 # リクエストロギングミドルウェア
@@ -43,14 +43,27 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth")
-app.include_router(sessions_router, prefix=f"{settings.API_V1_STR}/sessions", tags=["sessions"])
-app.include_router(reviews_router, prefix=f"{settings.API_V1_STR}/reviews", tags=["reviews"])
+app.include_router(
+    sessions_router, prefix=f"{settings.API_V1_STR}/sessions", tags=["sessions"]
+)
+app.include_router(
+    reviews_router, prefix=f"{settings.API_V1_STR}/reviews", tags=["reviews"]
+)
 app.include_router(audio_router, prefix=f"{settings.API_V1_STR}/audio", tags=["audio"])
 app.include_router(placement_router, prefix=f"{settings.API_V1_STR}/placement")
 app.include_router(rankings_router, prefix=f"{settings.API_V1_STR}", tags=["rankings"])
-app.include_router(saved_phrases_router, prefix=f"{settings.API_V1_STR}/saved-phrases", tags=["saved-phrases"])
+app.include_router(
+    saved_phrases_router,
+    prefix=f"{settings.API_V1_STR}/saved-phrases",
+    tags=["saved-phrases"],
+)
 app.include_router(health_router, tags=["health"])
-app.include_router(subscriptions_router, prefix=f"{settings.API_V1_STR}/subscriptions", tags=["subscriptions"])
+app.include_router(
+    subscriptions_router,
+    prefix=f"{settings.API_V1_STR}/subscriptions",
+    tags=["subscriptions"],
+)
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -78,11 +91,12 @@ async def root():
     return {
         "message": "AI English Learning App API",
         "version": "1.0.0",
-        "docs": "/docs"
+        "docs": "/docs",
     }
 
 
 if __name__ == "__main__":
     import uvicorn
+
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)

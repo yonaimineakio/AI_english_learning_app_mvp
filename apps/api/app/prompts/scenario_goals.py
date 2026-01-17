@@ -141,4 +141,3 @@ SCENARIO_GOALS: Dict[int, List[str]] = {
 def get_goals_for_scenario(scenario_id: int) -> List[str]:
     """指定されたシナリオIDの学習ゴールを返す（最大3つ）"""
     return SCENARIO_GOALS.get(scenario_id, [])
-

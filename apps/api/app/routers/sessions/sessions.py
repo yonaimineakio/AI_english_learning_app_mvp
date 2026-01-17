@@ -26,7 +26,7 @@ FREE_SCENARIO_IDS = {1, 2, 3}
 async def start_session(
     session_data: SessionCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """セッションを開始する"""
     try:
@@ -38,24 +38,21 @@ async def start_session(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="This scenario is available for Pro users only",
                 )
-        
+
         session_service = SessionService(db)
         result = session_service.start_session(current_user.id, session_data)
-        
+
         logger.info(f"Session started for user {current_user.id}")
         return result
-        
+
     except ValueError as e:
         logger.warning(f"Session start failed: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Unexpected error in session start: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to start session"
+            detail="Failed to start session",
         )
 
 
@@ -64,7 +61,7 @@ async def process_turn(
     session_id: int,
     payload: Dict[str, Any],
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """セッションのターンを処理する"""
     try:
@@ -72,15 +69,16 @@ async def process_turn(
         user_input = payload.get("user_input")
         if not user_input:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="user_input is required"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="user_input is required"
             )
 
-        result = await session_service.process_turn(session_id, user_input, current_user.id)
+        result = await session_service.process_turn(
+            session_id, user_input, current_user.id
+        )
 
         logger.info(f"Turn processed for session {session_id}")
         return result
-        
+
     except ValueError as e:
         logger.warning(f"Turn processing failed: {str(e)}")
         raise HTTPException(
@@ -106,27 +104,24 @@ async def process_turn(
 async def extend_session(
     session_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """セッションを延長する（+3ラウンド）"""
     try:
         session_service = SessionService(db)
         result = session_service.extend_session(session_id, current_user.id)
-        
+
         logger.info(f"Session {session_id} extended")
         return result
-        
+
     except ValueError as e:
         logger.warning(f"Session extension failed: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Unexpected error in session extension: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to extend session"
+            detail="Failed to extend session",
         )
 
 
@@ -134,27 +129,24 @@ async def extend_session(
 async def end_session(
     session_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """セッションを終了する"""
     try:
         session_service = SessionService(db)
         result = await session_service.end_session(session_id, current_user.id)
-        
+
         logger.info(f"Session {session_id} ended")
         return result
-        
+
     except ValueError as e:
         logger.warning(f"Session end failed: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Unexpected error in session end: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to end session"
+            detail="Failed to end session",
         )
 
 
@@ -162,31 +154,33 @@ async def end_session(
 async def get_session_status(
     session_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """セッションの状態を取得する"""
     try:
         from models.database.models import Session as SessionModel
-        
-        session = db.query(SessionModel).filter(
-            SessionModel.id == session_id,
-            SessionModel.user_id == current_user.id
-        ).first()
-        
+
+        session = (
+            db.query(SessionModel)
+            .filter(
+                SessionModel.id == session_id, SessionModel.user_id == current_user.id
+            )
+            .first()
+        )
+
         if not session:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Session not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
             )
-        
+
         service = SessionService(db)
         return service._build_session_status(session)
-        
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Unexpected error in session status: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get session status"
+            detail="Failed to get session status",
         )

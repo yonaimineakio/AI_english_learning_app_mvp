@@ -20,6 +20,7 @@ import json
 
 logger = get_logger(__name__)
 
+
 class OpenAIConversationProvider(ConversationProvider):
     def __init__(self) -> None:
         if not settings.OPENAI_API_KEY:
@@ -62,7 +63,9 @@ class OpenAIConversationProvider(ConversationProvider):
         )
 
         try:
-            response = await self._client.post(settings.OPENAI_CHAT_COMPLETIONS_URL, json=payload)
+            response = await self._client.post(
+                settings.OPENAI_CHAT_COMPLETIONS_URL, json=payload
+            )
             response.raise_for_status()
             data = response.json()
             texts: list[str] = []
@@ -82,7 +85,7 @@ class OpenAIConversationProvider(ConversationProvider):
             input_tokens = usage.get("input_tokens", 0)
             output_tokens = usage.get("output_tokens", 0)
             latency_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
-            
+
             if input_tokens > 0 or output_tokens > 0:
                 calculate_openai_cost(
                     model=settings.OPENAI_MODEL_NAME,
@@ -92,7 +95,12 @@ class OpenAIConversationProvider(ConversationProvider):
                 )
 
             logger.info("OpenAI response: %s", content)
-            ai_reply, feedback_short, improved_sentence, should_end_session = self._parse_response(content)
+            (
+                ai_reply,
+                feedback_short,
+                improved_sentence,
+                should_end_session,
+            ) = self._parse_response(content)
         except httpx.ReadTimeout as exc:
             # OpenAI側のタイムアウトはアプリ側で扱いやすいように TimeoutError にラップして伝播させる
             logger.warning("OpenAI request timed out: %s", exc)
@@ -104,7 +112,9 @@ class OpenAIConversationProvider(ConversationProvider):
             logger.exception("Failed to generate AI response via OpenAI: %s", exc)
             raise
 
-        tags = ["conversation", f"round_{round_index}", difficulty] + [scenario_category]
+        tags = ["conversation", f"round_{round_index}", difficulty] + [
+            scenario_category
+        ]
         latency_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
         details = {"explanation": None, "suggestions": None}
         scores = None
@@ -129,7 +139,6 @@ class OpenAIConversationProvider(ConversationProvider):
         context: List[dict],
         scenario_id: int | None = None,
     ) -> dict:
-
         # まずシナリオIDに対応するプロンプトを優先的に使用する（一対一対応）
         system_prompt = None
         if scenario_id is not None:
@@ -137,7 +146,9 @@ class OpenAIConversationProvider(ConversationProvider):
 
         # シナリオIDで取得できなかった場合は、カテゴリ×難易度でのプロンプトにフォールバック
         if not system_prompt:
-            system_prompt = get_prompt_by_category_difficulty(scenario_category, difficulty) or ""
+            system_prompt = (
+                get_prompt_by_category_difficulty(scenario_category, difficulty) or ""
+            )
         messages = [{"role": "assistant", "content": system_prompt}]
 
         for turn in context[-2:]:  # Include last two rounds as context
@@ -162,7 +173,7 @@ class OpenAIConversationProvider(ConversationProvider):
 
         return {
             "model": settings.OPENAI_MODEL_NAME,
-            "input": json.dumps(messages, ensure_ascii=False)
+            "input": json.dumps(messages, ensure_ascii=False),
         }
 
     def _parse_response(self, content: str) -> tuple[str, str, str, bool]:
@@ -174,13 +185,13 @@ class OpenAIConversationProvider(ConversationProvider):
         feedback_short = ""
         improved_sentence = ""
         should_end_session = False
-        
+
         # [END_SESSION]マーカーの検知
         if "[END_SESSION]" in content:
             should_end_session = True
             content = content.replace("[END_SESSION]", "").strip()
             lines = content.strip().splitlines()
-        
+
         for line in lines:
             if line.lower().startswith("ai:"):
                 ai_reply = line.split(":", 1)[1].strip()
@@ -219,7 +230,6 @@ async def warm_up_provider() -> None:
             scenario_id=2,
         )
     except Exception:  # noqa: BLE001
-        logger.info("OpenAI warm-up failed (expected if key invalid)" )
+        logger.info("OpenAI warm-up failed (expected if key invalid)")
     finally:
         await provider._client.aclose()
-

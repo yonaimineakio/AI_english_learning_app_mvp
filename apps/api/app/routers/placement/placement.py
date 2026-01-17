@@ -43,7 +43,17 @@ QUESTIONS: List[PlacementQuestionSchema] = [
         prompt="音声を聞いて、単語を正しい順番に並べてください。",
         scenario_hint="空港チェックイン・搭乗前",
         audio_text="I'm about to board my flight to New York.",
-        puzzle_words=["I'm", "about", "to", "board", "my", "flight", "to", "New", "York."],
+        puzzle_words=[
+            "I'm",
+            "about",
+            "to",
+            "board",
+            "my",
+            "flight",
+            "to",
+            "New",
+            "York.",
+        ],
     ),
     PlacementQuestionSchema(
         id=2,
@@ -58,7 +68,17 @@ QUESTIONS: List[PlacementQuestionSchema] = [
         prompt="音声を聞いて、単語を正しい順番に並べてください。",
         scenario_hint="空港・ルールの説明",
         audio_text="We're supposed to check in two hours before departure.",
-        puzzle_words=["We're", "supposed", "to", "check", "in", "two", "hours", "before", "departure."],
+        puzzle_words=[
+            "We're",
+            "supposed",
+            "to",
+            "check",
+            "in",
+            "two",
+            "hours",
+            "before",
+            "departure.",
+        ],
     ),
     PlacementQuestionSchema(
         id=4,
@@ -88,7 +108,18 @@ QUESTIONS: List[PlacementQuestionSchema] = [
         prompt="音声を聞いて、単語を正しい順番に並べてください。",
         scenario_hint="カスタマーサービスに相談",
         audio_text="I'd like to ask about a problem with my order.",
-        puzzle_words=["I'd", "like", "to", "ask", "about", "a", "problem", "with", "my", "order."],
+        puzzle_words=[
+            "I'd",
+            "like",
+            "to",
+            "ask",
+            "about",
+            "a",
+            "problem",
+            "with",
+            "my",
+            "order.",
+        ],
     ),
     PlacementQuestionSchema(
         id=8,
@@ -103,7 +134,16 @@ QUESTIONS: List[PlacementQuestionSchema] = [
         prompt="音声を聞いて、単語を正しい順番に並べてください。",
         scenario_hint="ショーチケットを入手",
         audio_text="I'm looking for two tickets for tonight's show.",
-        puzzle_words=["I'm", "looking", "for", "two", "tickets", "for", "tonight's", "show."],
+        puzzle_words=[
+            "I'm",
+            "looking",
+            "for",
+            "two",
+            "tickets",
+            "for",
+            "tonight's",
+            "show.",
+        ],
     ),
     PlacementQuestionSchema(
         id=10,
@@ -156,7 +196,17 @@ QUESTIONS: List[PlacementQuestionSchema] = [
         prompt="音声を聞いて、単語を正しい順番に並べてください。",
         scenario_hint="プロジェクトの遅延を謝罪する",
         audio_text="We've been trying to catch up with the schedule.",
-        puzzle_words=["We've", "been", "trying", "to", "catch", "up", "with", "the", "schedule."],
+        puzzle_words=[
+            "We've",
+            "been",
+            "trying",
+            "to",
+            "catch",
+            "up",
+            "with",
+            "the",
+            "schedule.",
+        ],
     ),
     PlacementQuestionSchema(
         id=17,
@@ -171,7 +221,20 @@ QUESTIONS: List[PlacementQuestionSchema] = [
         prompt="音声を聞いて、単語を正しい順番に並べてください。",
         scenario_hint="体調不良で休む",
         audio_text="I'm not feeling well today and need to take the day off.",
-        puzzle_words=["I'm", "not", "feeling", "well", "today", "and", "need", "to", "take", "the", "day", "off."],
+        puzzle_words=[
+            "I'm",
+            "not",
+            "feeling",
+            "well",
+            "today",
+            "and",
+            "need",
+            "to",
+            "take",
+            "the",
+            "day",
+            "off.",
+        ],
     ),
     PlacementQuestionSchema(
         id=19,
@@ -192,8 +255,10 @@ QUESTIONS: List[PlacementQuestionSchema] = [
 
 # --- Pydantic モデル ---
 
+
 class WordMatch(BaseModel):
     """単語の一致情報"""
+
     word: str
     matched: bool
     index: int
@@ -201,12 +266,14 @@ class WordMatch(BaseModel):
 
 class EvaluateSpeakingRequest(BaseModel):
     """スピーキング評価リクエスト"""
+
     question_id: int
     user_transcription: str
 
 
 class EvaluateSpeakingResponse(BaseModel):
     """スピーキング評価レスポンス"""
+
     question_id: int
     score: int
     is_correct: bool
@@ -216,12 +283,14 @@ class EvaluateSpeakingResponse(BaseModel):
 
 class EvaluateListeningRequest(BaseModel):
     """リスニング評価リクエスト"""
+
     question_id: int
     user_answer: List[str]
 
 
 class EvaluateListeningResponse(BaseModel):
     """リスニング評価レスポンス"""
+
     question_id: int
     score: int
     is_correct: bool
@@ -230,10 +299,12 @@ class EvaluateListeningResponse(BaseModel):
 
 class PlacementSubmitRequest(BaseModel):
     """レベル判定テスト提出リクエスト"""
+
     answers: List[dict]
 
 
 # --- ヘルパー関数 ---
+
 
 def _get_question_by_id(question_id: int) -> Optional[PlacementQuestionSchema]:
     """IDで問題を取得"""
@@ -407,5 +478,3 @@ async def submit_placement_answers(
         "placement_level": level.value,
         "placement_completed_at": user.placement_completed_at.isoformat(),
     }
-
-

@@ -40,5 +40,3 @@ CUSTOMER_SERVICE_PROMPT = """
 - あいまいな約束や誤解を招く表現
 
 """
-
-

@@ -38,4 +38,3 @@ class AIProviderRegistry:
         """Reset provider registry (primarily for testing)."""
         cls._providers.clear()
         cls._default_provider = "mock"
-

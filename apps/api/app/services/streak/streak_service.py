@@ -20,7 +20,7 @@ class StreakService:
     def update_streak(self, user_id: int, activity_date: date) -> None:
         """
         ストリークを更新する
-        
+
         Args:
             user_id: ユーザーID
             activity_date: 学習日（JST基準のdateオブジェクト）
@@ -49,9 +49,7 @@ class StreakService:
             # 最長記録を更新
             if user.current_streak > user.longest_streak:
                 user.longest_streak = user.current_streak
-            logger.info(
-                f"User {user_id} streak continued: {user.current_streak} days"
-            )
+            logger.info(f"User {user_id} streak continued: {user.current_streak} days")
         else:
             # 2日以上空いている → リセット
             user.current_streak = 1
@@ -66,10 +64,10 @@ class StreakService:
     def get_user_stats(self, user_id: int) -> UserStatsResponse:
         """
         ユーザー統計情報を取得する
-        
+
         Args:
             user_id: ユーザーID
-            
+
         Returns:
             UserStatsResponse: ユーザー統計情報
         """
@@ -105,4 +103,3 @@ class StreakService:
             total_sessions=total_sessions,
             total_rounds=total_rounds,
         )
-

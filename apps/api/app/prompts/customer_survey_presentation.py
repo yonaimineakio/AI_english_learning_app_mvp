@@ -40,5 +40,3 @@ CUSTOMER_SURVEY_PRESENTATION_PROMPT = """
 - データと矛盾する説明
 
 """
-
-

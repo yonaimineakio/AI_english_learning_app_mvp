@@ -16,6 +16,7 @@ PASSING_SCORE = 70
 
 class WordMatchResult:
     """単語の一致結果"""
+
     def __init__(self, word: str, matched: bool, index: int):
         self.word = word
         self.matched = matched
@@ -24,6 +25,7 @@ class WordMatchResult:
 
 class EvaluationResult:
     """評価結果"""
+
     def __init__(
         self,
         score: int,
@@ -124,7 +126,9 @@ class ReviewService:
             "completion_rate": completion_rate,
         }
 
-    def complete_review_item(self, user_id: int, item_id: int, result: str) -> Tuple[ReviewItem, bool]:
+    def complete_review_item(
+        self, user_id: int, item_id: int, result: str
+    ) -> Tuple[ReviewItem, bool]:
         """復習結果を保存する。
 
         Returns:
@@ -174,9 +178,10 @@ class ReviewService:
         Returns:
             EvaluationResult: 評価結果（スコア、一致情報）
         """
+
         # 正規化: 小文字化、句読点除去
         def normalize(text: str) -> List[str]:
-            clean = re.sub(r'[.,!?;:\'"()-]', '', text.lower())
+            clean = re.sub(r'[.,!?;:\'"()-]', "", text.lower())
             return clean.split()
 
         target_words = normalize(target_sentence)
@@ -201,11 +206,13 @@ class ReviewService:
                 matched_count += 1
                 # 一致した単語はユーザーリストから除去（重複カウント防止）
                 user_words.remove(target_word)
-            matching_words.append(WordMatchResult(
-                word=target_word,
-                matched=matched,
-                index=i,
-            ))
+            matching_words.append(
+                WordMatchResult(
+                    word=target_word,
+                    matched=matched,
+                    index=i,
+                )
+            )
 
         # スコア計算（0-100）
         score = int((matched_count / len(target_words)) * 100)
@@ -232,6 +239,7 @@ class ReviewService:
         Returns:
             EvaluationResult: 評価結果（スコア、正解/不正解）
         """
+
         # 正規化: 小文字化して比較
         def normalize_list(words: List[str]) -> List[str]:
             return [w.lower().strip() for w in words if w.strip()]
@@ -251,7 +259,8 @@ class ReviewService:
                 score = 0
             else:
                 correct_positions = sum(
-                    1 for i, word in enumerate(user_normalized)
+                    1
+                    for i, word in enumerate(user_normalized)
                     if i < len(correct_normalized) and word == correct_normalized[i]
                 )
                 score = int((correct_positions / len(correct_normalized)) * 100)

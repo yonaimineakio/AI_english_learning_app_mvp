@@ -33,7 +33,9 @@ def upgrade_head() -> None:
     if settings.CLOUD_SQL_USE_CONNECTOR:
         os.environ.setdefault("CLOUD_SQL_USE_CONNECTOR", "true")
         if settings.CLOUD_SQL_CONNECTION_NAME:
-            os.environ.setdefault("CLOUD_SQL_CONNECTION_NAME", settings.CLOUD_SQL_CONNECTION_NAME)
+            os.environ.setdefault(
+                "CLOUD_SQL_CONNECTION_NAME", settings.CLOUD_SQL_CONNECTION_NAME
+            )
         if settings.CLOUD_SQL_IP_TYPE:
             os.environ.setdefault("CLOUD_SQL_IP_TYPE", settings.CLOUD_SQL_IP_TYPE)
         os.environ.setdefault(
@@ -67,5 +69,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

@@ -22,8 +22,8 @@ DIFFICULTY_MULTIPLIERS = {
 
 # ストリークボーナス（連続日数に応じた追加ボーナス率）
 STREAK_BONUSES = {
-    3: 0.10,   # 3日連続: +10%
-    7: 0.20,   # 7日連続: +20%
+    3: 0.10,  # 3日連続: +10%
+    7: 0.20,  # 7日連続: +20%
     14: 0.30,  # 14日連続: +30%
 }
 
@@ -41,11 +41,11 @@ class PointService:
     ) -> int:
         """
         ラウンド完了時のポイントを計算する
-        
+
         Args:
             difficulty: 難易度 ("beginner", "intermediate", "advanced")
             current_streak: 現在の連続学習日数
-            
+
         Returns:
             int: 獲得ポイント
         """
@@ -80,11 +80,11 @@ class PointService:
     ) -> int:
         """
         セッション完了時のボーナスポイントを計算する
-        
+
         Args:
             difficulty: 難易度
             current_streak: 現在の連続学習日数
-            
+
         Returns:
             int: 獲得ポイント
         """
@@ -115,11 +115,11 @@ class PointService:
     ) -> int:
         """
         ラウンド完了時にポイントを付与する
-        
+
         Args:
             user_id: ユーザーID
             difficulty: 難易度
-            
+
         Returns:
             int: 付与されたポイント
         """
@@ -149,11 +149,11 @@ class PointService:
     ) -> int:
         """
         セッション完了時にポイントを付与する
-        
+
         Args:
             user_id: ユーザーID
             difficulty: 難易度
-            
+
         Returns:
             int: 付与されたポイント
         """
@@ -179,10 +179,10 @@ class PointService:
     def get_user_points_summary(self, user_id: int) -> Tuple[int, int, int]:
         """
         ユーザーのポイントサマリーを取得する
-        
+
         Args:
             user_id: ユーザーID
-            
+
         Returns:
             Tuple[int, int, int]: (total_points, points_this_week, points_today)
         """
@@ -193,7 +193,7 @@ class PointService:
         total_points = user.total_points or 0
 
         # 今週のポイントを計算（JST基準）
-        jst = pytz.timezone('Asia/Tokyo')
+        jst = pytz.timezone("Asia/Tokyo")
         now_jst = datetime.now(jst)
         week_start = (now_jst - timedelta(days=now_jst.weekday())).replace(
             hour=0, minute=0, second=0, microsecond=0
@@ -237,4 +237,3 @@ class PointService:
         points_today = sessions_today * 100
 
         return total_points, points_this_week, points_today
-

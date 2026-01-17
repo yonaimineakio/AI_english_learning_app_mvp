@@ -39,5 +39,3 @@ PARK_SMALL_TALK_PROMPT = """
 - 不自然に馴れ馴れしい表現
 
 """
-
-

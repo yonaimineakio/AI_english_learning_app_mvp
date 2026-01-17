@@ -27,9 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/me", response_model=UserSchema)
-async def get_current_user_info(
-    current_user: User = Depends(get_current_user)
-):
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Get current user information"""
     return current_user
 
@@ -65,15 +63,13 @@ async def update_current_user_info(
 
 @router.get("/me/stats", response_model=UserStatsResponse)
 async def get_user_stats(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get user statistics including streak information"""
     from app.services.streak.streak_service import StreakService
+
     service = StreakService(db)
     return service.get_user_stats(current_user.id)
-
-
 
 
 @router.get("/login")
@@ -82,7 +78,7 @@ async def login(
     client_id: Optional[str] = None,
     redirect_uri: Optional[str] = None,
     response_type: str = "code",
-    scope: str = "openid profile email"
+    scope: str = "openid profile email",
 ):
     """Initiate OAuth login flow"""
 
@@ -92,7 +88,9 @@ async def login(
     if settings.DEBUG:
         state = secrets.token_urlsafe(32)
         mock_code = f"mock_auth_code_{secrets.token_urlsafe(16)}"
-        target_redirect = redirect_uri or f"{settings.FRONTEND_BASE_URL.rstrip('/')}/callback"
+        target_redirect = (
+            redirect_uri or f"{settings.FRONTEND_BASE_URL.rstrip('/')}/callback"
+        )
         redirect_url = f"{target_redirect}?code={mock_code}&state={state}"
         return RedirectResponse(url=redirect_url)
 
@@ -111,7 +109,7 @@ async def login(
         "scope": scope,
         "state": state,
         "access_type": "offline",
-        "prompt": "consent"
+        "prompt": "consent",
     }
 
     query_string = urlencode(params)
@@ -125,6 +123,7 @@ async def google_callback(
     state: Optional[str] = None,
 ):
     """Forward Google callback to frontend callback page"""
+
     target = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/callback"
     params = {"code": code}
     if state:
@@ -134,10 +133,7 @@ async def google_callback(
 
 
 @router.post("/token")
-async def exchange_token(
-    request: Request,
-    db: Session = Depends(get_db)
-):
+async def exchange_token(request: Request, db: Session = Depends(get_db)):
     """Exchange authorization code for tokens"""
     body = await request.json()
     code = body.get("code")
@@ -192,7 +188,11 @@ async def exchange_token(
             detail="Mock auth code is only allowed when DEBUG=true",
         )
 
-    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET or not settings.GOOGLE_REDIRECT_URI:
+    if (
+        not settings.GOOGLE_CLIENT_ID
+        or not settings.GOOGLE_CLIENT_SECRET
+        or not settings.GOOGLE_REDIRECT_URI
+    ):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Google OAuth is not configured. Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URI.",
@@ -218,9 +218,7 @@ async def exchange_token(
         )
 
     if token_response.status_code != 200:
-        logger.error(
-            "Google token exchange failed: %s", token_response.text
-        )
+        logger.error("Google token exchange failed: %s", token_response.text)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to exchange authorization code with Google",
@@ -243,9 +241,7 @@ async def exchange_token(
         )
 
     if userinfo_response.status_code != 200:
-        logger.error(
-            "Google userinfo fetch failed: %s", userinfo_response.text
-        )
+        logger.error("Google userinfo fetch failed: %s", userinfo_response.text)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to fetch user info from Google",

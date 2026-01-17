@@ -38,6 +38,6 @@ def db_health_check(db: Session = Depends(get_db)):
         }
     except Exception as exc:
         logger.exception("Database health check failed: %s", exc)
-        raise HTTPException(status_code=503, detail="Database connectivity check failed") from exc
-
-
+        raise HTTPException(
+            status_code=503, detail="Database connectivity check failed"
+        ) from exc

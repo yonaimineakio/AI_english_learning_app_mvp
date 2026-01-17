@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 class ServiceType(str, Enum):
     """サービスタイプ"""
+
     OPENAI = "openai"
     GROQ = "groq"
     GOOGLE_STT = "google_stt"
@@ -60,6 +61,7 @@ GOOGLE_TTS_PRICE_PER_1M_CHARS = 4.00
 @dataclass
 class CostResult:
     """料金計算結果"""
+
     service: ServiceType
     cost_usd: float
     details: dict
@@ -73,18 +75,18 @@ def calculate_openai_cost(
 ) -> CostResult:
     """
     OpenAI APIの料金を計算してログ出力する。
-    
+
     Args:
         model: モデル名（例: gpt-4o-mini）
         input_tokens: 入力トークン数
         output_tokens: 出力トークン数
         latency_ms: レイテンシ（ミリ秒）
-    
+
     Returns:
         CostResult: 料金計算結果
     """
     pricing = OPENAI_PRICING.get(model, OPENAI_PRICING["gpt-4o-mini"])
-    
+
     input_cost = (input_tokens / 1000) * pricing["input"]
     output_cost = (output_tokens / 1000) * pricing["output"]
     total_cost = input_cost + output_cost
@@ -124,23 +126,23 @@ def calculate_groq_cost(
 ) -> CostResult:
     """
     Groq APIの料金を計算してログ出力する。
-    
+
     Args:
         model: モデル名（例: openai/gpt-oss-120b, llama-3.1-70b-versatile）
         input_tokens: 入力トークン数
         output_tokens: 出力トークン数
         latency_ms: レイテンシ（ミリ秒）
-    
+
     Returns:
         CostResult: 料金計算結果
-    
+
     Note:
         料金は推定値です。最新の正確な料金は
         https://console.groq.com/docs/pricing を参照してください。
     """
     # デフォルトは gpt-oss-120b の料金を使用
     pricing = GROQ_PRICING.get(model, GROQ_PRICING["openai/gpt-oss-120b"])
-    
+
     input_cost = (input_tokens / 1000) * pricing["input"]
     output_cost = (output_tokens / 1000) * pricing["output"]
     total_cost = input_cost + output_cost
@@ -178,11 +180,11 @@ def calculate_google_stt_cost(
 ) -> CostResult:
     """
     Google Cloud Speech-to-Text APIの料金を計算してログ出力する。
-    
+
     Args:
         audio_duration_seconds: 音声の長さ（秒）
         latency_ms: レイテンシ（ミリ秒）
-    
+
     Returns:
         CostResult: 料金計算結果
     """
@@ -190,7 +192,7 @@ def calculate_google_stt_cost(
     billable_units = -(-int(audio_duration_seconds) // 15)  # ceiling division
     if billable_units < 1:
         billable_units = 1
-    
+
     total_cost = billable_units * GOOGLE_STT_PRICE_PER_15_SEC
 
     details = {
@@ -222,11 +224,11 @@ def calculate_google_tts_cost(
 ) -> CostResult:
     """
     Google Cloud Text-to-Speech APIの料金を計算してログ出力する。
-    
+
     Args:
         character_count: 文字数
         latency_ms: レイテンシ（ミリ秒）
-    
+
     Returns:
         CostResult: 料金計算結果
     """

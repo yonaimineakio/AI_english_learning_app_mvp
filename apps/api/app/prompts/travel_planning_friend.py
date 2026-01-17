@@ -40,5 +40,3 @@ TRAVEL_PLANNING_FRIEND_PROMPT = """
 - 難しいイディオムやスラングの多用
 
 """
-
-

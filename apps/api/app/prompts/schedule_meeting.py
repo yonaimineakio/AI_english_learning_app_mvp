@@ -40,5 +40,3 @@ SCHEDULE_MEETING_PROMPT = """
 - 長すぎる前置き説明
 
 """
-
-

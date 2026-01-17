@@ -38,7 +38,11 @@ async def evaluate_goal_progress(goals: List[str], history: List[dict]) -> List[
         history_lines.append(f"{prefix} - User: {user_input}")
         if ai_reply:
             history_lines.append(f"{prefix} - AI: {ai_reply}")
-    history_text = "\n".join(history_lines) if history_lines else "（まだ会話履歴はほとんどありません）"
+    history_text = (
+        "\n".join(history_lines)
+        if history_lines
+        else "（まだ会話履歴はほとんどありません）"
+    )
 
     goals_text = "\n".join(f"{idx + 1}. {g}" for idx, g in enumerate(goals))
 
@@ -68,7 +72,9 @@ async def evaluate_goal_progress(goals: List[str], history: List[dict]) -> List[
             },
             timeout=httpx.Timeout(30.0, connect=5.0, read=30.0),
         ) as client:
-            response = await client.post(settings.OPENAI_CHAT_COMPLETIONS_URL, json=payload)
+            response = await client.post(
+                settings.OPENAI_CHAT_COMPLETIONS_URL, json=payload
+            )
             response.raise_for_status()
             data = response.json()
 
@@ -112,5 +118,3 @@ async def evaluate_goal_progress(goals: List[str], history: List[dict]) -> List[
         # 評価失敗時も会話自体は継続できるよう、ログに残して全て未達成扱いにする
         logger.warning("Failed to evaluate goal progress: %s", exc)
         return [0] * len(goals)
-
-

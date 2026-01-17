@@ -63,7 +63,9 @@ def test_debug_true_login_redirects_to_mock_callback(client, monkeypatch):
     assert "state=" in location
 
 
-def test_debug_true_token_exchange_returns_app_jwt_and_user(client, db_session, monkeypatch):
+def test_debug_true_token_exchange_returns_app_jwt_and_user(
+    client, db_session, monkeypatch
+):
     monkeypatch.setattr(settings, "DEBUG", True)
 
     res = client.post("/api/v1/auth/token", json={"code": "mock_auth_code_test"})
@@ -99,4 +101,3 @@ def test_debug_false_token_rejects_mock_code(client, monkeypatch):
     res = client.post("/api/v1/auth/token", json={"code": "mock_auth_code_test"})
     assert res.status_code == 400
     assert "Mock auth code is only allowed" in res.text
-

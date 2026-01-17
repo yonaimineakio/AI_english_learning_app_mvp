@@ -35,4 +35,3 @@ GOAL_PROGRESS_SYSTEM_PROMPT = """
 - 0 → 1 以外の変更
 - 出力フォーマットの改変
 """.strip()
-

@@ -21,7 +21,9 @@ class TestParseResponse:
 Feedback: 良い挨拶です。もう少しカジュアルにしても良いでしょう。
 Improved: Hi there! What can I do for you?"""
 
-        ai_reply, feedback, improved, should_end = self.provider._parse_response(content)
+        ai_reply, feedback, improved, should_end = self.provider._parse_response(
+            content
+        )
 
         assert ai_reply == "Hello! How can I help you today?"
         assert feedback == "良い挨拶です。もう少しカジュアルにしても良いでしょう。"
@@ -33,7 +35,9 @@ Improved: Hi there! What can I do for you?"""
         content = """AI: Goodbye! Have a nice day! [END_SESSION]
 Feedback: 丁寧なお別れの挨拶ができています。"""
 
-        ai_reply, feedback, improved, should_end = self.provider._parse_response(content)
+        ai_reply, feedback, improved, should_end = self.provider._parse_response(
+            content
+        )
 
         assert ai_reply == "Goodbye! Have a nice day!"
         assert feedback == "丁寧なお別れの挨拶ができています。"
@@ -43,7 +47,9 @@ Feedback: 丁寧なお別れの挨拶ができています。"""
         """フィールドが欠けているレスポンスのパース"""
         content = "Just a plain response without structure"
 
-        ai_reply, feedback, improved, should_end = self.provider._parse_response(content)
+        ai_reply, feedback, improved, should_end = self.provider._parse_response(
+            content
+        )
 
         assert ai_reply == "Just a plain response without structure"
         assert feedback == "改善点を120字以内で記述してください。"
@@ -56,7 +62,9 @@ Feedback: 丁寧なお別れの挨拶ができています。"""
 FEEDBACK: Good job!
 IMPROVED: Great work!"""
 
-        ai_reply, feedback, improved, should_end = self.provider._parse_response(content)
+        ai_reply, feedback, improved, should_end = self.provider._parse_response(
+            content
+        )
 
         assert ai_reply == "Hello!"
         assert feedback == "Good job!"
@@ -105,7 +113,11 @@ class TestBuildRequestPayload:
     @patch("app.services.ai.groq_provider.get_conversation_system_prompt")
     @patch("app.services.ai.groq_provider.settings")
     def test_build_payload_fallback_to_category(
-        self, mock_settings, mock_conv_prompt, mock_category_prompt, mock_scenario_prompt
+        self,
+        mock_settings,
+        mock_conv_prompt,
+        mock_category_prompt,
+        mock_scenario_prompt,
     ):
         """シナリオIDがない場合のカテゴリフォールバック"""
         mock_settings.GROQ_MODEL_NAME = "openai/gpt-oss-120b"
@@ -194,12 +206,10 @@ class TestGenerateResponse:
             "usage": {"prompt_tokens": 100, "completion_tokens": 50},
         }
 
-        with patch.object(
-            GroqConversationProvider, "__init__", lambda x: None
-        ):
+        with patch.object(GroqConversationProvider, "__init__", lambda x: None):
             provider = GroqConversationProvider()
             provider._client = AsyncMock()
-            
+
             mock_response = MagicMock()
             mock_response.json.return_value = mock_response_data
             mock_response.raise_for_status = MagicMock()
@@ -228,9 +238,7 @@ class TestGenerateResponse:
         mock_settings.GROQ_MODEL_NAME = "openai/gpt-oss-120b"
         mock_settings.GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/v1/chat"
 
-        with patch.object(
-            GroqConversationProvider, "__init__", lambda x: None
-        ):
+        with patch.object(GroqConversationProvider, "__init__", lambda x: None):
             provider = GroqConversationProvider()
             provider._client = AsyncMock()
             provider._client.post = AsyncMock(side_effect=httpx.ReadTimeout("Timeout"))
@@ -263,12 +271,10 @@ class TestCostCalculation:
             "usage": {"prompt_tokens": 150, "completion_tokens": 75},
         }
 
-        with patch.object(
-            GroqConversationProvider, "__init__", lambda x: None
-        ):
+        with patch.object(GroqConversationProvider, "__init__", lambda x: None):
             provider = GroqConversationProvider()
             provider._client = AsyncMock()
-            
+
             mock_response = MagicMock()
             mock_response.json.return_value = mock_response_data
             mock_response.raise_for_status = MagicMock()
@@ -292,7 +298,9 @@ class TestCostCalculation:
     @pytest.mark.asyncio
     @patch("app.services.ai.groq_provider.settings")
     @patch("app.services.ai.groq_provider.calculate_groq_cost")
-    async def test_cost_calculation_not_called_without_usage(self, mock_cost, mock_settings):
+    async def test_cost_calculation_not_called_without_usage(
+        self, mock_cost, mock_settings
+    ):
         """usageデータがない場合に料金計算が呼ばれない"""
         mock_settings.GROQ_API_KEY = "test-api-key"
         mock_settings.GROQ_MODEL_NAME = "openai/gpt-oss-120b"
@@ -303,12 +311,10 @@ class TestCostCalculation:
             "usage": {},  # 空のusage
         }
 
-        with patch.object(
-            GroqConversationProvider, "__init__", lambda x: None
-        ):
+        with patch.object(GroqConversationProvider, "__init__", lambda x: None):
             provider = GroqConversationProvider()
             provider._client = AsyncMock()
-            
+
             mock_response = MagicMock()
             mock_response.json.return_value = mock_response_data
             mock_response.raise_for_status = MagicMock()
@@ -324,4 +330,3 @@ class TestCostCalculation:
             )
 
             mock_cost.assert_not_called()
-

@@ -14,7 +14,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--text", required=True, help="Text to synthesize")
     parser.add_argument("--language", default=None, help="e.g. en-US (optional)")
     parser.add_argument("--voice", default=None, help="Voice name (optional)")
-    parser.add_argument("--rate", type=float, default=None, help="Speaking rate (optional)")
+    parser.add_argument(
+        "--rate", type=float, default=None, help="Speaking rate (optional)"
+    )
     parser.add_argument(
         "--out",
         default="tts_output.mp3",

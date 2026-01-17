@@ -61,7 +61,9 @@ class GoogleSpeechProvider:
         try:
             self._client = speech.SpeechClient()
         except Exception as exc:  # pragma: no cover
-            raise ValueError("Google Speech-to-Textクライアントの初期化に失敗しました") from exc
+            raise ValueError(
+                "Google Speech-to-Textクライアントの初期化に失敗しました"
+            ) from exc
 
     async def transcribe_audio(
         self,
@@ -98,7 +100,9 @@ class GoogleSpeechProvider:
         audio = speech.RecognitionAudio(content=audio_file)
 
         async def _recognize() -> speech.RecognizeResponse:
-            return await asyncio.to_thread(self._client.recognize, config=config, audio=audio)
+            return await asyncio.to_thread(
+                self._client.recognize, config=config, audio=audio
+            )
 
         start_time = asyncio.get_running_loop().time()
 
@@ -120,7 +124,7 @@ class GoogleSpeechProvider:
 
         # 音声時間を推定（WAVの場合は正確に計算、それ以外はファイルサイズから推定）
         audio_duration_seconds = self._estimate_audio_duration(audio_file, encoding)
-        
+
         # 料金計算
         calculate_google_stt_cost(
             audio_duration_seconds=audio_duration_seconds,
@@ -172,8 +176,12 @@ class GoogleSpeechProvider:
 
         extension = self._extract_extension(filename)
         if extension not in self._ALLOWED_EXTENSIONS:
-            allowed = ", ".join(sorted(ext.strip(".") for ext in self._ALLOWED_EXTENSIONS))
-            raise ValueError(f"サポートされていないファイル形式です。対応形式: {allowed}")
+            allowed = ", ".join(
+                sorted(ext.strip(".") for ext in self._ALLOWED_EXTENSIONS)
+            )
+            raise ValueError(
+                f"サポートされていないファイル形式です。対応形式: {allowed}"
+            )
 
     def _detect_encoding(self, filename: str) -> speech.RecognitionConfig.AudioEncoding:
         extension = self._extract_extension(filename)
@@ -187,7 +195,9 @@ class GoogleSpeechProvider:
             ".webm": speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
         }
 
-        return mapping.get(extension, speech.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED)
+        return mapping.get(
+            extension, speech.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED
+        )
 
     def _extract_extension(self, filename: str) -> str:
         if "." not in filename:
@@ -224,7 +234,7 @@ class GoogleSpeechProvider:
                         return frames / rate
             except Exception:
                 pass
-        
+
         # その他の形式はファイルサイズから概算（平均ビットレート128kbps想定）
         # 128kbps = 16KB/sec
         estimated_bitrate_kbps = 128
@@ -240,7 +250,8 @@ class GoogleSpeechProvider:
             await asyncio.to_thread(close_method)
             return
 
-        transport_close = getattr(getattr(self._client, "transport", None), "close", None)
+        transport_close = getattr(
+            getattr(self._client, "transport", None), "close", None
+        )
         if callable(transport_close):
             await asyncio.to_thread(transport_close)
-

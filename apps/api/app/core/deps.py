@@ -13,26 +13,25 @@ import uuid
 bearer = HTTPBearer(auto_error=False)
 logger = get_logger(__name__)
 
+
 async def verify_revenuecat_webhook(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer)
+    credentials: HTTPAuthorizationCredentials = Depends(bearer),
 ) -> str:
     """Verify RevenueCat webhook signature"""
-    
+
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authorization header missing"
+            detail="Authorization header missing",
         )
-    
+
     if credentials.credentials != settings.REVENUECAT_SECRET_KEY:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization token"
+            detail="Invalid authorization token",
         )
-    
-    return credentials.credentials  # または True でもOK
 
-    
+    return credentials.credentials  # または True でもOK
 
 
 def _get_or_create_dev_user(db: Session) -> User:
@@ -55,7 +54,7 @@ def _get_or_create_dev_user(db: Session) -> User:
 
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> User:
     """Get current authenticated user"""
 
@@ -100,12 +99,12 @@ async def get_current_user(
 
 async def get_current_user_optional(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Optional[User]:
     """Get current user if authenticated, otherwise return None"""
     if not credentials:
         return None
-    
+
     try:
         return await get_current_user(credentials, db)
     except HTTPException:

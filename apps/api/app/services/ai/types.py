@@ -28,4 +28,3 @@ class ConversationProvider(Protocol):
         scenario_id: int | None = None,
     ) -> ConversationResponse:
         ...
-

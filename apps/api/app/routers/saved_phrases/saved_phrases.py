@@ -47,9 +47,9 @@ def create_saved_phrase(
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="This phrase is already saved"
+                detail="This phrase is already saved",
             )
-    
+
     saved_phrase = SavedPhraseModel(
         user_id=current_user.id,
         phrase=payload.phrase,
@@ -58,11 +58,11 @@ def create_saved_phrase(
         session_id=payload.session_id,
         round_index=payload.round_index,
     )
-    
+
     db.add(saved_phrase)
     db.commit()
     db.refresh(saved_phrase)
-    
+
     scenario_id = None
     scenario_name = None
     if saved_phrase.session_id:
@@ -111,7 +111,7 @@ def list_saved_phrases(
         .filter(SavedPhraseModel.user_id == current_user.id)
         .order_by(SavedPhraseModel.created_at.desc())
     )
-    
+
     total_count = query.count()
     rows = query.offset(offset).limit(limit).all()
     saved_phrases = []
@@ -131,7 +131,7 @@ def list_saved_phrases(
                 "created_at": sp.created_at,
             }
         )
-    
+
     return SavedPhrasesListResponse(
         saved_phrases=saved_phrases,
         total_count=total_count,
@@ -153,13 +153,12 @@ def get_saved_phrase(
         )
         .first()
     )
-    
+
     if not saved_phrase:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Saved phrase not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Saved phrase not found"
         )
-    
+
     return saved_phrase
 
 
@@ -178,20 +177,21 @@ def delete_saved_phrase(
         )
         .first()
     )
-    
+
     if not saved_phrase:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Saved phrase not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Saved phrase not found"
         )
-    
+
     db.delete(saved_phrase)
     db.commit()
-    
+
     return None
 
 
-@router.post("/{saved_phrase_id}/convert-to-review", response_model=ConvertToReviewResponse)
+@router.post(
+    "/{saved_phrase_id}/convert-to-review", response_model=ConvertToReviewResponse
+)
 def convert_to_review(
     saved_phrase_id: int,
     current_user: User = Depends(require_pro_user),
@@ -206,20 +206,19 @@ def convert_to_review(
         )
         .first()
     )
-    
+
     if not saved_phrase:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Saved phrase not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Saved phrase not found"
         )
-    
+
     # 既に変換済みの場合はエラー
     if saved_phrase.converted_to_review_id:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="This phrase has already been converted to a review item"
+            detail="This phrase has already been converted to a review item",
         )
-    
+
     # ReviewItem を作成（翌日に復習予定）
     now = datetime.utcnow()
     review_item = ReviewItemModel(
@@ -229,17 +228,17 @@ def convert_to_review(
         due_at=now + timedelta(days=1),
         is_completed=False,
     )
-    
+
     db.add(review_item)
     db.flush()  # ID を取得するため
-    
+
     # SavedPhrase に変換先を記録
     saved_phrase.converted_to_review_id = review_item.id
-    
+
     db.commit()
     db.refresh(review_item)
     db.refresh(saved_phrase)
-    
+
     return ConvertToReviewResponse(
         saved_phrase_id=saved_phrase.id,
         review_item=review_item,
@@ -263,6 +262,5 @@ def check_saved_phrase(
         )
         .first()
     )
-    
-    return saved_phrase
 
+    return saved_phrase

@@ -40,5 +40,3 @@ CONTRACT_NEGOTIATION_PROMPT = """
 - 法的な細部に踏み込みすぎる説明
 
 """
-
-

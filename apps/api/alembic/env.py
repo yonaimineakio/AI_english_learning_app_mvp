@@ -29,8 +29,14 @@ _env_db_url = os.getenv("DATABASE_URL")
 if _env_db_url:
     config.set_main_option("sqlalchemy.url", _env_db_url)
 
+
 def _env_bool(name: str, default: str = "false") -> bool:
-    return (os.getenv(name, default) or default).strip().lower() in {"1", "true", "yes", "on"}
+    return (os.getenv(name, default) or default).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def _build_cloud_sql_connector_engine():
@@ -40,10 +46,13 @@ def _build_cloud_sql_connector_engine():
     This enables running `alembic upgrade head` against Cloud SQL without a unix-socket DATABASE_URL.
     """
     from google.cloud.sql.connector import Connector, IPTypes  # type: ignore
+
     try:
         import pymysql  # type: ignore[import-not-found]  # noqa: F401
     except ImportError as e:  # pragma: no cover
-        raise RuntimeError("PyMySQL is required for Cloud SQL connector migrations") from e
+        raise RuntimeError(
+            "PyMySQL is required for Cloud SQL connector migrations"
+        ) from e
 
     connection_name = os.getenv("CLOUD_SQL_CONNECTION_NAME")
     db_name = os.getenv("DB_NAME")
@@ -56,7 +65,9 @@ def _build_cloud_sql_connector_engine():
             "CLOUD_SQL_CONNECTION_NAME, DB_NAME, DB_USER"
         )
 
-    ip_type_raw = (os.getenv("CLOUD_SQL_IP_TYPE", "private") or "private").strip().lower()
+    ip_type_raw = (
+        (os.getenv("CLOUD_SQL_IP_TYPE", "private") or "private").strip().lower()
+    )
     ip_type = IPTypes.PRIVATE if ip_type_raw == "private" else IPTypes.PUBLIC
     enable_iam_auth = _env_bool("CLOUD_SQL_ENABLE_IAM_AUTH", "false")
 

@@ -40,5 +40,3 @@ IMMIGRATION_CUSTOMS_PROMPT = """
 - 差別的・偏見的な表現
 
 """
-
-

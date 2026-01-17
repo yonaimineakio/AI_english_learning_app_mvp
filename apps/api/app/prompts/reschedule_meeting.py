@@ -40,5 +40,3 @@ RESCHEDULE_MEETING_PROMPT = """
 - 不必要に込み入った事情説明
 
 """
-
-

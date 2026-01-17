@@ -40,5 +40,3 @@ SHOW_TICKETS_PROMPT = """
 - 高圧的・事務的すぎる対応
 
 """
-
-

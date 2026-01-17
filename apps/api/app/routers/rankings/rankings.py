@@ -23,8 +23,7 @@ router = APIRouter(tags=["rankings"])
 
 @router.get("/users/me/points", response_model=UserPointsResponse)
 async def get_user_points(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get current user's points summary"""
     try:
@@ -38,41 +37,43 @@ async def get_user_points(
             points_today=points_today,
         )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to get user points: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get user points"
+            detail="Failed to get user points",
         )
 
 
 @router.get("/rankings", response_model=RankingsResponse)
 async def get_rankings(
-    limit: int = Query(default=20, ge=1, le=100, description="Number of rankings to return"),
+    limit: int = Query(
+        default=20, ge=1, le=100, description="Number of rankings to return"
+    ),
     period: Literal["all_time", "weekly", "monthly"] = Query(
-        default="all_time",
-        description="Ranking period"
+        default="all_time", description="Ranking period"
     ),
     current_user: Optional[User] = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Get rankings (top N users)"""
     try:
         # 期間フィルタの設定
-        jst = pytz.timezone('Asia/Tokyo')
+        jst = pytz.timezone("Asia/Tokyo")
         now_jst = datetime.now(jst)
         now_utc = now_jst.astimezone(timezone.utc)
 
         if period == "weekly":
-            period_start = (now_jst - timedelta(days=now_jst.weekday())).replace(
-                hour=0, minute=0, second=0, microsecond=0
-            ).astimezone(timezone.utc)
+            period_start = (
+                (now_jst - timedelta(days=now_jst.weekday()))
+                .replace(hour=0, minute=0, second=0, microsecond=0)
+                .astimezone(timezone.utc)
+            )
         elif period == "monthly":
-            period_start = now_jst.replace(day=1, hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+            period_start = now_jst.replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            ).astimezone(timezone.utc)
         else:
             period_start = None
 
@@ -93,7 +94,9 @@ async def get_rankings(
                 .distinct()
                 .subquery()
             )
-            query = query.filter(User.id.in_(db.query(user_ids_with_sessions.c.user_id)))
+            query = query.filter(
+                User.id.in_(db.query(user_ids_with_sessions.c.user_id))
+            )
 
         # ポイント順でソート
         users = query.order_by(desc(User.total_points)).limit(limit).all()
@@ -121,14 +124,13 @@ async def get_rankings(
         logger.error(f"Failed to get rankings: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get rankings"
+            detail="Failed to get rankings",
         )
 
 
 @router.get("/rankings/me", response_model=MyRankingResponse)
 async def get_my_ranking(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get current user's ranking"""
     try:
@@ -165,6 +167,5 @@ async def get_my_ranking(
         logger.error(f"Failed to get my ranking: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get my ranking"
+            detail="Failed to get my ranking",
         )
-

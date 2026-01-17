@@ -30,10 +30,20 @@ MOCK_RESPONSES = {
 }
 
 
-def _generate_tags(round_index: int, difficulty: DifficultyLevel, scenario_category: ScenarioCategory | None = None) -> List[str]:
+def _generate_tags(
+    round_index: int,
+    difficulty: DifficultyLevel,
+    scenario_category: ScenarioCategory | None = None,
+) -> List[str]:
     base_tags = ["conversation", f"round_{round_index}"]
     difficulty_tag = difficulty.value
-    return base_tags + [difficulty_tag, random.choice(["fluency", "grammar", "vocabulary"])] + (scenario_category.value if scenario_category else [])
+    return (
+        base_tags
+        + [difficulty_tag, random.choice(["fluency", "grammar", "vocabulary"])]
+        + (scenario_category.value if scenario_category else [])
+    )
+
+
 class MockConversationProvider(ConversationProvider):
     async def generate_response(
         self,
@@ -44,13 +54,23 @@ class MockConversationProvider(ConversationProvider):
         context: List[dict],
         scenario_id: int | None = None,
     ) -> ConversationResponse:
-        response_template = MOCK_RESPONSES.get(difficulty, MOCK_RESPONSES[DifficultyLevel.INTERMEDIATE])
+        response_template = MOCK_RESPONSES.get(
+            difficulty, MOCK_RESPONSES[DifficultyLevel.INTERMEDIATE]
+        )
         tags = _generate_tags(round_index, difficulty, scenario_category)
-        
+
         # 終了意図の簡易検知
-        end_keywords = ["goodbye", "bye", "thank you so much", "that's all", "i have to go"]
-        should_end_session = any(keyword in user_input.lower() for keyword in end_keywords)
-        
+        end_keywords = [
+            "goodbye",
+            "bye",
+            "thank you so much",
+            "that's all",
+            "i have to go",
+        ]
+        should_end_session = any(
+            keyword in user_input.lower() for keyword in end_keywords
+        )
+
         return ConversationResponse(
             ai_reply=response_template["ai_reply"],
             feedback_short=response_template["feedback_short"][:120],
@@ -71,4 +91,3 @@ class MockConversationProvider(ConversationProvider):
             latency_ms=0,
             should_end_session=should_end_session,
         )
-

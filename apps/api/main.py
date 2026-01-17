@@ -19,4 +19,3 @@ if str(_THIS_DIR) not in sys.path:
     sys.path.insert(0, str(_THIS_DIR))
 
 from app.main import app  # noqa: F401
-

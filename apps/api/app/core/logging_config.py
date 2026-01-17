@@ -81,10 +81,10 @@ def setup_logging() -> None:
 def get_logger(name: str) -> logging.Logger:
     """
     名前付きロガーを取得する。
-    
+
     Args:
         name: ロガー名（通常は __name__ を使用）
-    
+
     Returns:
         設定済みのロガー
     """

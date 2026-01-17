@@ -10,17 +10,20 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'cb85777a681d'
-down_revision = 'de2f65f52dd9'
+revision = "cb85777a681d"
+down_revision = "de2f65f52dd9"
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
     # Add total_points column to users table
-    op.add_column('users', sa.Column('total_points', sa.Integer(), nullable=False, server_default='0'))
+    op.add_column(
+        "users",
+        sa.Column("total_points", sa.Integer(), nullable=False, server_default="0"),
+    )
 
 
 def downgrade() -> None:
     # Remove total_points column from users table
-    op.drop_column('users', 'total_points')
+    op.drop_column("users", "total_points")

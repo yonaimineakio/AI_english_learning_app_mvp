@@ -1,6 +1,9 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+sys.path.append(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -46,6 +49,7 @@ def _engine_kwargs(database_url: str) -> dict:
 
     return kwargs
 
+
 def _create_cloud_sql_connector_engine():
     """
     Build SQLAlchemy engine using cloud-sql-python-connector.
@@ -60,9 +64,13 @@ def _create_cloud_sql_connector_engine():
     try:
         import pymysql  # type: ignore[import-not-found]  # noqa: F401
     except ImportError as e:  # pragma: no cover
-        raise RuntimeError("PyMySQL is required when CLOUD_SQL_USE_CONNECTOR=true") from e
+        raise RuntimeError(
+            "PyMySQL is required when CLOUD_SQL_USE_CONNECTOR=true"
+        ) from e
 
-    connection_name = _require(settings.CLOUD_SQL_CONNECTION_NAME, "CLOUD_SQL_CONNECTION_NAME")
+    connection_name = _require(
+        settings.CLOUD_SQL_CONNECTION_NAME, "CLOUD_SQL_CONNECTION_NAME"
+    )
     db_name = _require(settings.DB_NAME, "DB_NAME")
     db_user = _require(settings.DB_USER, "DB_USER")
 

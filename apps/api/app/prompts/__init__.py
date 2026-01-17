@@ -31,28 +31,28 @@ from .scenario_goals import SCENARIO_GOALS, get_goals_for_scenario
 
 # シナリオIDとプロンプトのマッピング
 SCENARIO_PROMPTS: Dict[int, str] = {
-    1: AIRPORT_CHECKIN_PROMPT,      # 空港チェックイン
-    2: BUSINESS_MEETING_PROMPT,     # ビジネスミーティング
+    1: AIRPORT_CHECKIN_PROMPT,  # 空港チェックイン
+    2: BUSINESS_MEETING_PROMPT,  # ビジネスミーティング
     3: RESTAURANT_ORDERING_PROMPT,  # レストランでの注文
-    4: ONLINE_NEGOTIATION_PROMPT,   # オンライン商談
-    5: HOTEL_CHECKIN_PROMPT,        # ホテルチェックイン
+    4: ONLINE_NEGOTIATION_PROMPT,  # オンライン商談
+    5: HOTEL_CHECKIN_PROMPT,  # ホテルチェックイン
     # Issue #27 追加シナリオ（ID 6-21）
-    6: BEST_VACATION_PROMPT,                    # 最高のバケーション
-    7: GUIDE_JAPAN_PROMPT,                      # 日本を案内する
-    8: IMMIGRATION_CUSTOMS_PROMPT,              # 入国審査・税関で
-    9: TRAVEL_PLANNING_FRIEND_PROMPT,           # 旅行計画を友達と相談
-    10: LOST_WALLET_POLICE_PROMPT,              # 財布を無くして警察に相談
-    11: CUSTOMER_SERVICE_PROMPT,                # カスタマーサービスに相談
-    12: CAFE_SMALL_TALK_PROMPT,                 # おしゃれカフェで店員と雑談
-    13: SHOW_TICKETS_PROMPT,                    # ショーチケットを入手
-    14: PARK_SMALL_TALK_PROMPT,                 # 公園で雑談
-    15: RESCHEDULE_MEETING_PROMPT,              # ミーティングをリスケする
-    16: SCHEDULE_MEETING_PROMPT,                # ミーティングを立てる
-    17: RUN_MEETING_PROMPT,                     # 会議を進行する
-    18: CONTRACT_NEGOTIATION_PROMPT,            # 契約条件の交渉
-    19: CUSTOMER_SURVEY_PRESENTATION_PROMPT,    # 顧客満足度の調査結果をプレゼン
-    20: APOLOGIZE_DELAY_PROMPT,                 # プロジェクトの遅延を謝罪する
-    21: SICK_LEAVE_PROMPT,                      # 体調不良で休む
+    6: BEST_VACATION_PROMPT,  # 最高のバケーション
+    7: GUIDE_JAPAN_PROMPT,  # 日本を案内する
+    8: IMMIGRATION_CUSTOMS_PROMPT,  # 入国審査・税関で
+    9: TRAVEL_PLANNING_FRIEND_PROMPT,  # 旅行計画を友達と相談
+    10: LOST_WALLET_POLICE_PROMPT,  # 財布を無くして警察に相談
+    11: CUSTOMER_SERVICE_PROMPT,  # カスタマーサービスに相談
+    12: CAFE_SMALL_TALK_PROMPT,  # おしゃれカフェで店員と雑談
+    13: SHOW_TICKETS_PROMPT,  # ショーチケットを入手
+    14: PARK_SMALL_TALK_PROMPT,  # 公園で雑談
+    15: RESCHEDULE_MEETING_PROMPT,  # ミーティングをリスケする
+    16: SCHEDULE_MEETING_PROMPT,  # ミーティングを立てる
+    17: RUN_MEETING_PROMPT,  # 会議を進行する
+    18: CONTRACT_NEGOTIATION_PROMPT,  # 契約条件の交渉
+    19: CUSTOMER_SURVEY_PRESENTATION_PROMPT,  # 顧客満足度の調査結果をプレゼン
+    20: APOLOGIZE_DELAY_PROMPT,  # プロジェクトの遅延を謝罪する
+    21: SICK_LEAVE_PROMPT,  # 体調不良で休む
 }
 
 # カテゴリと難易度の組み合わせでプロンプトを取得する辞書
@@ -60,54 +60,52 @@ SCENARIO_PROMPTS: Dict[int, str] = {
 # 値: プロンプト文字列
 CATEGORY_DIFFICULTY_PROMPTS: Dict[tuple[str, str], str] = {
     # Travel カテゴリ
-    ('travel', 'beginner'): AIRPORT_CHECKIN_PROMPT,
-    ('travel', 'intermediate'): HOTEL_CHECKIN_PROMPT,
-    
+    ("travel", "beginner"): AIRPORT_CHECKIN_PROMPT,
+    ("travel", "intermediate"): HOTEL_CHECKIN_PROMPT,
     # Business カテゴリ
-    ('business', 'intermediate'): BUSINESS_MEETING_PROMPT,
-    ('business', 'advanced'): ONLINE_NEGOTIATION_PROMPT,
-    
+    ("business", "intermediate"): BUSINESS_MEETING_PROMPT,
+    ("business", "advanced"): ONLINE_NEGOTIATION_PROMPT,
     # Daily カテゴリ
-    ('daily', 'beginner'): RESTAURANT_ORDERING_PROMPT,
+    ("daily", "beginner"): RESTAURANT_ORDERING_PROMPT,
 }
 
 # カテゴリ別のプロンプト辞書
 CATEGORY_PROMPTS: Dict[str, Dict[str, str]] = {
-    'travel': {
-        'beginner': AIRPORT_CHECKIN_PROMPT,
-        'intermediate': HOTEL_CHECKIN_PROMPT,
+    "travel": {
+        "beginner": AIRPORT_CHECKIN_PROMPT,
+        "intermediate": HOTEL_CHECKIN_PROMPT,
     },
-    'business': {
-        'intermediate': BUSINESS_MEETING_PROMPT,
-        'advanced': ONLINE_NEGOTIATION_PROMPT,
+    "business": {
+        "intermediate": BUSINESS_MEETING_PROMPT,
+        "advanced": ONLINE_NEGOTIATION_PROMPT,
     },
-    'daily': {
-        'beginner': RESTAURANT_ORDERING_PROMPT,
+    "daily": {
+        "beginner": RESTAURANT_ORDERING_PROMPT,
     },
 }
 
 # 難易度別のプロンプト辞書
 DIFFICULTY_PROMPTS: Dict[str, Dict[str, str]] = {
-    'beginner': {
-        'travel': AIRPORT_CHECKIN_PROMPT,
-        'daily': RESTAURANT_ORDERING_PROMPT,
+    "beginner": {
+        "travel": AIRPORT_CHECKIN_PROMPT,
+        "daily": RESTAURANT_ORDERING_PROMPT,
     },
-    'intermediate': {
-        'travel': HOTEL_CHECKIN_PROMPT,
-        'business': BUSINESS_MEETING_PROMPT,
+    "intermediate": {
+        "travel": HOTEL_CHECKIN_PROMPT,
+        "business": BUSINESS_MEETING_PROMPT,
     },
-    'advanced': {
-        'business': ONLINE_NEGOTIATION_PROMPT,
+    "advanced": {
+        "business": ONLINE_NEGOTIATION_PROMPT,
     },
 }
 
 
 def get_prompt_by_scenario_id(scenario_id: int) -> Optional[str]:
     """シナリオIDでプロンプトを取得する
-    
+
     Args:
         scenario_id: シナリオID (1-5)
-        
+
     Returns:
         プロンプト文字列、見つからない場合はNone
     """
@@ -116,11 +114,11 @@ def get_prompt_by_scenario_id(scenario_id: int) -> Optional[str]:
 
 def get_prompt_by_category_difficulty(category: str, difficulty: str) -> Optional[str]:
     """カテゴリと難易度の組み合わせでプロンプトを取得する
-    
+
     Args:
         category: カテゴリ ('travel', 'business', 'daily')
         difficulty: 難易度 ('beginner', 'intermediate', 'advanced')
-        
+
     Returns:
         プロンプト文字列、見つからない場合はNone
     """
@@ -129,10 +127,10 @@ def get_prompt_by_category_difficulty(category: str, difficulty: str) -> Optiona
 
 def get_prompts_by_category(category: str) -> Dict[str, str]:
     """カテゴリでプロンプト一覧を取得する
-    
+
     Args:
         category: カテゴリ ('travel', 'business', 'daily')
-        
+
     Returns:
         難易度をキーとしたプロンプト辞書
     """
@@ -141,10 +139,10 @@ def get_prompts_by_category(category: str) -> Dict[str, str]:
 
 def get_prompts_by_difficulty(difficulty: str) -> Dict[str, str]:
     """難易度でプロンプト一覧を取得する
-    
+
     Args:
         difficulty: 難易度 ('beginner', 'intermediate', 'advanced')
-        
+
     Returns:
         カテゴリをキーとしたプロンプト辞書
     """
@@ -153,7 +151,7 @@ def get_prompts_by_difficulty(difficulty: str) -> Dict[str, str]:
 
 def get_all_prompts() -> Dict[int, str]:
     """全てのシナリオプロンプトを取得する
-    
+
     Returns:
         シナリオIDをキーとしたプロンプト辞書
     """
@@ -162,7 +160,7 @@ def get_all_prompts() -> Dict[int, str]:
 
 def get_available_combinations() -> list[tuple[str, str]]:
     """利用可能なカテゴリと難易度の組み合わせを取得する
-    
+
     Returns:
         (category, difficulty) のタプルのリスト
     """
@@ -171,17 +169,17 @@ def get_available_combinations() -> list[tuple[str, str]]:
 
 # エクスポートする関数と変数
 __all__ = [
-    'SCENARIO_PROMPTS',
-    'SCENARIO_GOALS',
-    'CATEGORY_DIFFICULTY_PROMPTS',
-    'CATEGORY_PROMPTS',
-    'DIFFICULTY_PROMPTS',
-    'get_prompt_by_scenario_id',
-    'get_prompt_by_category_difficulty',
-    'get_prompts_by_category',
-    'get_prompts_by_difficulty',
-    'get_all_prompts',
-    'get_available_combinations',
-    'get_conversation_system_prompt',
-    'get_goals_for_scenario',
+    "SCENARIO_PROMPTS",
+    "SCENARIO_GOALS",
+    "CATEGORY_DIFFICULTY_PROMPTS",
+    "CATEGORY_PROMPTS",
+    "DIFFICULTY_PROMPTS",
+    "get_prompt_by_scenario_id",
+    "get_prompt_by_category_difficulty",
+    "get_prompts_by_category",
+    "get_prompts_by_difficulty",
+    "get_all_prompts",
+    "get_available_combinations",
+    "get_conversation_system_prompt",
+    "get_goals_for_scenario",
 ]

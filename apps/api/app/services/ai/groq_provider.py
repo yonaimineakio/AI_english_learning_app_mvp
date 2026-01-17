@@ -19,6 +19,7 @@ from app.prompts import (
 
 logger = get_logger(__name__)
 
+
 class GroqConversationProvider(ConversationProvider):
     def __init__(self) -> None:
         if not settings.GROQ_API_KEY:
@@ -61,10 +62,12 @@ class GroqConversationProvider(ConversationProvider):
         )
 
         try:
-            response = await self._client.post(settings.GROQ_CHAT_COMPLETIONS_URL, json=payload)
+            response = await self._client.post(
+                settings.GROQ_CHAT_COMPLETIONS_URL, json=payload
+            )
             response.raise_for_status()
             data = response.json()
-            
+
             # OpenAI互換APIのレスポンス形式
             choices = data.get("choices", [])
             if choices:
@@ -75,9 +78,11 @@ class GroqConversationProvider(ConversationProvider):
             # トークン使用量を取得して料金計算
             usage = data.get("usage", {})
             input_tokens = usage.get("input_tokens", usage.get("prompt_tokens", 0))
-            output_tokens = usage.get("output_tokens", usage.get("completion_tokens", 0))
+            output_tokens = usage.get(
+                "output_tokens", usage.get("completion_tokens", 0)
+            )
             latency_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
-            
+
             if input_tokens > 0 or output_tokens > 0:
                 calculate_groq_cost(
                     model=settings.GROQ_MODEL_NAME,
@@ -87,7 +92,12 @@ class GroqConversationProvider(ConversationProvider):
                 )
 
             logger.info("Groq response: %s", content)
-            ai_reply, feedback_short, improved_sentence, should_end_session = self._parse_response(content)
+            (
+                ai_reply,
+                feedback_short,
+                improved_sentence,
+                should_end_session,
+            ) = self._parse_response(content)
         except httpx.ReadTimeout as exc:
             # OpenAI側のタイムアウトはアプリ側で扱いやすいように TimeoutError にラップして伝播させる
             logger.warning("Groq request timed out: %s", exc)
@@ -99,7 +109,9 @@ class GroqConversationProvider(ConversationProvider):
             logger.exception("Failed to generate AI response via Groq: %s", exc)
             raise
 
-        tags = ["conversation", f"round_{round_index}", difficulty] + [scenario_category]
+        tags = ["conversation", f"round_{round_index}", difficulty] + [
+            scenario_category
+        ]
         latency_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
         details = {"explanation": None, "suggestions": None}
         scores = None
@@ -124,7 +136,6 @@ class GroqConversationProvider(ConversationProvider):
         context: List[dict],
         scenario_id: int | None = None,
     ) -> dict:
-
         # まずシナリオIDに対応するプロンプトを優先的に使用する（一対一対応）
         system_prompt = None
         if scenario_id is not None:
@@ -132,15 +143,17 @@ class GroqConversationProvider(ConversationProvider):
 
         # シナリオIDで取得できなかった場合は、カテゴリ×難易度でのプロンプトにフォールバック
         if not system_prompt:
-            system_prompt = get_prompt_by_category_difficulty(scenario_category, difficulty) or ""
-        
+            system_prompt = (
+                get_prompt_by_category_difficulty(scenario_category, difficulty) or ""
+            )
+
         # 会話システムプロンプト（外部ファイルから取得）を結合
         conversation_prompt = get_conversation_system_prompt(
             difficulty=difficulty,
             user_input=user_input,
         )
         full_system_prompt = f"{system_prompt}\n\n{conversation_prompt}"
-        
+
         # OpenAI互換形式のメッセージ配列
         messages = [{"role": "system", "content": full_system_prompt}]
 
@@ -169,13 +182,13 @@ class GroqConversationProvider(ConversationProvider):
         feedback_short = ""
         improved_sentence = ""
         should_end_session = False
-        
+
         # [END_SESSION]マーカーの検知
         if "[END_SESSION]" in content:
             should_end_session = True
             content = content.replace("[END_SESSION]", "").strip()
             lines = content.strip().splitlines()
-        
+
         for line in lines:
             if line.lower().startswith("ai:"):
                 ai_reply = line.split(":", 1)[1].strip()
@@ -214,7 +227,6 @@ async def warm_up_provider() -> None:
             scenario_id=2,
         )
     except Exception:  # noqa: BLE001
-        logger.info("Groq warm-up failed (expected if key invalid)" )
+        logger.info("Groq warm-up failed (expected if key invalid)")
     finally:
         await provider._client.aclose()
-

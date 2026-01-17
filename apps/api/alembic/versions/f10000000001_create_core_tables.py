@@ -44,7 +44,12 @@ def upgrade() -> None:
         sa.Column("sub", sa.String(length=255), nullable=False),
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("email", sa.String(length=255), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=True,
+        ),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("placement_level", difficulty_level_enum, nullable=True),
         sa.Column("placement_score", sa.Integer(), nullable=True),
@@ -65,7 +70,12 @@ def upgrade() -> None:
         sa.Column("category", scenario_category_enum, nullable=False),
         sa.Column("difficulty", difficulty_level_enum, nullable=False),
         sa.Column("is_active", sa.Boolean(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=True,
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_scenarios_id"), "scenarios", ["id"], unique=False)
@@ -80,7 +90,12 @@ def upgrade() -> None:
         sa.Column("difficulty", difficulty_level_enum, nullable=False),
         sa.Column("mode", session_mode_enum, nullable=False),
         sa.Column("extension_count", sa.Integer(), server_default="0", nullable=True),
-        sa.Column("started_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
+        sa.Column(
+            "started_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=True,
+        ),
         sa.Column("ended_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["scenario_id"], ["scenarios.id"]),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
@@ -100,7 +115,12 @@ def upgrade() -> None:
         sa.Column("tags", sa.JSON(), nullable=True),
         sa.Column("score_pronunciation", sa.Integer(), nullable=True),
         sa.Column("score_grammar", sa.Integer(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=True,
+        ),
         sa.ForeignKeyConstraint(["session_id"], ["sessions.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
@@ -109,7 +129,9 @@ def upgrade() -> None:
             name="uq_session_rounds_session_id_round_index",
         ),
     )
-    op.create_index(op.f("ix_session_rounds_id"), "session_rounds", ["id"], unique=False)
+    op.create_index(
+        op.f("ix_session_rounds_id"), "session_rounds", ["id"], unique=False
+    )
 
     op.create_table(
         "review_items",
@@ -119,7 +141,12 @@ def upgrade() -> None:
         sa.Column("explanation", sa.Text(), nullable=False),
         sa.Column("due_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("is_completed", sa.Boolean(), server_default="0", nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=True,
+        ),
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
@@ -144,6 +171,3 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_users_sub"), table_name="users")
     op.drop_index(op.f("ix_users_id"), table_name="users")
     op.drop_table("users")
-
-
-

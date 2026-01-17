@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GeneratedQuestion:
     """生成された問題"""
+
     question_type: str
     prompt: str
     hint: Optional[str] = None
@@ -72,28 +73,28 @@ class ReviewQuestionService:
         """スピーキングとリスニング両方の問題を並列で生成する"""
         speaking_task = self.generate_speaking_question(phrase, explanation)
         listening_task = self.generate_listening_question(phrase, explanation)
-        
+
         speaking, listening = await asyncio.gather(speaking_task, listening_task)
         return speaking, listening
 
     async def _call_openai(self, prompt: str) -> str:
         """OpenAI APIを呼び出す"""
         import json
-        
-        messages = [
-            {"role": "user", "content": prompt}
-        ]
-        
+
+        messages = [{"role": "user", "content": prompt}]
+
         payload = {
             "model": settings.OPENAI_MODEL_NAME,
-            "input": json.dumps(messages, ensure_ascii=False)
+            "input": json.dumps(messages, ensure_ascii=False),
         }
-        
+
         try:
-            response = await self._client.post(settings.OPENAI_CHAT_COMPLETIONS_URL, json=payload)
+            response = await self._client.post(
+                settings.OPENAI_CHAT_COMPLETIONS_URL, json=payload
+            )
             response.raise_for_status()
             data = response.json()
-            
+
             texts: list[str] = []
             outputs = data.get("output", [])
             for out in outputs:
@@ -104,11 +105,11 @@ class ReviewQuestionService:
                         txt = item.get("text")
                         if txt:
                             texts.append(txt)
-            
+
             content = "".join(texts)
             logger.info("OpenAI response for review question: %s", content[:200])
             return content
-            
+
         except httpx.ReadTimeout as exc:
             logger.warning("OpenAI request timed out: %s", exc)
             raise TimeoutError("OpenAI request timed out") from exc
@@ -125,7 +126,7 @@ class ReviewQuestionService:
         target_sentence = ""
         prompt = ""
         hint = None
-        
+
         for line in lines:
             lower_line = line.lower()
             if lower_line.startswith("targetsentence:"):
@@ -134,12 +135,12 @@ class ReviewQuestionService:
                 prompt = line.split(":", 1)[1].strip()
             elif lower_line.startswith("hint:"):
                 hint = line.split(":", 1)[1].strip()
-        
+
         if not target_sentence:
             target_sentence = "This is an example sentence."
         if not prompt:
             prompt = "以下の文を読み上げてください。"
-        
+
         return GeneratedQuestion(
             question_type="speaking",
             prompt=prompt,
@@ -156,7 +157,7 @@ class ReviewQuestionService:
         puzzle_words_str = ""
         prompt = ""
         hint = None
-        
+
         for line in lines:
             lower_line = line.lower()
             if lower_line.startswith("audiotext:"):
@@ -167,21 +168,22 @@ class ReviewQuestionService:
                 prompt = line.split(":", 1)[1].strip()
             elif lower_line.startswith("hint:"):
                 hint = line.split(":", 1)[1].strip()
-        
+
         if not audio_text:
             audio_text = "This is an example sentence."
         if not prompt:
             prompt = "音声を聞いて、単語を正しい順番に並べてください。"
-        
+
         # 単語リストを生成
         if puzzle_words_str:
             puzzle_words = puzzle_words_str.split()
         else:
             # AudioTextから句読点を除去して単語リストを生成
             import re
-            clean_text = re.sub(r'[.,!?;:]', '', audio_text)
+
+            clean_text = re.sub(r"[.,!?;:]", "", audio_text)
             puzzle_words = clean_text.split()
-        
+
         return GeneratedQuestion(
             question_type="listening",
             prompt=prompt,

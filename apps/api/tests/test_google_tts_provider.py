@@ -24,7 +24,9 @@ async def test_synthesize_speech_truncates_and_calls_client() -> None:
     with patch(
         "app.services.ai.google_tts_provider.texttospeech.TextToSpeechClient",
         return_value=fake_client,
-    ), patch("app.services.ai.google_tts_provider.calculate_google_tts_cost") as mock_cost:
+    ), patch(
+        "app.services.ai.google_tts_provider.calculate_google_tts_cost"
+    ) as mock_cost:
         provider = GoogleTTSProvider()
         audio = await provider.synthesize_speech("a" * 600, language_code="en-US")
 
@@ -47,4 +49,3 @@ async def test_context_manager_closes_client_when_available() -> None:
             assert provider is not None
 
     fake_client.close.assert_called_once()
-

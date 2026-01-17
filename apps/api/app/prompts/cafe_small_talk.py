@@ -40,5 +40,3 @@ CAFE_SMALL_TALK_PROMPT = """
 - 専門的なコーヒー用語の多用
 
 """
-
-

@@ -40,7 +40,7 @@ class UserUpdate(BaseModel):
 
 class User(UserBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: str  # UUID
     sub: str
     created_at: datetime
@@ -56,6 +56,7 @@ class User(UserBase):
 
 class UserStatsResponse(BaseModel):
     """ユーザー統計情報レスポンス"""
+
     current_streak: int
     longest_streak: int
     last_activity_date: Optional[date] = None
@@ -86,7 +87,7 @@ class ScenarioUpdate(BaseModel):
 
 class Scenario(ScenarioBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     created_at: datetime
 
@@ -111,7 +112,7 @@ class SessionUpdate(BaseModel):
 
 class Session(SessionBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     user_id: str  # UUID
     completed_rounds: int = 0
@@ -152,7 +153,7 @@ class SessionRoundUpdate(BaseModel):
 
 class SessionRound(SessionRoundBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     session_id: int
     created_at: datetime
@@ -178,7 +179,7 @@ class ReviewItemUpdate(BaseModel):
 
 class ReviewItem(ReviewItemBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     user_id: str  # UUID
     is_completed: bool = False
@@ -193,6 +194,7 @@ class ReviewCompleteRequest(BaseModel):
 # Review Question schemas (for speaking/listening practice)
 class ReviewQuestion(BaseModel):
     """復習用の問題（スピーキング/リスニング）"""
+
     question_type: Literal["speaking", "listening"]
     prompt: str
     hint: Optional[str] = None
@@ -206,6 +208,7 @@ class ReviewQuestion(BaseModel):
 
 class ReviewQuestionsResponse(BaseModel):
     """復習アイテムに対する問題一式"""
+
     review_item_id: int
     phrase: str
     explanation: str
@@ -215,6 +218,7 @@ class ReviewQuestionsResponse(BaseModel):
 
 class WordMatch(BaseModel):
     """単語の一致情報"""
+
     word: str
     matched: bool
     index: int
@@ -222,6 +226,7 @@ class WordMatch(BaseModel):
 
 class ReviewEvaluateRequest(BaseModel):
     """復習の評価リクエスト"""
+
     question_type: Literal["speaking", "listening"]
     # スピーキング用: 音声認識結果
     user_transcription: Optional[str] = None
@@ -231,6 +236,7 @@ class ReviewEvaluateRequest(BaseModel):
 
 class ReviewEvaluateResponse(BaseModel):
     """復習の評価結果レスポンス"""
+
     review_item_id: int
     question_type: str
     score: int = Field(..., ge=0, le=100)  # 0-100点
@@ -246,12 +252,14 @@ class ReviewEvaluateResponse(BaseModel):
 # Placement Test evaluation schemas
 class PlacementSpeakingEvaluateRequest(BaseModel):
     """Placementテスト - Speaking評価リクエスト"""
+
     question_id: int
     user_transcription: str  # 音声認識結果
 
 
 class PlacementSpeakingEvaluateResponse(BaseModel):
     """Placementテスト - Speaking評価レスポンス"""
+
     question_id: int
     target_sentence: str
     user_transcription: str
@@ -262,12 +270,14 @@ class PlacementSpeakingEvaluateResponse(BaseModel):
 
 class PlacementListeningEvaluateRequest(BaseModel):
     """Placementテスト - Listening評価リクエスト"""
+
     question_id: int
     user_answer: List[str]  # ユーザーが並べた単語リスト
 
 
 class PlacementListeningEvaluateResponse(BaseModel):
     """Placementテスト - Listening評価レスポンス"""
+
     question_id: int
     correct_sentence: str
     user_answer: str
@@ -278,6 +288,7 @@ class PlacementListeningEvaluateResponse(BaseModel):
 # Rankings schemas
 class UserPointsResponse(BaseModel):
     """ユーザーのポイントサマリ"""
+
     total_points: int
     points_this_week: int
     points_today: int
@@ -285,6 +296,7 @@ class UserPointsResponse(BaseModel):
 
 class RankingEntry(BaseModel):
     """ランキング1行分"""
+
     rank: int
     user_id: str  # UUID
     user_name: str
@@ -294,12 +306,14 @@ class RankingEntry(BaseModel):
 
 class RankingsResponse(BaseModel):
     """ランキング一覧レスポンス"""
+
     rankings: List[RankingEntry]
     total_users: int
 
 
 class MyRankingResponse(BaseModel):
     """自分のランキング情報"""
+
     rank: int
     total_points: int
     points_to_next_rank: Optional[int] = None
@@ -403,7 +417,7 @@ class SavedPhraseCreate(SavedPhraseBase):
 
 class SavedPhrase(SavedPhraseBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     user_id: str  # UUID
     session_id: Optional[int] = None
@@ -427,6 +441,7 @@ class ConvertToReviewResponse(BaseModel):
 # ReviewStats schemas
 class ReviewStatsResponse(BaseModel):
     """復習統計情報"""
+
     total_items: int
     completed_items: int
     completion_rate: float  # 0.0 - 100.0

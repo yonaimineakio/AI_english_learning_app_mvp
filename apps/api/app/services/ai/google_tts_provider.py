@@ -32,7 +32,9 @@ class GoogleTTSProvider:
         try:
             self._client = texttospeech.TextToSpeechClient()
         except Exception as exc:  # pragma: no cover
-            raise ValueError("Google Text-to-Speechクライアントの初期化に失敗しました") from exc
+            raise ValueError(
+                "Google Text-to-Speechクライアントの初期化に失敗しました"
+            ) from exc
 
     async def synthesize_speech(
         self,
@@ -49,7 +51,7 @@ class GoogleTTSProvider:
         max_chars = 500
         normalized = text.strip()
         if len(normalized) > max_chars:
-            normalized = normalized[: max_chars] + "..."
+            normalized = normalized[:max_chars] + "..."
 
         input_text = texttospeech.SynthesisInput(text=normalized)
 
@@ -71,7 +73,7 @@ class GoogleTTSProvider:
         )
 
         start_time = time.perf_counter()
-        
+
         try:
             response = self._client.synthesize_speech(
                 input=input_text,
@@ -79,14 +81,18 @@ class GoogleTTSProvider:
                 audio_config=audio_config,
             )
         except google_exceptions.GoogleAPICallError as exc:
-            raise ValueError("Google Text-to-Speech APIの呼び出しに失敗しました") from exc
+            raise ValueError(
+                "Google Text-to-Speech APIの呼び出しに失敗しました"
+            ) from exc
         except google_exceptions.RetryError as exc:
-            raise ValueError("Google Text-to-Speech APIの再試行が上限に達しました") from exc
+            raise ValueError(
+                "Google Text-to-Speech APIの再試行が上限に達しました"
+            ) from exc
         except Exception as exc:  # pragma: no cover
             raise ValueError("音声合成中に予期せぬエラーが発生しました") from exc
 
         latency_ms = int((time.perf_counter() - start_time) * 1000)
-        
+
         # 料金計算（使用した文字数）
         calculate_google_tts_cost(
             character_count=len(normalized),

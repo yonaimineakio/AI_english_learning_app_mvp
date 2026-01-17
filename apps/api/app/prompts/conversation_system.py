@@ -7,11 +7,11 @@
 
 def get_conversation_system_prompt(difficulty: str, user_input: str) -> str:
     """会話システムプロンプトを生成する
-    
+
     Args:
         difficulty: 難易度 ('beginner', 'intermediate', 'advanced')
         user_input: ユーザーの入力テキスト
-        
+
     Returns:
         フォーマット済みのシステムプロンプト
     """
@@ -102,4 +102,3 @@ Improved: Thanks for the information. I'll try using it in my own sentence.
 ユーザー入力:
 {user_input}
 """
-

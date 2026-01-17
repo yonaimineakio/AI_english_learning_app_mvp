@@ -21,6 +21,7 @@ def initialize_providers() -> None:
     # フォールバック用にデフォルトをmockに設定
     AIProviderRegistry.set_default("mock")
 
+
 async def generate_conversation_response(
     user_input: str,
     difficulty: str,
@@ -57,7 +58,9 @@ async def generate_conversation_response(
         default_name = AIProviderRegistry.default_provider()
         if default_name == "openai" or default_name == "groq":
             # OpenAI失敗時はログだけ残してMockへフォールバック
-            from .mock_provider import MockConversationProvider  # ローカルimportで循環依存を回避
+            from .mock_provider import (
+                MockConversationProvider,
+            )  # ローカルimportで循環依存を回避
 
             fallback_provider: ConversationProvider = MockConversationProvider()
             fallback = await fallback_provider.generate_response(
@@ -77,4 +80,3 @@ async def generate_conversation_response(
 
 
 initialize_providers()
-

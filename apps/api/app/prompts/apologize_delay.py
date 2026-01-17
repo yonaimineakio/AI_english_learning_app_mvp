@@ -40,5 +40,3 @@ APOLOGIZE_DELAY_PROMPT = """
 - 過度に専門的な技術用語の連発
 
 """
-
-
