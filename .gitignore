@@ -21,6 +21,7 @@ venv/
 out/
 dist/
 build/
+.flutter/
 *.egg-info/
 
 # Database

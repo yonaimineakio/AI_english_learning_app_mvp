@@ -131,4 +131,25 @@ Xcodeで `Product → Clean Build Folder` → `Run (Cmd+R)`
   - `ios/Flutter/Generated.xcconfig` に `CONFIGURATION_BUILD_DIR` を固定（出力先ズレでリンクが壊れる）
   - `Runner.xcodeproj` に `Pods_Runner.framework` を手動追加（存在しない成果物を参照しがち）
 
+---
+
+## App Store Connect / Xcode Cloud で Archive が失敗する（Pods / Generated.xcconfig が無い）
+
+### 症状（例）
+- `could not find included file 'Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig'`
+- `could not find included file 'Generated.xcconfig'`
+- `Unable to load contents of file list: '/Target Support Files/Pods-Runner/...xcfilelist'`
+
+### 原因
+Xcode Cloud が **Flutter の依存解決（`flutter pub get`）と CocoaPods（`pod install`）を事前に実行できておらず**、
+`ios/Flutter/Generated.xcconfig` と `ios/Pods/` が未生成のまま `xcodebuild` が走っている。
+
+### 対応（リポジトリ側）
+リポジトリ直下に `ci_scripts/ci_post_clone.sh` を追加し、Xcode Cloud に以下を自動実行させる。
+- Flutter をプロジェクトの pinned revision（`apps/mobile/.metadata`）で用意
+- `apps/mobile` で `flutter pub get`
+- `apps/mobile/ios` で `pod install`
+
+（このリポジトリには `ci_scripts/ci_post_clone.sh` を追加済み）
+
 
