@@ -8,6 +8,7 @@ import '../../shared/models/placement_models.dart';
 import '../../shared/services/api_client.dart';
 import '../../shared/services/auth_api.dart';
 import '../../shared/services/revenuecat/revenuecat_client.dart';
+import '../paywall/pro_status_provider.dart';
 
 class AuthState {
   const AuthState({
@@ -78,6 +79,9 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       // RevenueCat にユーザーID(UUID)を紐付ける
       await const RevenueCatClient().loginUser(me.id);
 
+      // RevenueCatログイン後にPro状態を更新
+      await ref.read(proStatusProvider.notifier).refresh();
+
       final newState = AuthState(
         isLoggedIn: true,
         userId: me.id,
@@ -108,6 +112,9 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
       // RevenueCat にユーザーID(UUID)を紐付ける
       await const RevenueCatClient().loginUser(me.id);
+
+      // RevenueCatログイン後にPro状態を更新
+      await ref.read(proStatusProvider.notifier).refresh();
 
       final newState = AuthState(
         isLoggedIn: true,
@@ -147,6 +154,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     ApiClient().updateToken(null);
     // RevenueCat から匿名ユーザーに戻す
     await const RevenueCatClient().logoutUser();
+    // Pro状態のキャッシュをクリア
+    ref.invalidate(proStatusProvider);
     const newState = AuthState(isLoggedIn: false);
     state = const AsyncData(newState);
     _controller.add(newState);

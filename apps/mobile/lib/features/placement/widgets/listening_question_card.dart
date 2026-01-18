@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/models/placement_models.dart';
 import '../../audio/audio_controller.dart';
 
+/// インデックス付き単語（同じ単語が複数ある場合を区別するため）
+typedef IndexedWord = ({int id, String word});
+
 /// リスニング問題カード
 class ListeningQuestionCard extends ConsumerStatefulWidget {
   const ListeningQuestionCard({
@@ -25,8 +28,8 @@ class ListeningQuestionCard extends ConsumerStatefulWidget {
 }
 
 class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
-  List<String> _availableWords = [];
-  List<String?> _answerSlots = [];
+  List<IndexedWord> _availableWords = [];
+  List<IndexedWord?> _answerSlots = [];
   bool _isEvaluating = false;
 
   @override
@@ -44,18 +47,23 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
   }
 
   void _resetWords() {
-    final words = List<String>.from(widget.question.puzzleWords ?? []);
+    final words = widget.question.puzzleWords ?? [];
     setState(() {
-      _availableWords = words.toList()..shuffle();
-      _answerSlots = List<String?>.filled(words.length, null);
+      _availableWords = words
+          .asMap()
+          .entries
+          .map((e) => (id: e.key, word: e.value))
+          .toList()
+        ..shuffle();
+      _answerSlots = List<IndexedWord?>.filled(words.length, null);
     });
   }
 
-  void _placeWord(int slotIndex, String word) {
+  void _placeWord(int slotIndex, IndexedWord item) {
     setState(() {
-      // 既に別スロットに同じ単語が入っていたら外す（安全策）
+      // 既に同じIDの単語が別スロットに入っていたら外す
       for (var i = 0; i < _answerSlots.length; i++) {
-        if (_answerSlots[i] == word) {
+        if (_answerSlots[i]?.id == item.id) {
           _answerSlots[i] = null;
         }
       }
@@ -66,22 +74,22 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
         _availableWords.add(prev);
       }
 
-      _answerSlots[slotIndex] = word;
-      _availableWords.remove(word);
+      _answerSlots[slotIndex] = item;
+      _availableWords.removeWhere((w) => w.id == item.id);
     });
   }
 
   void _removeFromSlot(int slotIndex) {
     setState(() {
-      final word = _answerSlots[slotIndex];
-      if (word == null) return;
+      final item = _answerSlots[slotIndex];
+      if (item == null) return;
       _answerSlots[slotIndex] = null;
-      _availableWords.add(word);
+      _availableWords.add(item);
     });
   }
 
   Future<void> _handleEvaluate() async {
-    final filled = _answerSlots.whereType<String>().toList();
+    final filled = _answerSlots.whereType<IndexedWord>().toList();
     if (filled.length != _answerSlots.length) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('すべてのスロットを埋めてください')),
@@ -91,7 +99,8 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
 
     setState(() => _isEvaluating = true);
     try {
-      await widget.onEvaluate(filled);
+      // 単語のみのリストに変換して送信
+      await widget.onEvaluate(filled.map((e) => e.word).toList());
     } finally {
       if (mounted) {
         setState(() => _isEvaluating = false);
@@ -199,18 +208,18 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
                 spacing: 8,
                 runSpacing: 8,
                 children: List.generate(_answerSlots.length, (idx) {
-                  final word = _answerSlots[idx];
-                  return DragTarget<String>(
-                    onWillAcceptWithDetails: (_) => word == null,
+                  final item = _answerSlots[idx];
+                  return DragTarget<IndexedWord>(
+                    onWillAcceptWithDetails: (_) => item == null,
                     onAcceptWithDetails: (details) => _placeWord(idx, details.data),
                     builder: (context, candidate, rejected) {
                       final isActive = candidate.isNotEmpty;
                       return InkWell(
-                        onTap: word == null ? null : () => _removeFromSlot(idx),
+                        onTap: item == null ? null : () => _removeFromSlot(idx),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
-                            color: word == null ? Colors.white : Colors.blue,
+                            color: item == null ? Colors.white : Colors.blue,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color: isActive ? Colors.blue : Colors.grey.shade300,
@@ -218,9 +227,9 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
                             ),
                           ),
                           child: Text(
-                            word ?? '____',
+                            item?.word ?? '____',
                             style: TextStyle(
-                              color: word == null ? Colors.grey.shade600 : Colors.white,
+                              color: item == null ? Colors.grey.shade600 : Colors.white,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -242,18 +251,18 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _availableWords.map((word) {
-                return Draggable<String>(
-                  data: word,
+              children: _availableWords.map((item) {
+                return Draggable<IndexedWord>(
+                  data: item,
                   feedback: Material(
                     color: Colors.transparent,
-                    child: _WordChip(word: word, dragging: true),
+                    child: _WordChip(word: item.word, dragging: true),
                   ),
                   childWhenDragging: Opacity(
                     opacity: 0.4,
-                    child: _WordChip(word: word),
+                    child: _WordChip(word: item.word),
                   ),
-                  child: _WordChip(word: word),
+                  child: _WordChip(word: item.word),
                 );
               }).toList(),
             ),
@@ -277,7 +286,7 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed:
-                    _answerSlots.whereType<String>().length == _answerSlots.length &&
+                    _answerSlots.whereType<IndexedWord>().length == _answerSlots.length &&
                             !_isEvaluating
                         ? _handleEvaluate
                         : null,
@@ -406,4 +415,3 @@ class _WordChip extends StatelessWidget {
     );
   }
 }
-

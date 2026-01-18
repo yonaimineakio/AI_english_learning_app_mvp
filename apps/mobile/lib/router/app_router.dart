@@ -15,7 +15,13 @@ import '../features/paywall/pro_status_provider.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authStateProvider);
-  final isPro = ref.watch(proStatusProvider).valueOrNull ?? false;
+  final authState = auth.valueOrNull;
+  final isLoggedIn = authState?.isLoggedIn ?? false;
+  
+  // ログインしていない場合はProStatusをチェックしない（匿名ユーザーの状態を見ても意味がない）
+  final isPro = isLoggedIn 
+      ? (ref.watch(proStatusProvider).valueOrNull ?? false)
+      : false;
 
   return GoRouter(
     initialLocation: '/login',
@@ -64,10 +70,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
     redirect: (context, state) {
-      final authState = auth.valueOrNull;
-      final isLoggedIn = authState?.isLoggedIn ?? false;
-      final hasPlacement =
-          authState?.placementCompletedAt != null;
+      final hasPlacement = authState?.placementCompletedAt != null;
 
       final loggingIn = state.matchedLocation == '/login';
       final inCallback = state.matchedLocation == '/callback';

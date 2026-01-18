@@ -8,6 +8,7 @@ import '../../shared/services/api_client.dart';
 import '../../shared/services/review_api.dart';
 import '../../shared/services/saved_phrases_api.dart';
 import '../audio/audio_controller.dart';
+import '../auth/auth_providers.dart';
 import '../main/main_tab_state.dart';
 import '../paywall/pro_status_provider.dart';
 
@@ -30,17 +31,32 @@ final _savedPhrasesApiProvider = Provider<SavedPhrasesApi>(
 
 final _reviewItemsProvider =
     FutureProvider<ReviewNextResponseModel>((ref) async {
+  // 認証状態を監視してログアウト時に自動的にリフレッシュ
+  final auth = ref.watch(authStateProvider);
+  if (auth.valueOrNull?.isLoggedIn != true) {
+    throw StateError('Not logged in');
+  }
   final api = ref.watch(_reviewApiProvider);
   return api.getNextReviews();
 });
 
 final _reviewStatsProvider = FutureProvider<ReviewStatsModel>((ref) async {
+  // 認証状態を監視してログアウト時に自動的にリフレッシュ
+  final auth = ref.watch(authStateProvider);
+  if (auth.valueOrNull?.isLoggedIn != true) {
+    throw StateError('Not logged in');
+  }
   final api = ref.watch(_reviewApiProvider);
   return api.getReviewStats();
 });
 
 final _savedPhrasesProvider =
     FutureProvider<SavedPhrasesListResponseModel>((ref) async {
+  // 認証状態を監視してログアウト時に自動的にリフレッシュ
+  final auth = ref.watch(authStateProvider);
+  if (auth.valueOrNull?.isLoggedIn != true) {
+    throw StateError('Not logged in');
+  }
   final api = ref.watch(_savedPhrasesApiProvider);
   return api.getSavedPhrases();
 });
@@ -694,8 +710,9 @@ class _ReviewQuizScreenState extends ConsumerState<ReviewQuizScreen> {
   ReviewEvaluateResponseModel? _speakingResult;
 
   // リスニング問題の結果
-  List<String> _shuffledWords = [];
-  List<String> _selectedWords = [];
+  // インデックス付き単語（同じ単語が複数ある場合を区別するため）
+  List<({int id, String word})> _shuffledWords = [];
+  List<({int id, String word})> _selectedWords = [];
   ReviewEvaluateResponseModel? _listeningResult;
 
   @override
@@ -716,13 +733,18 @@ class _ReviewQuizScreenState extends ConsumerState<ReviewQuizScreen> {
         reviewId: widget.reviewItem.id,
       );
 
-      // リスニング用の単語をシャッフル
-      final words = List<String>.from(questions.listening.puzzleWords ?? []);
-      words.shuffle(Random());
+      // リスニング用の単語をシャッフル（インデックス付きで管理）
+      final words = questions.listening.puzzleWords ?? [];
+      final indexedWords = words
+          .asMap()
+          .entries
+          .map((e) => (id: e.key, word: e.value))
+          .toList()
+        ..shuffle(Random());
 
       setState(() {
         _questions = questions;
-        _shuffledWords = words;
+        _shuffledWords = indexedWords;
         _isLoadingQuestions = false;
       });
     } catch (e) {
@@ -772,7 +794,7 @@ class _ReviewQuizScreenState extends ConsumerState<ReviewQuizScreen> {
       final api = ref.read(_reviewApiProvider);
       final result = await api.evaluateListening(
         reviewId: widget.reviewItem.id,
-        userAnswer: _selectedWords,
+        userAnswer: _selectedWords.map((e) => e.word).toList(),
       );
 
       setState(() {
@@ -798,25 +820,30 @@ class _ReviewQuizScreenState extends ConsumerState<ReviewQuizScreen> {
     }
   }
 
-  void _selectWord(String word) {
+  void _selectWord(({int id, String word}) item) {
     setState(() {
-      _shuffledWords.remove(word);
-      _selectedWords.add(word);
+      _shuffledWords.removeWhere((w) => w.id == item.id);
+      _selectedWords.add(item);
     });
   }
 
-  void _unselectWord(String word) {
+  void _unselectWord(({int id, String word}) item) {
     setState(() {
-      _selectedWords.remove(word);
-      _shuffledWords.add(word);
+      _selectedWords.removeWhere((w) => w.id == item.id);
+      _shuffledWords.add(item);
     });
   }
 
   void _resetWords() {
-    final words = List<String>.from(_questions!.listening.puzzleWords ?? []);
-    words.shuffle(Random());
+    final words = _questions!.listening.puzzleWords ?? [];
+    final indexedWords = words
+        .asMap()
+        .entries
+        .map((e) => (id: e.key, word: e.value))
+        .toList()
+      ..shuffle(Random());
     setState(() {
-      _shuffledWords = words;
+      _shuffledWords = indexedWords;
       _selectedWords = [];
     });
   }
@@ -1200,9 +1227,9 @@ class _ReviewQuizScreenState extends ConsumerState<ReviewQuizScreen> {
                 : Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: _selectedWords.map((word) {
+                    children: _selectedWords.map((item) {
                       return InkWell(
-                        onTap: () => _unselectWord(word),
+                        onTap: () => _unselectWord(item),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
@@ -1213,7 +1240,7 @@ class _ReviewQuizScreenState extends ConsumerState<ReviewQuizScreen> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            word,
+                            item.word,
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -1235,9 +1262,9 @@ class _ReviewQuizScreenState extends ConsumerState<ReviewQuizScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _shuffledWords.map((word) {
+            children: _shuffledWords.map((item) {
               return InkWell(
-                onTap: () => _selectWord(word),
+                onTap: () => _selectWord(item),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -1249,7 +1276,7 @@ class _ReviewQuizScreenState extends ConsumerState<ReviewQuizScreen> {
                     border: Border.all(color: Colors.grey.shade400),
                   ),
                   child: Text(
-                    word,
+                    item.word,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),

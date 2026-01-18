@@ -19,10 +19,13 @@ class RevenueCatClient {
   /// RevenueCat にユーザーIDを紐付ける
   Future<void> loginUser(String appUserId) async {
     try {
-      await Purchases.logIn(appUserId);
-    } catch (e) {
-      // サイレント失敗: ログのみ
+      debugPrint('RevenueCat: Attempting logIn with appUserId=$appUserId');
+      final result = await Purchases.logIn(appUserId);
+      debugPrint('RevenueCat: logIn success, customerInfo.originalAppUserId=${result.customerInfo.originalAppUserId}');
+    } catch (e, stackTrace) {
+      // エラーを詳細にログ出力
       debugPrint('RevenueCat logIn failed: $e');
+      debugPrint('RevenueCat logIn stackTrace: $stackTrace');
     }
   }
 

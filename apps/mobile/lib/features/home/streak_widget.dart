@@ -4,8 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/models/user_model.dart';
 import '../../shared/services/auth_api.dart';
 import '../../shared/services/api_client.dart';
+import '../auth/auth_providers.dart';
 
 final userStatsProvider = FutureProvider<UserStatsModel>((ref) async {
+  // 認証状態を監視してログアウト時に自動的にリフレッシュ
+  final auth = ref.watch(authStateProvider);
+  if (auth.valueOrNull?.isLoggedIn != true) {
+    throw StateError('Not logged in');
+  }
   final apiClient = ApiClient();
   final authApi = AuthApi(apiClient);
   return authApi.getUserStats();

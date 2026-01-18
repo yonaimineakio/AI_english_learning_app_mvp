@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/models/points_models.dart';
 import '../../shared/services/rankings_api.dart';
 import '../../shared/services/api_client.dart';
+import '../auth/auth_providers.dart';
 
 final rankingsApiProvider = Provider<RankingsApi>((ref) {
   final apiClient = ApiClient();
@@ -11,16 +12,31 @@ final rankingsApiProvider = Provider<RankingsApi>((ref) {
 });
 
 final userPointsProvider = FutureProvider<UserPointsModel>((ref) async {
+  // 認証状態を監視してログアウト時に自動的にリフレッシュ
+  final auth = ref.watch(authStateProvider);
+  if (auth.valueOrNull?.isLoggedIn != true) {
+    throw StateError('Not logged in');
+  }
   final api = ref.watch(rankingsApiProvider);
   return api.getUserPoints();
 });
 
 final rankingsProvider = FutureProvider.family<RankingsModel, String>((ref, period) async {
+  // 認証状態を監視してログアウト時に自動的にリフレッシュ
+  final auth = ref.watch(authStateProvider);
+  if (auth.valueOrNull?.isLoggedIn != true) {
+    throw StateError('Not logged in');
+  }
   final api = ref.watch(rankingsApiProvider);
   return api.getRankings(limit: 20, period: period);
 });
 
 final myRankingProvider = FutureProvider<MyRankingModel>((ref) async {
+  // 認証状態を監視してログアウト時に自動的にリフレッシュ
+  final auth = ref.watch(authStateProvider);
+  if (auth.valueOrNull?.isLoggedIn != true) {
+    throw StateError('Not logged in');
+  }
   final api = ref.watch(rankingsApiProvider);
   return api.getMyRanking();
 });
