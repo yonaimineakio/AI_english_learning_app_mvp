@@ -50,9 +50,15 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
     _tts.setLanguage('en-US');
     _tts.setSpeechRate(0.5);
     _tts.setCompletionHandler(() {
+      if (!mounted) {
+        return;
+      }
       setState(() => _isPlaying = false);
     });
     _tts.setErrorHandler((msg) {
+      if (!mounted) {
+        return;
+      }
       setState(() => _isPlaying = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('音声再生エラー: $msg')),
