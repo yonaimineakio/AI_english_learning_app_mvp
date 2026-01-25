@@ -203,7 +203,6 @@ def get_shadowing_progress(
         .all()
     )
     total_scenarios = len(scenarios_with_shadowing)
-    scenario_ids = [s[0] for s in scenarios_with_shadowing]
 
     # 全シャドーイング文数
     total_sentences = db.query(ShadowingSentence).count()
