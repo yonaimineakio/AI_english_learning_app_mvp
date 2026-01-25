@@ -12,6 +12,7 @@ import '../features/review/review_screen.dart';
 import '../features/rankings/rankings_screen.dart';
 import '../features/paywall/paywall_screen.dart';
 import '../features/paywall/pro_status_provider.dart';
+import '../features/shadowing/shadowing_practice_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authStateProvider);
@@ -67,6 +68,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/paywall',
         builder: (context, state) => const PaywallScreen(),
+      ),
+      GoRoute(
+        path: '/shadowing/:scenarioId',
+        builder: (context, state) {
+          final id = int.parse(state.pathParameters['scenarioId']!);
+          final scenarioName = state.extra as String?;
+          return ShadowingPracticeScreen(
+            scenarioId: id,
+            scenarioName: scenarioName,
+          );
+        },
       ),
     ],
     redirect: (context, state) {
