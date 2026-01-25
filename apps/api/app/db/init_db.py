@@ -7,7 +7,7 @@ sys.path.append(
 
 from sqlalchemy.orm import Session
 from app.db.session import engine
-from models.database.models import Base, Scenario, ScenarioCategory, DifficultyLevel
+from models.database.models import Base, Scenario, ScenarioCategory, DifficultyLevel, ShadowingSentence
 from app.db.migrations import upgrade_head
 
 
@@ -320,6 +320,46 @@ def _ensure_expanded_scenarios(db: Session) -> None:
         print("ℹ️  Expanded scenarios already exist, no changes")
 
 
+def _ensure_shadowing_sentences(db: Session) -> None:
+    """シャドーイング文のシードデータを挿入する。
+
+    既存データがある場合はスキップ。
+    """
+    from app.db.shadowing_seed_data import get_all_shadowing_sentences
+
+    # 既にデータがあるかチェック
+    existing_count = db.query(ShadowingSentence).count()
+    if existing_count > 0:
+        print(f"ℹ️  Shadowing sentences already exist ({existing_count} rows), skipping seed")
+        return
+
+    all_sentences = get_all_shadowing_sentences()
+    created_count = 0
+
+    for sentence_data in all_sentences:
+        # シナリオが存在するかチェック
+        scenario = db.query(Scenario).filter(Scenario.id == sentence_data["scenario_id"]).first()
+        if not scenario:
+            continue
+
+        sentence = ShadowingSentence(
+            scenario_id=sentence_data["scenario_id"],
+            key_phrase=sentence_data["key_phrase"],
+            sentence_en=sentence_data["sentence_en"],
+            sentence_ja=sentence_data["sentence_ja"],
+            order_index=sentence_data["order_index"],
+            difficulty=sentence_data["difficulty"],
+        )
+        db.add(sentence)
+        created_count += 1
+
+    if created_count:
+        db.commit()
+        print(f"✅ Shadowing sentences created: {created_count}")
+    else:
+        print("ℹ️  No shadowing sentences created")
+
+
 def init_db() -> None:
     """Initialize database with tables and initial data"""
     # Always prefer Alembic for schema creation/evolution.
@@ -335,6 +375,7 @@ def init_db() -> None:
         _create_initial_scenarios(db)
         _ensure_issue27_additional_scenarios(db)
         _ensure_expanded_scenarios(db)
+        _ensure_shadowing_sentences(db)
     except Exception as e:
         print(f"❌ Error initializing database: {e}")
         db.rollback()
