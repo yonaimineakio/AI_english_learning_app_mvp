@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../shadowing/shadowing_home_screen.dart';
 import '../scenario_selection/scenario_selection_screen.dart';
 import '../review/review_screen.dart';
 import '../profile/profile_screen.dart';
 import 'main_tab_state.dart';
 
 /// メインのボトムナビゲーション付きシェル画面
+/// 4タブ: Home(シャドーイング) / Scenarios / Review / Profile
 class MainShellScreen extends ConsumerWidget {
   const MainShellScreen({super.key});
 
   final List<Widget> _screens = const [
+    ShadowingHomeScreen(),
     ScenarioSelectionScreen(),
     ReviewScreen(),
     ProfileScreen(),
@@ -43,22 +46,28 @@ class MainShellScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _NavItem(
-                  icon: Icons.graphic_eq,
+                  icon: Icons.record_voice_over,
                   label: 'Home',
                   isSelected: currentIndex == 0,
                   onTap: () => ref.read(mainTabIndexProvider.notifier).state = 0,
                 ),
                 _NavItem(
-                  icon: Icons.bolt,
-                  label: 'Review',
+                  icon: Icons.chat_bubble_outline,
+                  label: 'Scenarios',
                   isSelected: currentIndex == 1,
                   onTap: () => ref.read(mainTabIndexProvider.notifier).state = 1,
                 ),
                 _NavItem(
-                  icon: Icons.person_outline,
-                  label: 'Profile',
+                  icon: Icons.bolt,
+                  label: 'Review',
                   isSelected: currentIndex == 2,
                   onTap: () => ref.read(mainTabIndexProvider.notifier).state = 2,
+                ),
+                _NavItem(
+                  icon: Icons.person_outline,
+                  label: 'Profile',
+                  isSelected: currentIndex == 3,
+                  onTap: () => ref.read(mainTabIndexProvider.notifier).state = 3,
                 ),
               ],
             ),

@@ -12,6 +12,7 @@ from app.routers.rankings import router as rankings_router
 from app.routers.saved_phrases import router as saved_phrases_router
 from app.routers.health import router as health_router
 from app.routers.subscriptions import router as subscriptions_router
+from app.routers.shadowing import router as shadowing_router
 from app.services.ai import initialize_providers
 from app.db.session import close_cloud_sql_connector
 from app.db.migrations import upgrade_head
@@ -62,6 +63,11 @@ app.include_router(
     subscriptions_router,
     prefix=f"{settings.API_V1_STR}/subscriptions",
     tags=["subscriptions"],
+)
+app.include_router(
+    shadowing_router,
+    prefix=f"{settings.API_V1_STR}/shadowing",
+    tags=["shadowing"],
 )
 
 

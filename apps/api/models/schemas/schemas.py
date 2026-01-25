@@ -453,5 +453,78 @@ class ErrorResponse(BaseModel):
     error_code: Optional[str] = None
 
 
+# Shadowing schemas
+class ShadowingUserProgress(BaseModel):
+    """ユーザーのシャドーイング文ごとの進捗"""
+    attempt_count: int = 0
+    best_score: Optional[int] = None
+    is_completed: bool = False
+    last_practiced_at: Optional[datetime] = None
+
+
+class ShadowingSentenceBase(BaseModel):
+    """シャドーイング文の基本情報"""
+    key_phrase: str
+    sentence_en: str
+    sentence_ja: str
+    order_index: int
+    difficulty: Literal["beginner", "intermediate", "advanced"]
+    audio_url: Optional[str] = None
+
+
+class ShadowingSentence(ShadowingSentenceBase):
+    """シャドーイング文（進捗付き）"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    scenario_id: int
+    user_progress: Optional[ShadowingUserProgress] = None
+
+
+class ScenarioShadowingResponse(BaseModel):
+    """シナリオのシャドーイング文一覧レスポンス"""
+    scenario_id: int
+    scenario_name: str
+    sentences: List[ShadowingSentence]
+    total_sentences: int
+    completed_count: int
+
+
+class ShadowingAttemptRequest(BaseModel):
+    """シャドーイング練習結果の記録リクエスト"""
+    score: int = Field(..., ge=0, le=100)
+
+
+class ShadowingAttemptResponse(BaseModel):
+    """シャドーイング練習結果のレスポンス"""
+    shadowing_sentence_id: int
+    attempt_count: int
+    best_score: int
+    is_completed: bool
+    is_new_best: bool
+
+
+class ScenarioProgressSummary(BaseModel):
+    """シナリオごとの進捗サマリー"""
+    scenario_id: int
+    scenario_name: str
+    category: str
+    difficulty: str
+    total_sentences: int
+    completed_sentences: int
+    progress_percent: int
+    last_practiced_at: Optional[datetime] = None
+
+
+class ShadowingProgressResponse(BaseModel):
+    """シャドーイング全体進捗レスポンス（ホーム画面用）"""
+    total_scenarios: int
+    practiced_scenarios: int
+    total_sentences: int
+    completed_sentences: int
+    today_practice_count: int
+    recent_scenarios: List[ScenarioProgressSummary]
+
+
 # Update forward references
 SessionWithDetails.model_rebuild()

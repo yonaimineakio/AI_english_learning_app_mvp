@@ -81,6 +81,7 @@ class User(Base):
     sessions = relationship("Session", back_populates="user")
     review_items = relationship("ReviewItem", back_populates="user")
     saved_phrases = relationship("SavedPhrase", back_populates="user")
+    shadowing_progress = relationship("UserShadowingProgress", back_populates="user", cascade="all, delete-orphan")
 
 
 class Scenario(Base):
@@ -102,6 +103,7 @@ class Scenario(Base):
 
     # Relationships
     sessions = relationship("Session", back_populates="scenario")
+    shadowing_sentences = relationship("ShadowingSentence", back_populates="scenario", cascade="all, delete-orphan")
 
 
 class Session(Base):
@@ -192,3 +194,50 @@ class SavedPhrase(Base):
     user = relationship("User", back_populates="saved_phrases")
     session = relationship("Session", back_populates="saved_phrases")
     converted_review = relationship("ReviewItem")
+
+
+class ShadowingSentence(Base):
+    """シナリオごとのシャドーイング文"""
+
+    __tablename__ = "shadowing_sentences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    scenario_id = Column(Integer, ForeignKey("scenarios.id", ondelete="CASCADE"), nullable=False)
+    key_phrase = Column(String(255), nullable=False)
+    sentence_en = Column(Text, nullable=False)
+    sentence_ja = Column(Text, nullable=False)
+    order_index = Column(Integer, nullable=False)
+    difficulty = Column(
+        Enum(DifficultyLevel, values_callable=lambda obj: [e.value for e in obj]),
+        nullable=False,
+    )
+    audio_url = Column(String(512), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    scenario = relationship("Scenario", back_populates="shadowing_sentences")
+    user_progress = relationship("UserShadowingProgress", back_populates="shadowing_sentence", cascade="all, delete-orphan")
+
+    # Unique constraint
+    __table_args__ = (
+        {"extend_existing": True},
+    )
+
+
+class UserShadowingProgress(Base):
+    """ユーザーのシャドーイング進捗"""
+
+    __tablename__ = "user_shadowing_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    shadowing_sentence_id = Column(Integer, ForeignKey("shadowing_sentences.id", ondelete="CASCADE"), nullable=False)
+    attempt_count = Column(Integer, default=0, nullable=False)
+    best_score = Column(Integer, nullable=True)
+    last_practiced_at = Column(DateTime(timezone=True), nullable=True)
+    is_completed = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User", back_populates="shadowing_progress")
+    shadowing_sentence = relationship("ShadowingSentence", back_populates="user_progress")
