@@ -481,11 +481,6 @@ class ShadowingSentence(ShadowingSentenceBase):
     user_progress: Optional[ShadowingUserProgress] = None
 
 
-class ShadowingSentenceCreate(ShadowingSentenceBase):
-    """シャドーイング文作成用"""
-    scenario_id: int
-
-
 class ScenarioShadowingResponse(BaseModel):
     """シナリオのシャドーイング文一覧レスポンス"""
     scenario_id: int
