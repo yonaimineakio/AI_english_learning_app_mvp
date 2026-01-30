@@ -35,6 +35,20 @@ class ShadowingApi {
     );
   }
 
+  /// シャドーイング発話を評価
+  Future<ShadowingSpeakResponse> speakAttempt({
+    required int sentenceId,
+    required String userTranscription,
+  }) async {
+    final Response<dynamic> res = await _client.postJson(
+      '/shadowing/$sentenceId/speak',
+      data: {'user_transcription': userTranscription},
+    );
+    return ShadowingSpeakResponse.fromJson(
+      Map<String, dynamic>.from(res.data as Map),
+    );
+  }
+
   /// シャドーイング全体進捗を取得（ホーム画面用）
   Future<ShadowingProgressResponse> getProgress() async {
     final Response<dynamic> res = await _client.getJson(

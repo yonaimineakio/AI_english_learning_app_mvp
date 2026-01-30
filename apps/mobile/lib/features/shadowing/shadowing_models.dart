@@ -122,6 +122,65 @@ class ShadowingAttemptResponse {
   }
 }
 
+/// 単語の一致結果
+class WordMatch {
+  final String word;
+  final bool matched;
+  final int index;
+
+  const WordMatch({
+    required this.word,
+    required this.matched,
+    required this.index,
+  });
+
+  factory WordMatch.fromJson(Map<String, dynamic> json) {
+    return WordMatch(
+      word: json['word'],
+      matched: json['matched'],
+      index: json['index'],
+    );
+  }
+}
+
+/// シャドーイング発話評価レスポンス
+class ShadowingSpeakResponse {
+  final int shadowingSentenceId;
+  final int score;
+  final int attemptCount;
+  final int bestScore;
+  final bool isCompleted;
+  final bool isNewBest;
+  final String targetSentence;
+  final List<WordMatch> matchingWords;
+
+  const ShadowingSpeakResponse({
+    required this.shadowingSentenceId,
+    required this.score,
+    required this.attemptCount,
+    required this.bestScore,
+    required this.isCompleted,
+    required this.isNewBest,
+    required this.targetSentence,
+    required this.matchingWords,
+  });
+
+  factory ShadowingSpeakResponse.fromJson(Map<String, dynamic> json) {
+    return ShadowingSpeakResponse(
+      shadowingSentenceId: json['shadowing_sentence_id'],
+      score: json['score'],
+      attemptCount: json['attempt_count'],
+      bestScore: json['best_score'],
+      isCompleted: json['is_completed'],
+      isNewBest: json['is_new_best'],
+      targetSentence: json['target_sentence'],
+      matchingWords: (json['matching_words'] as List)
+          .map((e) => WordMatch.fromJson(e))
+          .toList(),
+    );
+  }
+}
+
 class ScenarioProgressSummary {
   final int scenarioId;
   final String scenarioName;
