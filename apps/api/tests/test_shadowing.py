@@ -457,3 +457,96 @@ class TestGetAllScenariosWithProgress:
         assert data[0]["completed_sentences"] == 1
         assert data[0]["progress_percent"] == 33
         assert data[0]["last_practiced_at"] is not None
+
+
+class TestEvaluateShadowingSpeech:
+    """POST /shadowing/{sentence_id}/speak のテスト"""
+
+    def test_speak_perfect_match(self, client, test_shadowing_sentences):
+        """完全一致の発話で100点のスコアが返される"""
+        sentence = test_shadowing_sentences[0]
+        res = client.post(
+            f"/api/v1/shadowing/{sentence.id}/speak",
+            json={"user_transcription": sentence.sentence_en},
+        )
+
+        assert res.status_code == 200
+        data = res.json()
+
+        assert data["shadowing_sentence_id"] == sentence.id
+        assert data["score"] == 100
+        assert data["attempt_count"] == 1
+        assert data["best_score"] == 100
+        assert data["is_completed"] is True
+        assert data["is_new_best"] is True
+        assert data["target_sentence"] == sentence.sentence_en
+        assert len(data["matching_words"]) > 0
+        assert all(word["matched"] for word in data["matching_words"])
+
+    def test_speak_partial_match(self, client, test_shadowing_sentences):
+        """部分一致の発話で適切なスコアが返される"""
+        sentence = test_shadowing_sentences[0]
+        # 一部だけ一致させる
+        partial_text = sentence.sentence_en.split()[0]  # 最初の単語だけ
+        res = client.post(
+            f"/api/v1/shadowing/{sentence.id}/speak",
+            json={"user_transcription": partial_text},
+        )
+
+        assert res.status_code == 200
+        data = res.json()
+
+        assert data["shadowing_sentence_id"] == sentence.id
+        assert data["score"] < 100
+        assert data["attempt_count"] == 1
+        assert len(data["matching_words"]) > 0
+
+    def test_speak_updates_progress(
+        self, client, db_session, test_user, test_shadowing_sentences
+    ):
+        """発話評価で進捗が更新される"""
+        sentence = test_shadowing_sentences[0]
+
+        # 既存の進捗を作成
+        progress = UserShadowingProgress(
+            user_id=test_user.id,
+            shadowing_sentence_id=sentence.id,
+            attempt_count=2,
+            best_score=70,
+            is_completed=False,
+        )
+        db_session.add(progress)
+        db_session.commit()
+
+        # 完全一致で発話
+        res = client.post(
+            f"/api/v1/shadowing/{sentence.id}/speak",
+            json={"user_transcription": sentence.sentence_en},
+        )
+
+        assert res.status_code == 200
+        data = res.json()
+
+        assert data["attempt_count"] == 3
+        assert data["best_score"] == 100
+        assert data["is_new_best"] is True
+        assert data["is_completed"] is True
+
+    def test_speak_sentence_not_found(self, client):
+        """存在しないシャドーイング文の場合は404を返す"""
+        res = client.post(
+            "/api/v1/shadowing/9999/speak",
+            json={"user_transcription": "Hello world"},
+        )
+
+        assert res.status_code == 404
+
+    def test_speak_empty_transcription(self, client, test_shadowing_sentences):
+        """空の認識テキストはバリデーションエラー"""
+        sentence = test_shadowing_sentences[0]
+        res = client.post(
+            f"/api/v1/shadowing/{sentence.id}/speak",
+            json={"user_transcription": ""},
+        )
+
+        assert res.status_code == 422

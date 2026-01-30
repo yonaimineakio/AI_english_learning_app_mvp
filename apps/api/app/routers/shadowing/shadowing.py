@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.core.deps import get_db, get_current_user
+from app.services.review.review_service import ReviewService
 from models.database.models import (
     User,
     Scenario,
@@ -24,8 +25,11 @@ from models.schemas.schemas import (
     ShadowingUserProgress,
     ShadowingAttemptRequest,
     ShadowingAttemptResponse,
+    ShadowingSpeakRequest,
+    ShadowingSpeakResponse,
     ShadowingProgressResponse,
     ScenarioProgressSummary,
+    WordMatch,
 )
 
 router = APIRouter()
@@ -179,6 +183,90 @@ def record_shadowing_attempt(
         best_score=progress.best_score,
         is_completed=progress.is_completed,
         is_new_best=is_new_best,
+    )
+
+
+@router.post("/{sentence_id}/speak", response_model=ShadowingSpeakResponse)
+def evaluate_shadowing_speech(
+    sentence_id: int,
+    request: ShadowingSpeakRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    シャドーイング発話を評価
+
+    - ユーザーの発話認識結果とターゲット文を比較
+    - 単語レベルで一致率を計算してスコアを算出
+    - 80点以上で完了とみなす
+    """
+    # シャドーイング文の存在確認
+    sentence = (
+        db.query(ShadowingSentence)
+        .filter(ShadowingSentence.id == sentence_id)
+        .first()
+    )
+    if not sentence:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Shadowing sentence not found",
+        )
+
+    # 発話評価
+    eval_result = ReviewService.evaluate_speaking(
+        target_sentence=sentence.sentence_en,
+        user_transcription=request.user_transcription,
+    )
+
+    # 既存の進捗を取得または新規作成
+    progress = (
+        db.query(UserShadowingProgress)
+        .filter(
+            UserShadowingProgress.user_id == current_user.id,
+            UserShadowingProgress.shadowing_sentence_id == sentence_id,
+        )
+        .first()
+    )
+
+    is_new_best = False
+    if not progress:
+        progress = UserShadowingProgress(
+            user_id=current_user.id,
+            shadowing_sentence_id=sentence_id,
+            attempt_count=0,
+            best_score=None,
+            is_completed=False,
+        )
+        db.add(progress)
+
+    # 進捗を更新
+    progress.attempt_count += 1
+    progress.last_practiced_at = datetime.utcnow()
+
+    # ベストスコアを更新
+    if progress.best_score is None or eval_result.score > progress.best_score:
+        progress.best_score = eval_result.score
+        is_new_best = True
+
+    # 80点以上で完了とみなす
+    if eval_result.score >= 80:
+        progress.is_completed = True
+
+    db.commit()
+    db.refresh(progress)
+
+    return ShadowingSpeakResponse(
+        shadowing_sentence_id=sentence_id,
+        score=eval_result.score,
+        attempt_count=progress.attempt_count,
+        best_score=progress.best_score,
+        is_completed=progress.is_completed,
+        is_new_best=is_new_best,
+        target_sentence=sentence.sentence_en,
+        matching_words=[
+            WordMatch(word=m.word, matched=m.matched, index=m.index)
+            for m in eval_result.matching_words
+        ],
     )
 
 

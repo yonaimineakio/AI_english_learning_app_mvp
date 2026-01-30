@@ -504,6 +504,30 @@ class ShadowingAttemptResponse(BaseModel):
     is_new_best: bool
 
 
+class WordMatch(BaseModel):
+    """単語の一致結果"""
+    word: str
+    matched: bool
+    index: int
+
+
+class ShadowingSpeakRequest(BaseModel):
+    """シャドーイング発話評価リクエスト"""
+    user_transcription: str = Field(..., min_length=1, max_length=1000)
+
+
+class ShadowingSpeakResponse(BaseModel):
+    """シャドーイング発話評価レスポンス"""
+    shadowing_sentence_id: int
+    score: int
+    attempt_count: int
+    best_score: int
+    is_completed: bool
+    is_new_best: bool
+    target_sentence: str
+    matching_words: List[WordMatch]
+
+
 class ScenarioProgressSummary(BaseModel):
     """シナリオごとの進捗サマリー"""
     scenario_id: int
