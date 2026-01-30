@@ -38,7 +38,6 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
   int _currentIndex = 0;
   bool _isPlaying = false;
   bool _showTranslation = false;
-  int? _selfScore;
   
   // 音声録音・評価用の状態
   String? _transcription;
@@ -275,11 +274,6 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
 
                   // 音声録音セクション
                   _buildRecordingSection(sentence),
-
-                  const SizedBox(height: 16),
-
-                  // 自己評価（代替手段として縮小表示）
-                  _buildSelfEvaluationSection(sentence),
                 ],
               ),
             ),
@@ -337,7 +331,8 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
     final audioState = ref.watch(audioControllerProvider);
     final isRecording = audioState.isRecording;
     final isTranscribing = audioState.isTranscribing;
-    final isBusy = isRecording || isTranscribing || _isEvaluating;
+    // 録音中は停止可能、認識中・評価中は操作不可
+    final isBusy = isTranscribing || _isEvaluating;
 
     return Card(
       child: Padding(
@@ -604,73 +599,6 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
     );
   }
 
-  /// 自己評価セクション（代替手段として縮小表示）
-  Widget _buildSelfEvaluationSection(ShadowingSentence sentence) {
-    return Card(
-      color: Colors.grey.shade50,
-      child: ExpansionTile(
-        leading: const Icon(Icons.touch_app, color: Colors.grey),
-        title: const Text(
-          '手動で自己評価',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey,
-          ),
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '音声録音ができない場合はこちらで評価できます',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildScoreButton(60, 'もう一度', Colors.orange),
-                    _buildScoreButton(80, 'まあまあ', Colors.blue),
-                    _buildScoreButton(100, 'バッチリ', Colors.green),
-                  ],
-                ),
-                if (sentence.userProgress != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    '練習回数: ${sentence.userProgress!.attemptCount}回 / '
-                    'ベスト: ${sentence.userProgress!.bestScore ?? "-"}点',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildScoreButton(int score, String label, Color color) {
-    final isSelected = _selfScore == score;
-    return ElevatedButton(
-      onPressed: () => _submitScore(score),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isSelected ? color : Colors.grey.shade200,
-        foregroundColor: isSelected ? Colors.white : Colors.black87,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-      child: Text(label),
-    );
-  }
-
   Future<void> _speakSentence(String text) async {
     setState(() => _isPlaying = true);
     await _tts.speak(text);
@@ -745,52 +673,10 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
     }
   }
 
-  Future<void> _submitScore(int score) async {
-    final shadowingAsync = ref.read(scenarioShadowingProvider(widget.scenarioId));
-    final data = shadowingAsync.valueOrNull;
-    if (data == null) return;
-
-    final sentence = data.sentences[_currentIndex];
-
-    setState(() => _selfScore = score);
-
-    try {
-      final api = ShadowingApi(ApiClient());
-      final result = await api.recordAttempt(
-        sentenceId: sentence.id,
-        score: score,
-      );
-
-      if (mounted) {
-        if (result.isNewBest) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('ベストスコア更新！ ${result.bestScore}点'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-
-        // 進捗を更新
-        ref.invalidate(scenarioShadowingProvider(widget.scenarioId));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('スコア記録エラー: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
   void _previousSentence() {
     if (_currentIndex > 0) {
       setState(() {
         _currentIndex--;
-        _selfScore = null;
         _showTranslation = false;
         _transcription = null;
         _speakResult = null;
@@ -807,7 +693,6 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
     if (_currentIndex < data.sentences.length - 1) {
       setState(() {
         _currentIndex++;
-        _selfScore = null;
         _showTranslation = false;
         _transcription = null;
         _speakResult = null;
