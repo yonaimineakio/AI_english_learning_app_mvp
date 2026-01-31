@@ -7,6 +7,7 @@ import '../../shared/models/user_model.dart';
 import '../../shared/models/placement_models.dart';
 import '../../shared/services/api_client.dart';
 import '../../shared/services/auth_api.dart';
+import '../../shared/services/token_storage.dart';
 import '../../shared/services/revenuecat/revenuecat_client.dart';
 import '../paywall/pro_status_provider.dart';
 
@@ -52,15 +53,101 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   Stream<AuthState> get stream => _controller.stream;
 
   late final AuthApi _authApi;
+  late final TokenStorage _tokenStorage;
 
   @override
   Future<AuthState> build() async {
     _authApi = AuthApi(ApiClient());
+    _tokenStorage = TokenStorage();
     ref.onDispose(_controller.close);
-    // 初期状態では未ログイン。将来的にSecureStorageからトークン復元する余地を残す。
+
+    // Try to restore session from stored tokens
+    try {
+      final tokens = await _tokenStorage.loadTokens();
+      if (tokens.accessToken != null) {
+        final restoredState = await _tryRestoreSession(
+          tokens.accessToken!,
+          tokens.refreshToken,
+        );
+        if (restoredState != null) {
+          _controller.add(restoredState);
+          return restoredState;
+        }
+      }
+    } catch (e) {
+      // If restoration fails, clear invalid tokens and proceed to login
+      await _tokenStorage.clearTokens();
+    }
+
     const initial = AuthState(isLoggedIn: false);
     _controller.add(initial);
     return initial;
+  }
+
+  /// Try to restore session using stored tokens.
+  /// Returns AuthState if successful, null if failed.
+  Future<AuthState?> _tryRestoreSession(
+    String accessToken,
+    String? refreshToken,
+  ) async {
+    ApiClient().updateToken(accessToken);
+
+    try {
+      // Try to get user info with current access token
+      final UserModel me = await _authApi.getMe();
+      
+      // Login successful with existing token
+      await const RevenueCatClient().loginUser(me.id);
+      await ref.read(proStatusProvider.notifier).refresh();
+
+      return AuthState(
+        isLoggedIn: true,
+        userId: me.id,
+        token: accessToken,
+        userName: me.name,
+        email: me.email,
+        placementCompletedAt: me.placementCompletedAt,
+      );
+    } on DioException catch (e) {
+      // If 401, try to refresh the token
+      if (e.response?.statusCode == 401 && refreshToken != null) {
+        try {
+          final refreshRes = await _authApi.refreshToken(refreshToken);
+          final newAccessToken = refreshRes.accessToken;
+          
+          // Save new access token
+          await _tokenStorage.saveTokens(
+            accessToken: newAccessToken,
+            refreshToken: refreshToken,
+          );
+          ApiClient().updateToken(newAccessToken);
+
+          // Retry getting user info
+          final UserModel me = await _authApi.getMe();
+          
+          await const RevenueCatClient().loginUser(me.id);
+          await ref.read(proStatusProvider.notifier).refresh();
+
+          return AuthState(
+            isLoggedIn: true,
+            userId: me.id,
+            token: newAccessToken,
+            userName: me.name,
+            email: me.email,
+            placementCompletedAt: me.placementCompletedAt,
+          );
+        } catch (_) {
+          // Refresh failed, clear tokens
+          await _tokenStorage.clearTokens();
+          ApiClient().updateToken(null);
+          return null;
+        }
+      }
+      // Other errors or no refresh token
+      await _tokenStorage.clearTokens();
+      ApiClient().updateToken(null);
+      return null;
+    }
   }
 
   Future<AuthState> loginWithMock() async {
@@ -71,6 +158,13 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       final tokenRes = await _authApi.exchangeCodeForToken(mockCode);
 
       final accessToken = tokenRes.accessToken;
+      final refreshToken = tokenRes.refreshToken;
+
+      // Save tokens to secure storage
+      await _tokenStorage.saveTokens(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      );
       ApiClient().updateToken(accessToken);
 
       // /auth/me でユーザー情報を取得
@@ -105,6 +199,13 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       final tokenRes = await _authApi.exchangeCodeForToken(code);
 
       final accessToken = tokenRes.accessToken;
+      final refreshToken = tokenRes.refreshToken;
+
+      // Save tokens to secure storage
+      await _tokenStorage.saveTokens(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      );
       ApiClient().updateToken(accessToken);
 
       // /auth/me でユーザー情報を取得
@@ -151,6 +252,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Clear tokens from secure storage
+    await _tokenStorage.clearTokens();
     ApiClient().updateToken(null);
     // RevenueCat から匿名ユーザーに戻す
     await const RevenueCatClient().logoutUser();

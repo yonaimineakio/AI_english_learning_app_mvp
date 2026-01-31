@@ -16,7 +16,12 @@ from urllib.parse import urlencode
 import secrets
 import logging
 
-from app.core.security import create_access_token
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    verify_refresh_token,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+)
 
 
 router = APIRouter(tags=["authentication"])
@@ -169,11 +174,13 @@ async def exchange_token(request: Request, db: Session = Depends(get_db)):
             db.refresh(user)
 
         access_token = create_access_token({"sub": user.sub})
+        refresh_token = create_refresh_token({"sub": user.sub})
 
         return {
             "access_token": access_token,
+            "refresh_token": refresh_token,
             "token_type": "bearer",
-            "expires_in": 3600,
+            "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             "user": {
                 "id": user.id,  # Already a string (UUID)
                 "name": user.name,
@@ -301,6 +308,131 @@ async def logout(
     response.delete_cookie("session")
 
     return response
+
+
+@router.post("/refresh")
+async def refresh_access_token(request: Request, db: Session = Depends(get_db)):
+    """
+    Refresh access token using a refresh token.
+    
+    - For mock/debug mode: validates our own refresh token JWT
+    - For production: uses Google's refresh token to get new access tokens
+    """
+    body = await request.json()
+    refresh_token_str = body.get("refresh_token")
+
+    if not refresh_token_str:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="refresh_token is required",
+        )
+
+    # Try to verify as our own refresh token (mock mode or app-issued)
+    payload = verify_refresh_token(refresh_token_str)
+    if payload:
+        # Valid app-issued refresh token
+        sub = payload.get("sub")
+        if not sub:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token payload",
+            )
+
+        # Verify user still exists
+        user = db.query(User).filter(User.sub == sub).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+            )
+
+        # Issue new access token
+        new_access_token = create_access_token({"sub": user.sub})
+
+        return {
+            "access_token": new_access_token,
+            "token_type": "bearer",
+            "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        }
+
+    # If not a valid app-issued token, try Google refresh (production)
+    if (
+        not settings.GOOGLE_CLIENT_ID
+        or not settings.GOOGLE_CLIENT_SECRET
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+
+    # Try to use as Google refresh token
+    token_endpoint = "https://oauth2.googleapis.com/token"
+    async with httpx.AsyncClient() as client:
+        token_response = await client.post(
+            token_endpoint,
+            data={
+                "client_id": settings.GOOGLE_CLIENT_ID,
+                "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                "refresh_token": refresh_token_str,
+                "grant_type": "refresh_token",
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=15.0,
+        )
+
+    if token_response.status_code != 200:
+        logger.error("Google token refresh failed: %s", token_response.text)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Failed to refresh token with Google",
+        )
+
+    token_data = token_response.json()
+    provider_access_token = token_data.get("access_token")
+    if not provider_access_token:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Google refresh response missing access_token",
+        )
+
+    # Get user info to find the user
+    userinfo_endpoint = "https://www.googleapis.com/oauth2/v2/userinfo"
+    async with httpx.AsyncClient() as client:
+        userinfo_response = await client.get(
+            userinfo_endpoint,
+            headers={"Authorization": f"Bearer {provider_access_token}"},
+            timeout=15.0,
+        )
+
+    if userinfo_response.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to fetch user info from Google",
+        )
+
+    profile = userinfo_response.json()
+    sub = profile.get("id")
+    if not sub:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Google user info missing identifier",
+        )
+
+    user = db.query(User).filter(User.sub == sub).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    # Issue new app access token
+    new_access_token = create_access_token({"sub": user.sub})
+
+    return {
+        "access_token": new_access_token,
+        "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    }
 
 
 @router.get("/health")
