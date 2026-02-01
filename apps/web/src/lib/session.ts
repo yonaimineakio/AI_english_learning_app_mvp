@@ -3,7 +3,8 @@ import { ConversationTurn, SessionStatus, SessionSummary } from '@/types/convers
 import type { ReviewItem, ReviewNextResponse, ReviewResult } from '@/types/review'
 
 export interface StartSessionPayload {
-  scenarioId: number
+  scenarioId?: number
+  customScenarioId?: number  // カスタムシナリオID
   roundTarget: number
   difficulty: string
   mode: string
@@ -16,20 +17,35 @@ export interface StartSessionResponse {
   mode: string
   // セッション開始時に表示するシナリオ別の初期AIメッセージ（任意）
   initial_ai_message?: string
-  scenario: {
+  scenario?: {
     id: number
     name: string
     description: string
   }
+  custom_scenario?: {
+    id: number
+    name: string
+    description: string
+    user_role: string
+    ai_role: string
+  }
 }
 
 export async function startSession(payload: StartSessionPayload): Promise<StartSessionResponse> {
-  return apiRequest('/sessions/start', 'POST', {
-    scenario_id: payload.scenarioId,
+  const body: Record<string, unknown> = {
     round_target: payload.roundTarget,
     difficulty: payload.difficulty,
     mode: payload.mode,
-  })
+  }
+
+  if (payload.scenarioId) {
+    body.scenario_id = payload.scenarioId
+  }
+  if (payload.customScenarioId) {
+    body.custom_scenario_id = payload.customScenarioId
+  }
+
+  return apiRequest('/sessions/start', 'POST', body)
 }
 
 interface TurnResponse {

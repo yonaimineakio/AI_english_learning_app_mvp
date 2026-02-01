@@ -4,7 +4,7 @@ export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced'
 
 export type SessionMode = 'quick' | 'standard' | 'deep' | 'custom'
 
-export type ScenarioFilterCategory = ScenarioCategory | 'all'
+export type ScenarioFilterCategory = ScenarioCategory | 'all' | 'original'
 
 export interface ScenarioSummary {
   id: number
@@ -32,10 +32,43 @@ export interface ScenarioPreset {
 
 export interface ScenarioSelectionState {
   selectedScenarioId?: number
+  selectedCustomScenarioId?: number  // カスタムシナリオID
   selectedRounds: number
   selectedDifficulty: DifficultyLevel
   mode: SessionMode
   estimatedMinutes: number
+}
+
+// カスタムシナリオ（オリジナルシナリオ）の型定義
+export interface CustomScenario {
+  id: number
+  user_id: string
+  name: string
+  description: string
+  user_role: string
+  ai_role: string
+  difficulty: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface CustomScenarioCreate {
+  name: string
+  description: string
+  user_role: string
+  ai_role: string
+}
+
+export interface CustomScenarioListResponse {
+  custom_scenarios: CustomScenario[]
+  total_count: number
+}
+
+export interface CustomScenarioLimitResponse {
+  daily_limit: number
+  created_today: number
+  remaining: number
+  is_pro: boolean
 }
 
 export const ROUND_PRESETS: ScenarioPreset[] = [
@@ -64,6 +97,7 @@ export const ROUND_PRESETS: ScenarioPreset[] = [
 
 export const DEFAULT_SCENARIO_SELECTION: ScenarioSelectionState = {
   selectedScenarioId: undefined,
+  selectedCustomScenarioId: undefined,
   selectedRounds: ROUND_PRESETS[1].rounds,
   selectedDifficulty: 'intermediate',
   mode: 'standard',

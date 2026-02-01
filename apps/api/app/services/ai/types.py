@@ -26,5 +26,6 @@ class ConversationProvider(Protocol):
         round_index: int,
         context: List[dict],
         scenario_id: int | None = None,
+        custom_system_prompt: str | None = None,  # カスタムシナリオ用
     ) -> ConversationResponse:
         ...

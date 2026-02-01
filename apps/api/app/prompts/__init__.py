@@ -26,8 +26,14 @@ from .contract_negotiation_detail import CONTRACT_NEGOTIATION_PROMPT
 from .customer_survey_presentation import CUSTOMER_SURVEY_PRESENTATION_PROMPT
 from .apologize_delay import APOLOGIZE_DELAY_PROMPT
 from .sick_leave import SICK_LEAVE_PROMPT
+from .common_rules import get_common_conversation_rules
 from .conversation_system import get_conversation_system_prompt
 from .scenario_goals import SCENARIO_GOALS, get_goals_for_scenario
+from .custom_scenario import (
+    get_custom_scenario_prompt,
+    get_custom_scenario_initial_message,
+    get_custom_scenario_goals,
+)
 
 # シナリオIDとプロンプトのマッピング
 SCENARIO_PROMPTS: Dict[int, str] = {
@@ -180,6 +186,11 @@ __all__ = [
     "get_prompts_by_difficulty",
     "get_all_prompts",
     "get_available_combinations",
+    "get_common_conversation_rules",
     "get_conversation_system_prompt",
     "get_goals_for_scenario",
+    # カスタムシナリオ用
+    "get_custom_scenario_prompt",
+    "get_custom_scenario_initial_message",
+    "get_custom_scenario_goals",
 ]

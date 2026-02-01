@@ -82,6 +82,7 @@ class User(Base):
     review_items = relationship("ReviewItem", back_populates="user")
     saved_phrases = relationship("SavedPhrase", back_populates="user")
     shadowing_progress = relationship("UserShadowingProgress", back_populates="user", cascade="all, delete-orphan")
+    custom_scenarios = relationship("CustomScenario", back_populates="user", cascade="all, delete-orphan")
 
 
 class Scenario(Base):
@@ -111,7 +112,8 @@ class Session(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    scenario_id = Column(Integer, ForeignKey("scenarios.id"), nullable=False)
+    scenario_id = Column(Integer, ForeignKey("scenarios.id"), nullable=True)  # 通常シナリオ用
+    custom_scenario_id = Column(Integer, ForeignKey("custom_scenarios.id", ondelete="SET NULL"), nullable=True)  # カスタムシナリオ用
     round_target = Column(Integer, nullable=False)  # 4-12 rounds
     completed_rounds = Column(Integer, default=0)
     difficulty = Column(
@@ -129,6 +131,7 @@ class Session(Base):
     # Relationships
     user = relationship("User", back_populates="sessions")
     scenario = relationship("Scenario", back_populates="sessions")
+    custom_scenario = relationship("CustomScenario", back_populates="sessions")
     session_rounds = relationship(
         "SessionRound", back_populates="session", cascade="all, delete-orphan"
     )
@@ -241,3 +244,23 @@ class UserShadowingProgress(Base):
     # Relationships
     user = relationship("User", back_populates="shadowing_progress")
     shadowing_sentence = relationship("ShadowingSentence", back_populates="user_progress")
+
+
+class CustomScenario(Base):
+    """ユーザーが作成したオリジナルシナリオ"""
+
+    __tablename__ = "custom_scenarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    user_role = Column(Text, nullable=False)  # ユーザーの役割
+    ai_role = Column(Text, nullable=False)  # AIの役割
+    difficulty = Column(String(20), default="intermediate", nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User", back_populates="custom_scenarios")
+    sessions = relationship("Session", back_populates="custom_scenario")

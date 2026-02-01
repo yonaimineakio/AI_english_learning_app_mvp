@@ -30,14 +30,24 @@ async def start_session(
 ):
     """セッションを開始する"""
     try:
-        # Free users are limited to fixed 3 scenarios.
-        # Pro users (including trial) have no restriction here.
-        if not getattr(current_user, "is_pro", False):
-            if session_data.scenario_id not in FREE_SCENARIO_IDS:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="This scenario is available for Pro users only",
-                )
+        # Validate that either scenario_id or custom_scenario_id is provided
+        if not session_data.scenario_id and not session_data.custom_scenario_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Either scenario_id or custom_scenario_id is required",
+            )
+
+        # For regular scenarios, check free user restriction
+        if session_data.scenario_id:
+            if not getattr(current_user, "is_pro", False):
+                if session_data.scenario_id not in FREE_SCENARIO_IDS:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="This scenario is available for Pro users only",
+                    )
+
+        # For custom scenarios, all users can use their own custom scenarios
+        # (Daily creation limit is checked in custom_scenarios router)
 
         session_service = SessionService(db)
         result = session_service.start_session(current_user.id, session_data)

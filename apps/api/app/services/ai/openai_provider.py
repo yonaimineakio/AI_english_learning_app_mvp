@@ -42,17 +42,19 @@ class OpenAIConversationProvider(ConversationProvider):
         round_index: int,
         context: List[dict],
         scenario_id: int | None = None,
+        custom_system_prompt: str | None = None,
     ) -> ConversationResponse:
         start_time = asyncio.get_event_loop().time()
         logger.info(
             "OpenAI request payload: user_input=%s, difficulty=%s, "
-            "scenario_category=%s, round_index=%s, scenario_id=%s, context=%s",
+            "scenario_category=%s, round_index=%s, scenario_id=%s, context=%s, custom_prompt=%s",
             user_input,
             difficulty,
             scenario_category,
             round_index,
             scenario_id,
             context,
+            "provided" if custom_system_prompt else "none",
         )
         payload = self._build_request_payload(
             user_input=user_input,
@@ -60,6 +62,7 @@ class OpenAIConversationProvider(ConversationProvider):
             scenario_category=scenario_category,
             context=context,
             scenario_id=scenario_id,
+            custom_system_prompt=custom_system_prompt,
         )
 
         try:
@@ -138,17 +141,22 @@ class OpenAIConversationProvider(ConversationProvider):
         scenario_category: str,
         context: List[dict],
         scenario_id: int | None = None,
+        custom_system_prompt: str | None = None,
     ) -> dict:
-        # まずシナリオIDに対応するプロンプトを優先的に使用する（一対一対応）
-        system_prompt = None
-        if scenario_id is not None:
-            system_prompt = get_prompt_by_scenario_id(scenario_id)
+        # カスタムシナリオの場合は、渡されたプロンプトを使用
+        if custom_system_prompt:
+            system_prompt = custom_system_prompt
+        else:
+            # まずシナリオIDに対応するプロンプトを優先的に使用する（一対一対応）
+            system_prompt = None
+            if scenario_id is not None:
+                system_prompt = get_prompt_by_scenario_id(scenario_id)
 
-        # シナリオIDで取得できなかった場合は、カテゴリ×難易度でのプロンプトにフォールバック
-        if not system_prompt:
-            system_prompt = (
-                get_prompt_by_category_difficulty(scenario_category, difficulty) or ""
-            )
+            # シナリオIDで取得できなかった場合は、カテゴリ×難易度でのプロンプトにフォールバック
+            if not system_prompt:
+                system_prompt = (
+                    get_prompt_by_category_difficulty(scenario_category, difficulty) or ""
+                )
         messages = [{"role": "assistant", "content": system_prompt}]
 
         for turn in context[-2:]:  # Include last two rounds as context

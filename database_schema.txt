@@ -23,26 +23,44 @@
 ### 1. users テーブル
 ```sql
 CREATE TABLE users (
-    id INTEGER PRIMARY KEY,
-    sub VARCHAR(255) UNIQUE NOT NULL,  -- Auth0 sub
+    id VARCHAR(36) PRIMARY KEY,  -- UUID
+    sub VARCHAR(255) UNIQUE NOT NULL,  -- Auth0/Google sub
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
+    placement_level VARCHAR(20),  -- beginner/intermediate/advanced
+    placement_score INTEGER,
+    placement_completed_at TIMESTAMP WITH TIME ZONE,
+    current_streak INTEGER DEFAULT 0,
+    longest_streak INTEGER DEFAULT 0,
+    last_activity_date DATE,  -- JST based
+    total_points INTEGER DEFAULT 0,
+    is_pro BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE
 );
 ```
 
 **カラム詳細:**
-- id: 主キー
-- sub: Auth0のユーザー識別子（ユニーク）
+- id: 主キー（UUID）
+- sub: Auth0/Googleのユーザー識別子（ユニーク）
 - name: ユーザー名
 - email: メールアドレス（ユニーク）
+- placement_level: レベル判定結果（初級/中級/上級）
+- placement_score: レベル判定テストのスコア
+- placement_completed_at: レベル判定完了日時
+- current_streak: 現在の連続学習日数
+- longest_streak: 最長連続学習日数
+- last_activity_date: 最終活動日（JST日付）
+- total_points: 累計獲得ポイント
+- is_pro: Pro会員フラグ
 - created_at: 作成日時（自動設定）
 - updated_at: 更新日時（自動更新）
 
 **リレーション:**
 - sessions (1:N)
 - review_items (1:N)
+- saved_phrases (1:N)
+- user_shadowing_progress (1:N)
 
 ### 2. scenarios テーブル
 ```sql
@@ -68,13 +86,14 @@ CREATE TABLE scenarios (
 
 **リレーション:**
 - sessions (1:N)
+- shadowing_sentences (1:N)
 
 ### 3. sessions テーブル
 ```sql
 CREATE TABLE sessions (
     id INTEGER PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    scenario_id INTEGER NOT NULL REFERENCES scenarios(id),
+    user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    scenario_id INTEGER NOT NULL REFERENCES scenarios(id) ON DELETE CASCADE,
     round_target INTEGER NOT NULL,  -- 4-12 rounds
     completed_rounds INTEGER DEFAULT 0,
     difficulty ENUM('beginner', 'intermediate', 'advanced') NOT NULL,
@@ -87,7 +106,7 @@ CREATE TABLE sessions (
 
 **カラム詳細:**
 - id: 主キー
-- user_id: ユーザーID（外部キー）
+- user_id: ユーザーID（UUID、外部キー）
 - scenario_id: シナリオID（外部キー）
 - round_target: 目標ラウンド数（4-12）
 - completed_rounds: 完了ラウンド数
@@ -106,7 +125,7 @@ CREATE TABLE sessions (
 ```sql
 CREATE TABLE session_rounds (
     id INTEGER PRIMARY KEY,
-    session_id INTEGER NOT NULL REFERENCES sessions(id),
+    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     round_index INTEGER NOT NULL,  -- 1-based index
     user_input TEXT NOT NULL,
     ai_reply TEXT NOT NULL,
@@ -144,11 +163,13 @@ CREATE TABLE session_rounds (
 ```sql
 CREATE TABLE review_items (
     id INTEGER PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id),
+    user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     phrase TEXT NOT NULL,
     explanation TEXT NOT NULL,
     due_at TIMESTAMP WITH TIME ZONE NOT NULL,
     is_completed BOOLEAN DEFAULT FALSE,
+    speaking_score INTEGER,  -- 0-100
+    listening_score INTEGER,  -- 0-100
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     completed_at TIMESTAMP WITH TIME ZONE
 );
@@ -156,27 +177,135 @@ CREATE TABLE review_items (
 
 **カラム詳細:**
 - id: 主キー
-- user_id: ユーザーID（外部キー）
+- user_id: ユーザーID（UUID、外部キー）
 - phrase: 復習フレーズ
 - explanation: 説明文
 - due_at: 復習予定日時
 - is_completed: 完了フラグ
+- speaking_score: スピーキング評価スコア（0-100）
+- listening_score: リスニング評価スコア（0-100）
 - created_at: 作成日時（自動設定）
 - completed_at: 完了日時
 
 **リレーション:**
 - user (N:1)
 
+### 6. saved_phrases テーブル
+```sql
+CREATE TABLE saved_phrases (
+    id INTEGER PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    phrase TEXT NOT NULL,
+    explanation TEXT NOT NULL,
+    original_input TEXT,
+    session_id INTEGER REFERENCES sessions(id) ON DELETE SET NULL,
+    round_index INTEGER,
+    converted_to_review_id INTEGER REFERENCES review_items(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+**カラム詳細:**
+- id: 主キー
+- user_id: ユーザーID（UUID、外部キー）
+- phrase: 保存したフレーズ
+- explanation: フレーズの説明
+- original_input: 元のユーザー入力
+- session_id: セッションID（外部キー、NULL可）
+- round_index: ラウンド番号
+- converted_to_review_id: 復習アイテムに変換された場合のID
+- created_at: 作成日時（自動設定）
+
+**リレーション:**
+- user (N:1)
+- session (N:1, optional)
+- review_item (N:1, optional)
+
+### 7. shadowing_sentences テーブル
+```sql
+CREATE TABLE shadowing_sentences (
+    id INTEGER PRIMARY KEY,
+    scenario_id INTEGER NOT NULL REFERENCES scenarios(id) ON DELETE CASCADE,
+    key_phrase VARCHAR(255) NOT NULL,
+    sentence_en TEXT NOT NULL,
+    sentence_ja TEXT NOT NULL,
+    order_index INTEGER NOT NULL,
+    difficulty ENUM('beginner', 'intermediate', 'advanced') NOT NULL,
+    audio_url VARCHAR(512),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    UNIQUE(scenario_id, order_index)
+);
+```
+
+**カラム詳細:**
+- id: 主キー
+- scenario_id: シナリオID（外部キー）
+- key_phrase: キーフレーズ
+- sentence_en: 英文
+- sentence_ja: 日本語訳
+- order_index: 表示順序
+- difficulty: 難易度
+- audio_url: 音声ファイルURL
+- created_at: 作成日時（自動設定）
+
+**制約:**
+- UNIQUE(scenario_id, order_index): シナリオ内で順序は一意
+
+**リレーション:**
+- scenario (N:1)
+- user_shadowing_progress (1:N)
+
+### 8. user_shadowing_progress テーブル
+```sql
+CREATE TABLE user_shadowing_progress (
+    id INTEGER PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    shadowing_sentence_id INTEGER NOT NULL REFERENCES shadowing_sentences(id) ON DELETE CASCADE,
+    attempt_count INTEGER DEFAULT 0,
+    best_score INTEGER,  -- 0-100
+    last_practiced_at TIMESTAMP WITH TIME ZONE,
+    is_completed BOOLEAN DEFAULT FALSE,  -- 80点以上で完了
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    UNIQUE(user_id, shadowing_sentence_id)
+);
+```
+
+**カラム詳細:**
+- id: 主キー
+- user_id: ユーザーID（UUID、外部キー）
+- shadowing_sentence_id: シャドーイング文ID（外部キー）
+- attempt_count: 試行回数
+- best_score: 最高スコア（0-100）
+- last_practiced_at: 最終練習日時
+- is_completed: 完了フラグ（80点以上で自動的にTRUE）
+- created_at: 作成日時（自動設定）
+
+**制約:**
+- UNIQUE(user_id, shadowing_sentence_id): ユーザーごとに文章の進捗は一意
+
+**リレーション:**
+- user (N:1)
+- shadowing_sentence (N:1)
+
 ## テーブル間の関係図
 
 ```
 users (1) ──────────── (N) sessions (1) ──────────── (N) session_rounds
-  │                                                      │
-  │                                                      │
-  │                                                      │
-  └── (N) review_items                                   │
-                                                        │
-scenarios (1) ──────────── (N) sessions ────────────────┘
+  │                         │
+  │                         │
+  ├── (N) review_items      │
+  │                         │
+  ├── (N) saved_phrases ────┘
+  │
+  └── (N) user_shadowing_progress
+           │
+           │
+shadowing_sentences (N) ───┘
+           │
+           │
+scenarios (1) ──────────┘
 ```
 
 ### 関係の詳細
@@ -184,23 +313,45 @@ scenarios (1) ──────────── (N) sessions ─────�
 #### 1. users → sessions (1:N)
 - **関係**: 1人のユーザーは複数のセッションを持つ
 - **外部キー**: sessions.user_id → users.id
-- **制約**: NOT NULL, ユーザー削除時はセッションも削除される
+- **制約**: NOT NULL, CASCADE DELETE
 
 #### 2. scenarios → sessions (1:N)
 - **関係**: 1つのシナリオは複数のセッションで使用される
 - **外部キー**: sessions.scenario_id → scenarios.id
-- **制約**: NOT NULL, シナリオ削除時はセッションも削除される
+- **制約**: NOT NULL, CASCADE DELETE
 
 #### 3. sessions → session_rounds (1:N)
 - **関係**: 1つのセッションは複数のラウンドを持つ
 - **外部キー**: session_rounds.session_id → sessions.id
-- **制約**: NOT NULL, セッション削除時はラウンドも自動削除（CASCADE）
-- **ユニーク制約**: (session_id, round_index) でセッション内のラウンド番号は一意
+- **制約**: NOT NULL, CASCADE DELETE
+- **ユニーク制約**: (session_id, round_index)
 
 #### 4. users → review_items (1:N)
 - **関係**: 1人のユーザーは複数の復習アイテムを持つ
 - **外部キー**: review_items.user_id → users.id
-- **制約**: NOT NULL, ユーザー削除時は復習アイテムも削除される
+- **制約**: NOT NULL, CASCADE DELETE
+
+#### 5. users → saved_phrases (1:N)
+- **関係**: 1人のユーザーは複数の保存フレーズを持つ
+- **外部キー**: saved_phrases.user_id → users.id
+- **制約**: NOT NULL, CASCADE DELETE
+
+#### 6. scenarios → shadowing_sentences (1:N)
+- **関係**: 1つのシナリオは複数のシャドーイング文を持つ
+- **外部キー**: shadowing_sentences.scenario_id → scenarios.id
+- **制約**: NOT NULL, CASCADE DELETE
+- **ユニーク制約**: (scenario_id, order_index)
+
+#### 7. users → user_shadowing_progress (1:N)
+- **関係**: 1人のユーザーは複数の進捗記録を持つ
+- **外部キー**: user_shadowing_progress.user_id → users.id
+- **制約**: NOT NULL, CASCADE DELETE
+- **ユニーク制約**: (user_id, shadowing_sentence_id)
+
+#### 8. shadowing_sentences → user_shadowing_progress (1:N)
+- **関係**: 1つの文は複数ユーザーの進捗記録を持つ
+- **外部キー**: user_shadowing_progress.shadowing_sentence_id → shadowing_sentences.id
+- **制約**: NOT NULL, CASCADE DELETE
 
 ### データフロー
 
@@ -209,23 +360,46 @@ scenarios (1) ──────────── (N) sessions ─────�
 2. **scenarios** テーブルからシナリオ情報を取得
 3. **sessions** テーブルに新しいセッションを作成
 4. セッション進行中に **session_rounds** テーブルにラウンドデータを追加
+5. セッション終了時に **review_items** テーブルに復習アイテムを作成
+
+#### シャドーイング練習フロー
+1. **shadowing_sentences** テーブルから練習文を取得
+2. ユーザーが発話して音声認識
+3. 評価スコアを計算
+4. **user_shadowing_progress** テーブルに進捗を保存
+5. スコアが80点以上なら `is_completed = TRUE`
 
 #### 復習システムフロー
-1. セッション終了時に **session_rounds** からトップ3フレーズを抽出
-2. **review_items** テーブルに復習アイテムを作成
-3. 復習完了時に **review_items** の is_completed を更新
+1. **review_items** テーブルから復習予定のアイテムを取得
+2. リスニング・スピーキングテストを実施
+3. スコアを **review_items** に保存
+4. 完了時に `completed_at` を更新
+
+#### Streak（連続学習）フロー
+1. セッション終了時に **users.last_activity_date** を確認
+2. JST（Asia/Tokyo）の日付で判定
+3. 連続している場合は `current_streak` を +1
+4. 途切れている場合は `current_streak = 1` にリセット
+5. `longest_streak` は最大値で更新
 
 ### 参照整合性
 
 #### カスケード削除
-- **users** 削除 → **sessions**, **review_items** も削除
-- **scenarios** 削除 → **sessions** も削除
-- **sessions** 削除 → **session_rounds** も削除（CASCADE）
+- **users** 削除 → **sessions**, **review_items**, **saved_phrases**, **user_shadowing_progress** も削除
+- **scenarios** 削除 → **sessions**, **shadowing_sentences** も削除
+- **sessions** 削除 → **session_rounds** も削除
+- **shadowing_sentences** 削除 → **user_shadowing_progress** も削除
+
+#### SET NULL
+- **sessions** 削除 → **saved_phrases.session_id** が NULL に
+- **review_items** 削除 → **saved_phrases.converted_to_review_id** が NULL に
 
 #### 制約
-- 外部キーは全て NOT NULL
+- 外部キーは基本的に NOT NULL
+- ユーザーID は UUID（VARCHAR(36））
+- スコアは 0-100 の範囲
 - セッション内のラウンド番号は一意
-- ユーザーのsubとemailは一意
+- ユーザー×シャドーイング文の組み合わせは一意
 
 ## インデックス
 
@@ -235,23 +409,33 @@ scenarios (1) ──────────── (N) sessions ─────�
 - sessions.id
 - session_rounds.id
 - review_items.id
+- saved_phrases.id
+- shadowing_sentences.id
+- user_shadowing_progress.id
 
 ### ユニークインデックス
 - users.sub
 - users.email
 - session_rounds(session_id, round_index)
+- shadowing_sentences(scenario_id, order_index)
+- user_shadowing_progress(user_id, shadowing_sentence_id)
 
 ### 外部キーインデックス
 - sessions.user_id
 - sessions.scenario_id
 - session_rounds.session_id
 - review_items.user_id
+- saved_phrases.user_id
+- saved_phrases.session_id
+- shadowing_sentences.scenario_id
+- user_shadowing_progress.user_id
+- user_shadowing_progress.shadowing_sentence_id
 
 ## データベース特徴
 
 ### タイムゾーン対応
 - 全DateTimeカラムで `timezone=True` を使用
-- 日本時間（Asia/Tokyo）での管理
+- Streak判定は Asia/Tokyo での日付管理
 
 ### JSONサポート
 - `session_rounds.tags` でJSON配列をサポート
@@ -262,19 +446,28 @@ scenarios (1) ──────────── (N) sessions ─────�
 - データの整合性を保証
 
 ### カスケード削除
-- Session削除時にSessionRoundも自動削除
+- ユーザー削除時に関連データも自動削除
 - データの整合性を保持
 
 ### 延長機能
 - `extension_count` で延長回数を管理
 - 最大2回までの延長制限
 
+### UUID採用
+- ユーザーIDはUUID（VARCHAR(36））を使用
+- グローバルユニーク性を保証
+
 ## 初期データ
 
 ### シナリオデータ
-- 10個のシナリオが自動登録
+- 21個のシナリオが登録済み
 - 3カテゴリ × 3難易度の組み合わせ
 - 旅行、ビジネス、日常会話の各カテゴリ
+
+### シャドーイング文データ
+- 各シナリオに複数のシャドーイング文を登録
+- 英文・日本語訳・キーフレーズを含む
+- 難易度別に分類
 
 ### 開発用ユーザー
 - 開発モード時に自動ユーザー作成

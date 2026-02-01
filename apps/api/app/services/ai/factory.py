@@ -30,6 +30,7 @@ async def generate_conversation_response(
     context: List[dict],
     scenario_id: int | None = None,
     provider_name: str | None = None,
+    custom_system_prompt: str | None = None,  # カスタムシナリオ用
 ) -> ConversationResponse:
     provider_cls: Type[ConversationProvider] = AIProviderRegistry.get_provider(
         provider_name
@@ -44,6 +45,7 @@ async def generate_conversation_response(
             round_index=round_index,
             context=context,
             scenario_id=scenario_id,
+            custom_system_prompt=custom_system_prompt,
         )
         if not result.provider:
             result.provider = provider_name or AIProviderRegistry.default_provider()
@@ -70,6 +72,7 @@ async def generate_conversation_response(
                 round_index=round_index,
                 context=context,
                 scenario_id=scenario_id,
+                custom_system_prompt=custom_system_prompt,
             )
             if not fallback.provider:
                 fallback.provider = "mock"

@@ -5,7 +5,7 @@ import asyncio
 import logging
 import time
 
-from models.database.models import Session as SessionModel, SessionRound, Scenario, User
+from models.database.models import Session as SessionModel, SessionRound, Scenario, User, CustomScenario
 from models.schemas.schemas import (
     SessionCreate,
     SessionStartResponse,
@@ -16,11 +16,18 @@ from models.schemas.schemas import (
     SessionMode,
     SessionStatusResponse,
     ScenarioCategory,
+    Scenario as ScenarioSchema,
+    CustomScenario as CustomScenarioSchema,
 )
 
 from app.services.ai import generate_conversation_response
 from app.services.ai.goal_progress import evaluate_goal_progress
 from app.prompts.scenario_goals import SCENARIO_GOALS, get_goals_for_scenario
+from app.prompts.custom_scenario import (
+    get_custom_scenario_prompt,
+    get_custom_scenario_initial_message,
+    get_custom_scenario_goals,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +59,11 @@ class SessionService:
         self, session: SessionModel
     ) -> tuple[int, int, List[int]]:
         """セッション全体の会話履歴から学習ゴール達成率を判定する。"""
-        goals = get_goals_for_scenario(session.scenario_id)
+        # カスタムシナリオの場合はデフォルトゴールを使用
+        if session.custom_scenario_id:
+            goals = get_custom_scenario_goals()
+        else:
+            goals = get_goals_for_scenario(session.scenario_id)
         goals_total: int = len(goals)
         if goals_total == 0:
             return 0, 0, []
@@ -133,33 +144,105 @@ class SessionService:
         logger.info(f"Starting session for user {user_id} with data: {session_data}")
         """セッションを開始する"""
         try:
-            # シナリオの存在確認
-            scenario = (
-                self.db.query(Scenario)
-                .filter(
-                    Scenario.id == session_data.scenario_id, Scenario.is_active == True
-                )
-                .first()
-            )
+            scenario = None
+            custom_scenario = None
+            scenario_schema = None
+            custom_scenario_schema = None
+            initial_message = None
+            goals_labels = None
 
-            if not scenario:
-                raise ValueError(
-                    f"Scenario with id {session_data.scenario_id} not found or inactive"
+            # カスタムシナリオの場合
+            if session_data.custom_scenario_id:
+                custom_scenario = (
+                    self.db.query(CustomScenario)
+                    .filter(
+                        CustomScenario.id == session_data.custom_scenario_id,
+                        CustomScenario.is_active == True,
+                        CustomScenario.user_id == user_id,  # 所有者チェック
+                    )
+                    .first()
                 )
 
-            # セッション作成
-            db_session = SessionModel(
-                user_id=user_id,
-                scenario_id=session_data.scenario_id,
-                round_target=session_data.round_target,
-                difficulty=session_data.difficulty.value
-                if hasattr(session_data.difficulty, "value")
-                else session_data.difficulty,
-                mode=session_data.mode.value
-                if hasattr(session_data.mode, "value")
-                else session_data.mode,
-                started_at=datetime.now(timezone.utc),
-            )
+                if not custom_scenario:
+                    raise ValueError(
+                        f"Custom scenario with id {session_data.custom_scenario_id} not found or inactive"
+                    )
+
+                # セッション作成（カスタムシナリオ）
+                db_session = SessionModel(
+                    user_id=user_id,
+                    scenario_id=None,
+                    custom_scenario_id=session_data.custom_scenario_id,
+                    round_target=session_data.round_target,
+                    difficulty="intermediate",  # カスタムシナリオは intermediate 固定
+                    mode=session_data.mode.value
+                    if hasattr(session_data.mode, "value")
+                    else session_data.mode,
+                    started_at=datetime.now(timezone.utc),
+                )
+
+                custom_scenario_schema = CustomScenarioSchema(
+                    id=custom_scenario.id,
+                    user_id=custom_scenario.user_id,
+                    name=custom_scenario.name,
+                    description=custom_scenario.description,
+                    user_role=custom_scenario.user_role,
+                    ai_role=custom_scenario.ai_role,
+                    difficulty=custom_scenario.difficulty,
+                    is_active=custom_scenario.is_active,
+                    created_at=custom_scenario.created_at,
+                )
+
+                initial_message = get_custom_scenario_initial_message(
+                    custom_scenario.ai_role,
+                    custom_scenario.description,
+                )
+                goals_labels = get_custom_scenario_goals()
+
+            # 通常シナリオの場合
+            elif session_data.scenario_id:
+                scenario = (
+                    self.db.query(Scenario)
+                    .filter(
+                        Scenario.id == session_data.scenario_id, Scenario.is_active == True
+                    )
+                    .first()
+                )
+
+                if not scenario:
+                    raise ValueError(
+                        f"Scenario with id {session_data.scenario_id} not found or inactive"
+                    )
+
+                # セッション作成（通常シナリオ）
+                db_session = SessionModel(
+                    user_id=user_id,
+                    scenario_id=session_data.scenario_id,
+                    custom_scenario_id=None,
+                    round_target=session_data.round_target,
+                    difficulty=session_data.difficulty.value
+                    if hasattr(session_data.difficulty, "value")
+                    else session_data.difficulty,
+                    mode=session_data.mode.value
+                    if hasattr(session_data.mode, "value")
+                    else session_data.mode,
+                    started_at=datetime.now(timezone.utc),
+                )
+
+                scenario_schema = ScenarioSchema(
+                    id=scenario.id,
+                    name=scenario.name,
+                    description=scenario.description,
+                    category=self._to_str(scenario.category),
+                    difficulty=self._to_str(scenario.difficulty),
+                    is_active=scenario.is_active,
+                    created_at=scenario.created_at,
+                )
+
+                initial_message = self._get_initial_message(scenario)
+                goals_labels = get_goals_for_scenario(scenario.id)
+            else:
+                raise ValueError("Either scenario_id or custom_scenario_id is required")
 
             self.db.add(db_session)
             self.db.commit()
@@ -167,25 +250,10 @@ class SessionService:
 
             logger.info(f"Session {db_session.id} started for user {user_id}")
 
-            # Scenarioオブジェクトを手動で構築（Enum値を文字列に変換）
-            from models.schemas.schemas import Scenario as ScenarioSchema
-
-            scenario_schema = ScenarioSchema(
-                id=scenario.id,
-                name=scenario.name,
-                description=scenario.description,
-                category=self._to_str(scenario.category),
-                difficulty=self._to_str(scenario.difficulty),
-                is_active=scenario.is_active,
-                created_at=scenario.created_at,
-            )
-
-            initial_message = self._get_initial_message(scenario)
-            goals_labels = get_goals_for_scenario(scenario.id)
-
             return SessionStartResponse(
                 session_id=db_session.id,
                 scenario=scenario_schema,
+                custom_scenario=custom_scenario_schema,
                 round_target=db_session.round_target,
                 difficulty=self._to_str(db_session.difficulty),
                 mode=self._to_str(db_session.mode),
@@ -249,18 +317,45 @@ class SessionService:
             start_time = time.perf_counter()
 
             session_difficulty = self._to_str(session.difficulty)
-            scenario_category = self._to_str(session.scenario.category)
-            scenario_id = session.scenario_id
 
-            conversation_result = await generate_conversation_response(
-                user_input=user_input,
-                difficulty=session_difficulty,
-                scenario_category=scenario_category,
-                round_index=current_round,
-                context=context,
-                scenario_id=scenario_id,
-                provider_name="groq",
-            )
+            # カスタムシナリオの場合
+            if session.custom_scenario_id and session.custom_scenario:
+                custom_scenario = session.custom_scenario
+                scenario_category = "custom"  # カスタムシナリオ用のカテゴリ
+                scenario_id = None
+
+                # カスタムシナリオ用のプロンプトを生成して使用
+                custom_prompt = get_custom_scenario_prompt(
+                    user_role=custom_scenario.user_role,
+                    ai_role=custom_scenario.ai_role,
+                    description=custom_scenario.description,
+                    scenario_name=custom_scenario.name,
+                )
+
+                conversation_result = await generate_conversation_response(
+                    user_input=user_input,
+                    difficulty=session_difficulty,
+                    scenario_category=scenario_category,
+                    round_index=current_round,
+                    context=context,
+                    scenario_id=scenario_id,
+                    provider_name="groq",
+                    custom_system_prompt=custom_prompt,  # カスタムプロンプトを渡す
+                )
+            else:
+                # 通常シナリオの場合
+                scenario_category = self._to_str(session.scenario.category)
+                scenario_id = session.scenario_id
+
+                conversation_result = await generate_conversation_response(
+                    user_input=user_input,
+                    difficulty=session_difficulty,
+                    scenario_category=scenario_category,
+                    round_index=current_round,
+                    context=context,
+                    scenario_id=scenario_id,
+                    provider_name="groq",
+                )
             latency_ms = conversation_result.latency_ms
             if latency_ms is None:
                 latency_ms = int((time.perf_counter() - start_time) * 1000)
@@ -333,11 +428,12 @@ class SessionService:
                 end_prompt_reason = None
 
             # ゴールラベルを取得
-            goals_labels = (
-                get_goals_for_scenario(session.scenario_id)
-                if session.scenario_id
-                else None
-            )
+            if session.custom_scenario_id:
+                goals_labels = get_custom_scenario_goals()
+            elif session.scenario_id:
+                goals_labels = get_goals_for_scenario(session.scenario_id)
+            else:
+                goals_labels = None
 
             return TurnResponse(
                 round_index=current_round,
@@ -493,18 +589,22 @@ class SessionService:
             ) = await self._calculate_goal_progress(session)
 
             # ゴールラベルを取得
-            goals_labels = (
-                get_goals_for_scenario(session.scenario_id)
-                if session.scenario_id
-                else None
-            )
+            if session.custom_scenario_id:
+                goals_labels = get_custom_scenario_goals()
+                scenario_name = session.custom_scenario.name if session.custom_scenario else None
+            elif session.scenario_id:
+                goals_labels = get_goals_for_scenario(session.scenario_id)
+                scenario_name = session.scenario.name if session.scenario else None
+            else:
+                goals_labels = None
+                scenario_name = None
 
             return SessionEndResponse(
                 session_id=session_id,
                 completed_rounds=session.completed_rounds,
                 top_phrases=top_phrases,
                 next_review_at=next_review_at,
-                scenario_name=session.scenario.name if session.scenario else None,
+                scenario_name=scenario_name,
                 difficulty=self._to_str(session.difficulty),
                 mode=self._to_str(session.mode),
                 goals_total=goals_total,
@@ -606,10 +706,23 @@ class SessionService:
         return due_at
 
     def _build_session_status(self, session: SessionModel) -> SessionStatusResponse:
-        scenario_name = session.scenario.name if session.scenario else None
-
         def _to_str(value):
             return value.value if hasattr(value, "value") else value
+
+        # カスタムシナリオの場合
+        is_custom_scenario = session.custom_scenario_id is not None
+        if is_custom_scenario and session.custom_scenario:
+            scenario_name = session.custom_scenario.name
+            initial_message = get_custom_scenario_initial_message(
+                session.custom_scenario.ai_role,
+                session.custom_scenario.description,
+            )
+        elif session.scenario:
+            scenario_name = session.scenario.name
+            initial_message = self._get_initial_message(session.scenario)
+        else:
+            scenario_name = None
+            initial_message = None
 
         difficulty_label = _to_str(session.difficulty) if session.difficulty else None
         mode_label = _to_str(session.mode) if session.mode else None
@@ -620,13 +733,10 @@ class SessionService:
             and session.ended_at is None
         )
 
-        initial_message = (
-            self._get_initial_message(session.scenario) if session.scenario else None
-        )
-
         return SessionStatusResponse(
             session_id=session.id,
             scenario_id=session.scenario_id,
+            custom_scenario_id=session.custom_scenario_id,
             round_target=session.round_target,
             completed_rounds=session.completed_rounds,
             difficulty=_to_str(session.difficulty),
@@ -637,5 +747,6 @@ class SessionService:
             extension_offered=extension_offered,
             scenario_name=scenario_name,
             can_extend=can_extend,
+            is_custom_scenario=is_custom_scenario,
             initial_ai_message=initial_message,
         )

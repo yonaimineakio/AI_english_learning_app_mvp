@@ -92,9 +92,46 @@ class Scenario(ScenarioBase):
     created_at: datetime
 
 
+# CustomScenario schemas (オリジナルシナリオ)
+class CustomScenarioBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str = Field(..., min_length=1)
+    user_role: str = Field(..., min_length=1)  # ユーザーの役割
+    ai_role: str = Field(..., min_length=1)  # AIの役割
+
+
+class CustomScenarioCreate(CustomScenarioBase):
+    pass
+
+
+class CustomScenario(CustomScenarioBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: str  # UUID
+    difficulty: str = "intermediate"
+    is_active: bool = True
+    created_at: datetime
+
+
+class CustomScenarioListResponse(BaseModel):
+    """オリジナルシナリオ一覧レスポンス"""
+    custom_scenarios: List[CustomScenario]
+    total_count: int
+
+
+class CustomScenarioLimitResponse(BaseModel):
+    """オリジナルシナリオ作成制限レスポンス"""
+    daily_limit: int  # 1日の制限数
+    created_today: int  # 本日作成済み数
+    remaining: int  # 残り作成可能数
+    is_pro: bool
+
+
 # Session schemas
 class SessionBase(BaseModel):
-    scenario_id: int
+    scenario_id: Optional[int] = None  # 通常シナリオ用（どちらか必須）
+    custom_scenario_id: Optional[int] = None  # カスタムシナリオ用（どちらか必須）
     round_target: int = Field(..., ge=4, le=12)
     difficulty: Literal["beginner", "intermediate", "advanced"]
     mode: Literal["quick", "standard", "deep", "custom"]
@@ -115,6 +152,8 @@ class Session(SessionBase):
 
     id: int
     user_id: str  # UUID
+    scenario_id: Optional[int] = None
+    custom_scenario_id: Optional[int] = None
     completed_rounds: int = 0
     started_at: datetime
     ended_at: Optional[datetime] = None
@@ -323,7 +362,8 @@ class MyRankingResponse(BaseModel):
 # API Response schemas
 class SessionStartResponse(BaseModel):
     session_id: int
-    scenario: Scenario
+    scenario: Optional[Scenario] = None  # 通常シナリオ
+    custom_scenario: Optional[CustomScenario] = None  # カスタムシナリオ
     round_target: int
     difficulty: Literal["beginner", "intermediate", "advanced"]
     mode: Literal["quick", "standard", "deep", "custom"]
@@ -335,7 +375,8 @@ class SessionStartResponse(BaseModel):
 
 class SessionStatusResponse(BaseModel):
     session_id: int
-    scenario_id: int
+    scenario_id: Optional[int] = None  # 通常シナリオ
+    custom_scenario_id: Optional[int] = None  # カスタムシナリオ
     round_target: int
     completed_rounds: int
     difficulty: Literal["beginner", "intermediate", "advanced"]
@@ -346,6 +387,7 @@ class SessionStatusResponse(BaseModel):
     extension_offered: bool = False
     scenario_name: Optional[str] = None
     can_extend: bool = False
+    is_custom_scenario: bool = False  # カスタムシナリオかどうか
     # セッション開始時に表示するシナリオ別の初期AIメッセージ（任意）
     initial_ai_message: Optional[str] = None
 
