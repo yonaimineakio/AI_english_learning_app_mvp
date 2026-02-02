@@ -9,19 +9,26 @@ class SessionApi {
   final ApiClient _client;
 
   Future<SessionStartResponseModel> startSession({
-    required int scenarioId,
+    int? scenarioId,
+    int? customScenarioId,
     required int roundTarget,
     required String difficulty,
     required String mode,
   }) async {
+    final Map<String, dynamic> data = {
+      'round_target': roundTarget,
+      'difficulty': difficulty,
+      'mode': mode,
+    };
+    if (scenarioId != null) {
+      data['scenario_id'] = scenarioId;
+    }
+    if (customScenarioId != null) {
+      data['custom_scenario_id'] = customScenarioId;
+    }
     final Response<dynamic> res = await _client.postJson(
       '/sessions/start',
-      data: {
-        'scenario_id': scenarioId,
-        'round_target': roundTarget,
-        'difficulty': difficulty,
-        'mode': mode,
-      },
+      data: data,
     );
     return SessionStartResponseModel.fromJson(
       Map<String, dynamic>.from(res.data as Map),

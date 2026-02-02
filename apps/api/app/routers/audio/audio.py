@@ -10,8 +10,13 @@ from pydantic import BaseModel
 
 from app.core.config import settings
 from app.core.deps import get_current_user
-from app.services.ai.google_speech_provider import (
-    GoogleSpeechProvider,
+# from app.services.ai.google_speech_provider import (
+#     GoogleSpeechProvider,
+#     TranscriptionResponse,
+# )
+# After
+from app.services.ai.whisper_provider import (
+    WhisperProvider,
     TranscriptionResponse,
 )
 from app.services.ai.google_tts_provider import GoogleTTSProvider
@@ -49,11 +54,11 @@ async def transcribe_audio(
             )
 
         # Google Speech-to-Textで音声認識
-        async with GoogleSpeechProvider() as speech_provider:
-            result = await speech_provider.transcribe_audio(
+        async with WhisperProvider() as whisper_provider:
+            result = await whisper_provider.transcribe_audio(
                 audio_file=audio_content,
                 filename=audio_file.filename or "audio.webm",
-                language=language,
+                language=language
             )
 
         logger.info(

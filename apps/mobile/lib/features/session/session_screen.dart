@@ -254,7 +254,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
     final state = ref.watch(sessionControllerProvider);
     final audio = ref.watch(audioControllerProvider);
     final dataOrNull = state.valueOrNull;
-    final titleText = dataOrNull?.scenario.name ?? '会話セッション';
+    final titleText = dataOrNull?.scenarioName ?? '会話セッション';
     final roundTarget = dataOrNull?.roundTarget;
     final completedRounds = dataOrNull?.completedRounds ?? 0;
     final roundLabel = (roundTarget != null && roundTarget > 0)
@@ -430,10 +430,12 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
 
           return Column(
             children: [
-              if (data.goalsTotal != null || data.goalsStatus != null)
+              // カスタムシナリオの場合はタスクチェックリストを表示しない
+              if (!data.isCustomScenario &&
+                  (data.goalsTotal != null || data.goalsStatus != null))
                 SessionTaskChecklistCard(
-                  scenarioId: data.scenario.id,
-                  scenarioName: data.scenario.name,
+                  scenarioId: data.scenario?.id ?? 0,
+                  scenarioName: data.scenarioName,
                   goalsStatus: data.goalsStatus,
                   goalsTotal: data.goalsTotal,
                   goalsAchieved: data.goalsAchieved,

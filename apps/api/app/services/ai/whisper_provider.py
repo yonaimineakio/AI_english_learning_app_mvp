@@ -1,8 +1,7 @@
 import asyncio
 import logging
-from dataclasses import dataclass
-from typing import Optional
-
+from typing import List, Optional
+from pydantic import BaseModel, Field
 import httpx
 
 from app.core.config import settings
@@ -11,13 +10,16 @@ logger = logging.getLogger(__name__)
 
 WHISPER_API_URL = "https://api.openai.com/v1/audio/transcriptions"
 
+class TranscriptionAlternative(BaseModel):
+    text: str
+    confidence: Optional[float] = None
 
-@dataclass
-class TranscriptionResponse:
+class TranscriptionResponse(BaseModel):
     text: str
     confidence: Optional[float] = None
     language: Optional[str] = None
     duration: Optional[float] = None
+    alternatives: List[TranscriptionAlternative] = Field(default_factory=list)
 
 
 class WhisperProvider:

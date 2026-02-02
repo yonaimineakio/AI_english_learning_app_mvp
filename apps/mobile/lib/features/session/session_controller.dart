@@ -25,7 +25,8 @@ class MessageItem {
 class SessionUiState {
   const SessionUiState({
     required this.sessionId,
-    required this.scenario,
+    this.scenario,
+    this.customScenario,
     required this.messages,
     required this.roundTarget,
     required this.completedRounds,
@@ -42,7 +43,8 @@ class SessionUiState {
   });
 
   final int sessionId;
-  final ScenarioModel scenario;
+  final ScenarioModel? scenario; // 通常シナリオ用
+  final CustomScenarioResponseModel? customScenario; // カスタムシナリオ用
   final List<MessageItem> messages;
   final int? roundTarget;
   final int? completedRounds;
@@ -56,6 +58,13 @@ class SessionUiState {
   final bool extensionOffered;
   final bool isLoadingTurn;
   final bool shouldEndSession;
+
+  /// シナリオ名（通常シナリオまたはカスタムシナリオの名前）
+  String get scenarioName =>
+      scenario?.name ?? customScenario?.name ?? 'Unknown Scenario';
+
+  /// カスタムシナリオかどうか
+  bool get isCustomScenario => customScenario != null;
 
   SessionUiState copyWith({
     List<MessageItem>? messages,
@@ -75,6 +84,7 @@ class SessionUiState {
     return SessionUiState(
       sessionId: sessionId,
       scenario: scenario,
+      customScenario: customScenario,
       messages: messages ?? this.messages,
       roundTarget: roundTarget ?? this.roundTarget,
       completedRounds: completedRounds ?? this.completedRounds,
@@ -111,6 +121,7 @@ class SessionController extends AsyncNotifier<SessionUiState> {
     return SessionUiState(
       sessionId: 0,
       scenario: placeholderScenario,
+      customScenario: null,
       messages: const [],
       roundTarget: null,
       completedRounds: null,
@@ -125,28 +136,40 @@ class SessionController extends AsyncNotifier<SessionUiState> {
     );
   }
 
-  int? _defaultGoalsTotalForScenario(int scenarioId) {
+  int? _defaultGoalsTotalForScenario(int? scenarioId, {bool isCustomScenario = false}) {
+    // カスタムシナリオの場合はゴールを無効化
+    if (isCustomScenario) return null;
     // Backend defines up to 3 goals per scenario id (1..21). Keep this list in sync
     // with the UI task labels mapping in `SessionTaskChecklistCard`.
-    if (scenarioId <= 0) return null;
+    if (scenarioId == null || scenarioId <= 0) return null;
     return 3;
   }
 
   Future<int> startNewSession({
-    required int scenarioId,
+    int? scenarioId,
+    int? customScenarioId,
     required String difficulty,
     required String mode,
   }) async {
     final res = await _api.startSession(
       scenarioId: scenarioId,
+      customScenarioId: customScenarioId,
       roundTarget: 6,
       difficulty: difficulty,
       mode: mode,
     );
 
     final goalsLabels = res.goalsLabels;
-    final goalsTotal =
-        (goalsLabels != null && goalsLabels.isNotEmpty) ? goalsLabels.length : _defaultGoalsTotalForScenario(res.scenario.id);
+    final isCustomScenario = customScenarioId != null || res.customScenario != null;
+    // カスタムシナリオの場合はゴールを無効化
+    final int? goalsTotal;
+    if (isCustomScenario) {
+      goalsTotal = null;
+    } else if (goalsLabels != null && goalsLabels.isNotEmpty) {
+      goalsTotal = goalsLabels.length;
+    } else {
+      goalsTotal = _defaultGoalsTotalForScenario(scenarioId, isCustomScenario: false);
+    }
 
     final messages = <MessageItem>[];
     if (res.initialAiMessage != null &&
@@ -163,18 +186,19 @@ class SessionController extends AsyncNotifier<SessionUiState> {
       SessionUiState(
         sessionId: res.sessionId,
         scenario: res.scenario,
+        customScenario: res.customScenario,
         messages: messages,
         roundTarget: res.roundTarget,
         completedRounds: 0,
         goalsTotal: goalsTotal,
-        goalsAchieved: 0,
+        goalsAchieved: isCustomScenario ? null : 0,
         goalsStatus: goalsTotal == null
             ? null
             : List<int>.filled(
                 goalsTotal,
                 0,
               ),
-        goalsLabels: goalsLabels, // start時点でAPIから取得
+        goalsLabels: isCustomScenario ? null : goalsLabels, // カスタムシナリオの場合はnull
         endPromptReason: null,
         dismissedGoalsCompletedPrompt: false,
         canExtend: false,
@@ -218,26 +242,43 @@ class SessionController extends AsyncNotifier<SessionUiState> {
 
       final nextReason = turn.endPromptReason;
       final isGoalsCompletedReason = nextReason == 'goals_completed';
+      // カスタムシナリオではgoals_completedの終了提案を無視
       final shouldPrompt = turn.shouldEndSession &&
-          !(isGoalsCompletedReason && current.dismissedGoalsCompletedPrompt);
+          !(isGoalsCompletedReason && current.dismissedGoalsCompletedPrompt) &&
+          !(isGoalsCompletedReason && current.isCustomScenario);
 
-      // Keep goals monotonic: once achieved, never revert to 0 during the session UI.
+      // カスタムシナリオの場合はゴールを常にnullに保つ
+      int? mergedGoalsTotal;
+      int? mergedGoalsAchieved;
       List<int>? mergedGoalsStatus;
-      if (turn.goalsStatus != null && current.goalsStatus != null) {
-        final a = current.goalsStatus!;
-        final b = turn.goalsStatus!;
-        final n = a.length > b.length ? a.length : b.length;
-        mergedGoalsStatus = List<int>.generate(n, (i) {
-          final av = i < a.length ? a[i] : 0;
-          final bv = i < b.length ? b[i] : 0;
-          return (av == 1 || bv == 1) ? 1 : 0;
-        });
+      List<String>? mergedGoalsLabels;
+
+      if (current.isCustomScenario) {
+        // カスタムシナリオの場合はゴールを無効化
+        mergedGoalsTotal = null;
+        mergedGoalsAchieved = null;
+        mergedGoalsStatus = null;
+        mergedGoalsLabels = null;
       } else {
-        mergedGoalsStatus = turn.goalsStatus ?? current.goalsStatus;
+        // Keep goals monotonic: once achieved, never revert to 0 during the session UI.
+        if (turn.goalsStatus != null && current.goalsStatus != null) {
+          final a = current.goalsStatus!;
+          final b = turn.goalsStatus!;
+          final n = a.length > b.length ? a.length : b.length;
+          mergedGoalsStatus = List<int>.generate(n, (i) {
+            final av = i < a.length ? a[i] : 0;
+            final bv = i < b.length ? b[i] : 0;
+            return (av == 1 || bv == 1) ? 1 : 0;
+          });
+        } else {
+          mergedGoalsStatus = turn.goalsStatus ?? current.goalsStatus;
+        }
+        mergedGoalsAchieved = mergedGoalsStatus == null
+            ? (turn.goalsAchieved ?? current.goalsAchieved)
+            : mergedGoalsStatus.where((v) => v == 1).length;
+        mergedGoalsTotal = turn.goalsTotal ?? current.goalsTotal;
+        mergedGoalsLabels = turn.goalsLabels ?? current.goalsLabels;
       }
-      final mergedGoalsAchieved = mergedGoalsStatus == null
-          ? (turn.goalsAchieved ?? current.goalsAchieved)
-          : mergedGoalsStatus.where((v) => v == 1).length;
 
       state = AsyncData(
         current.copyWith(
@@ -247,10 +288,10 @@ class SessionController extends AsyncNotifier<SessionUiState> {
           completedRounds: turn.sessionStatus?.completedRounds ??
               current.completedRounds ??
               turn.roundIndex,
-          goalsTotal: turn.goalsTotal ?? current.goalsTotal,
+          goalsTotal: mergedGoalsTotal,
           goalsAchieved: mergedGoalsAchieved,
           goalsStatus: mergedGoalsStatus,
-          goalsLabels: turn.goalsLabels ?? current.goalsLabels,
+          goalsLabels: mergedGoalsLabels,
           canExtend: turn.sessionStatus?.canExtend ?? current.canExtend,
           extensionOffered:
               turn.sessionStatus?.extensionOffered ?? current.extensionOffered,

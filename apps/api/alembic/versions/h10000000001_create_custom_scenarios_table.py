@@ -52,8 +52,21 @@ def upgrade() -> None:
     )
 
     # Make scenario_id nullable (for custom scenarios)
-    # Note: SQLite doesn't support ALTER COLUMN, so we need to handle this carefully
-    # For now, we'll skip this for SQLite as it's development only
+    # PostgreSQL: ALTER COLUMN scenario_id DROP NOT NULL
+    # This allows sessions to be created with only custom_scenario_id
+    from sqlalchemy import inspect
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    dialect_name = bind.dialect.name
+    
+    if dialect_name == "postgresql":
+        op.alter_column(
+            "sessions",
+            "scenario_id",
+            existing_type=sa.Integer(),
+            nullable=True,
+        )
+    # Note: SQLite doesn't support ALTER COLUMN, skip for development
 
 
 def downgrade() -> None:

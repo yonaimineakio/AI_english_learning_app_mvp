@@ -24,10 +24,38 @@ class ScenarioModel {
   }
 }
 
+/// カスタムシナリオのモデル（セッション開始時のレスポンス用）
+class CustomScenarioResponseModel {
+  const CustomScenarioResponseModel({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.userRole,
+    required this.aiRole,
+  });
+
+  final int id;
+  final String name;
+  final String description;
+  final String userRole;
+  final String aiRole;
+
+  factory CustomScenarioResponseModel.fromJson(Map<String, dynamic> json) {
+    return CustomScenarioResponseModel(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      description: json['description'] as String,
+      userRole: json['user_role'] as String,
+      aiRole: json['ai_role'] as String,
+    );
+  }
+}
+
 class SessionStartResponseModel {
   const SessionStartResponseModel({
     required this.sessionId,
-    required this.scenario,
+    this.scenario,
+    this.customScenario,
     required this.roundTarget,
     required this.difficulty,
     required this.mode,
@@ -36,7 +64,8 @@ class SessionStartResponseModel {
   });
 
   final int sessionId;
-  final ScenarioModel scenario;
+  final ScenarioModel? scenario; // 通常シナリオ用（カスタムシナリオ時はnull）
+  final CustomScenarioResponseModel? customScenario; // カスタムシナリオ用（通常シナリオ時はnull）
   final int roundTarget;
   final String difficulty;
   final String mode;
@@ -46,7 +75,13 @@ class SessionStartResponseModel {
   factory SessionStartResponseModel.fromJson(Map<String, dynamic> json) {
     return SessionStartResponseModel(
       sessionId: json['session_id'] as int,
-      scenario: ScenarioModel.fromJson(json['scenario'] as Map<String, dynamic>),
+      scenario: json['scenario'] != null
+          ? ScenarioModel.fromJson(json['scenario'] as Map<String, dynamic>)
+          : null,
+      customScenario: json['custom_scenario'] != null
+          ? CustomScenarioResponseModel.fromJson(
+              json['custom_scenario'] as Map<String, dynamic>)
+          : null,
       roundTarget: json['round_target'] as int,
       difficulty: json['difficulty'] as String,
       mode: json['mode'] as String,
@@ -61,7 +96,8 @@ class SessionStartResponseModel {
 class SessionStatusResponseModel {
   const SessionStatusResponseModel({
     required this.sessionId,
-    required this.scenarioId,
+    this.scenarioId,
+    this.customScenarioId,
     required this.roundTarget,
     required this.completedRounds,
     required this.difficulty,
@@ -72,11 +108,13 @@ class SessionStatusResponseModel {
     this.extensionOffered = false,
     this.scenarioName,
     this.canExtend = false,
+    this.isCustomScenario = false,
     this.initialAiMessage,
   });
 
   final int sessionId;
-  final int scenarioId;
+  final int? scenarioId; // 通常シナリオ用（カスタムシナリオ時はnull）
+  final int? customScenarioId; // カスタムシナリオ用（通常シナリオ時はnull）
   final int roundTarget;
   final int completedRounds;
   final String difficulty;
@@ -87,12 +125,14 @@ class SessionStatusResponseModel {
   final bool extensionOffered;
   final String? scenarioName;
   final bool canExtend;
+  final bool isCustomScenario; // カスタムシナリオかどうか
   final String? initialAiMessage;
 
   factory SessionStatusResponseModel.fromJson(Map<String, dynamic> json) {
     return SessionStatusResponseModel(
       sessionId: json['session_id'] as int,
-      scenarioId: json['scenario_id'] as int,
+      scenarioId: json['scenario_id'] as int?,
+      customScenarioId: json['custom_scenario_id'] as int?,
       roundTarget: json['round_target'] as int,
       completedRounds: json['completed_rounds'] as int,
       difficulty: json['difficulty'] as String,
@@ -103,6 +143,7 @@ class SessionStatusResponseModel {
       extensionOffered: (json['extension_offered'] as bool?) ?? false,
       scenarioName: json['scenario_name'] as String?,
       canExtend: (json['can_extend'] as bool?) ?? false,
+      isCustomScenario: (json['is_custom_scenario'] as bool?) ?? false,
       initialAiMessage: json['initial_ai_message'] as String?,
     );
   }

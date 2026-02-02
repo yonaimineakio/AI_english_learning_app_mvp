@@ -80,14 +80,15 @@ app.include_router(
 @app.on_event("startup")
 async def startup_event():
     logger.info("Application starting up", extra={"environment": settings.ENVIRONMENT})
-    # In dev, apply Alembic migrations automatically to avoid schema drift
-    # (e.g. missing users.is_pro causing login failures).
-    if settings.DEBUG:
-        try:
-            upgrade_head()
-        except Exception:
-            logger.exception("Database migration on startup failed")
-            raise
+    # Apply Alembic migrations automatically to avoid schema drift
+    # (e.g. missing users.is_pro causing login failures, missing custom_scenarios table).
+    # This runs in all environments to ensure production DB is always up to date.
+    try:
+        upgrade_head()
+        logger.info("Database migrations applied successfully")
+    except Exception:
+        logger.exception("Database migration on startup failed")
+        raise
     initialize_providers()
     logger.info("AI providers initialized")
 
