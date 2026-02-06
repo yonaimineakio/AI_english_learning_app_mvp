@@ -17,7 +17,7 @@ class TranscriptionAlternative(BaseModel):
 class TranscriptionResponse(BaseModel):
     text: str
     confidence: Optional[float] = None
-    language: Optional[str] = None
+    language: Optional[str] = "en"
     duration: Optional[float] = None
     alternatives: List[TranscriptionAlternative] = Field(default_factory=list)
 

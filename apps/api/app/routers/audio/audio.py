@@ -30,7 +30,7 @@ router = APIRouter()
 @router.post("/transcribe", response_model=TranscriptionResponse)
 async def transcribe_audio(
     audio_file: UploadFile = File(..., description="音声ファイル"),
-    language: Optional[str] = Form(None, description="音声の言語コード（例: ja, en）"),
+    language: Optional[str] = "en",
     current_user: User = Depends(get_current_user),
 ) -> TranscriptionResponse:
     """
@@ -38,12 +38,12 @@ async def transcribe_audio(
 
     Args:
         audio_file: 音声ファイル（WAV, FLAC, MP3, M4A, OGG, OPUS, WEBM対応）
-        language: 音声の言語コード（オプション）
         current_user: 認証されたユーザー
 
     Returns:
         TranscriptionResponse: 変換結果
     """
+    logger.info(f"transcribe start: {audio_file}")
     try:
         # ファイルの読み込み
         audio_content = await audio_file.read()
@@ -58,13 +58,13 @@ async def transcribe_audio(
             result = await whisper_provider.transcribe_audio(
                 audio_file=audio_content,
                 filename=audio_file.filename or "audio.webm",
-                language=language
             )
 
         logger.info(
             f"Audio transcription completed for user {current_user.id}: "
             f"duration={result.duration:.2f}s, text_length={len(result.text)}"
         )
+        logger.info(f"transcribe audioresult: {result}")
 
         return result
 
