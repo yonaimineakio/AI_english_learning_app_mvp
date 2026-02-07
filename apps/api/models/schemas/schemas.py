@@ -546,8 +546,8 @@ class ShadowingAttemptResponse(BaseModel):
     is_new_best: bool
 
 
-class WordMatch(BaseModel):
-    """単語の一致結果"""
+class ShadowingWordMatch(BaseModel):
+    """単語の一致結果（シャドーイング用）"""
     word: str
     matched: bool
     index: int
@@ -567,7 +567,7 @@ class ShadowingSpeakResponse(BaseModel):
     is_completed: bool
     is_new_best: bool
     target_sentence: str
-    matching_words: List[WordMatch]
+    matching_words: List[ShadowingWordMatch]
 
 
 class ScenarioProgressSummary(BaseModel):

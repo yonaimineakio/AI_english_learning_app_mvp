@@ -29,7 +29,7 @@ from models.schemas.schemas import (
     ShadowingSpeakResponse,
     ShadowingProgressResponse,
     ScenarioProgressSummary,
-    WordMatch,
+    ShadowingWordMatch,
 )
 
 router = APIRouter()
@@ -264,7 +264,7 @@ def evaluate_shadowing_speech(
         is_new_best=is_new_best,
         target_sentence=sentence.sentence_en,
         matching_words=[
-            WordMatch(word=m.word, matched=m.matched, index=m.index)
+            ShadowingWordMatch(word=m.word, matched=m.matched, index=m.index)
             for m in eval_result.matching_words
         ],
     )
