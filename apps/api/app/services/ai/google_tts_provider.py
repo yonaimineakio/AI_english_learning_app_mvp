@@ -46,12 +46,13 @@ class GoogleTTSProvider:
 
         lang = language_code or "en-US"
         voice_params: dict = {"language_code": lang}
+        # voice_nameが指定されていない場合はデフォルトで女性の声を使用する。
         if voice_name:
             voice_params["name"] = voice_name
-
+        else:
+            voice_params["ssml_gender"] = texttospeech.SsmlVoiceGender.FEMALE
         voice = texttospeech.VoiceSelectionParams(
             **voice_params,
-            ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL,
         )
 
         rate = speaking_rate or 1.0
@@ -71,7 +72,6 @@ class GoogleTTSProvider:
             )
         except google_exceptions.GoogleAPICallError as exc:
             logger.error(f"Google Text-to-Speech APIの呼び出しに失敗しました")
-            # logger.error(f"Error message: {exc.message}")
             raise ValueError(
                 f"error message: {str(exc.message)}"
             ) from exc
