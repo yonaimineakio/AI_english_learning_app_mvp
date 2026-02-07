@@ -73,15 +73,15 @@ class GoogleTTSProvider:
             logger.error(f"Google Text-to-Speech APIの呼び出しに失敗しました")
             # logger.error(f"Error message: {exc.message}")
             raise ValueError(
-                "error message: {exc.message}"
+                f"error message: {str(exc.message)}"
             ) from exc
         except google_exceptions.RetryError as exc:
             logger.error(f"Google Text-to-Speech APIの再試行が上限に達しました")
             raise ValueError(
-                "error message: {exc.message}"
+                f"error message: {str(exc.message)}"
             ) from exc
         except Exception as exc:  # pragma: no cover
-            raise ValueError(f"error message: {exc.message}") from exc
+            raise ValueError(f"error message: {str(exc.message)}") from exc
 
         latency_ms = int((time.perf_counter() - start_time) * 1000)
 
