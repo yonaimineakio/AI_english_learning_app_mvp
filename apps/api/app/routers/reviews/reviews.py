@@ -202,6 +202,14 @@ def evaluate_review(
                 score=eval_result.score,
                 is_correct=eval_result.is_correct,
             )
+            logger.info(f"item: {item}")
+            logger.info(f"is_completed: {is_completed}")
+            logger.info(f"next_due_at: {next_due_at}")
+            logger.info(f"eval_result: {eval_result}")
+            logger.info(f"eval_result.score: {eval_result.score}")
+            logger.info(f"eval_result.is_correct: {eval_result.is_correct}")
+            logger.info(f"eval_result.matching_words: {eval_result.matching_words}")
+            logger.info(f"eval_result.correct_answer: {eval_result.correct_answer}")
 
             return ReviewEvaluateResponse(
                 review_item_id=item.id,
