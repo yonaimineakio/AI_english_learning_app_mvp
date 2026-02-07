@@ -43,7 +43,7 @@ def _engine_kwargs(database_url: str) -> dict:
 
     if settings.ENVIRONMENT != "development":
         kwargs["pool_size"] = int(os.getenv("DB_POOL_SIZE", "5"))
-        kwargs["max_overflow"] = int(os.getenv("DB_MAX_OVERFLOW", "0"))
+        kwargs["max_overflow"] = int(os.getenv("DB_MAX_OVERFLOW", "10"))
         kwargs["pool_timeout"] = int(os.getenv("DB_POOL_TIMEOUT", "30"))
         kwargs["pool_recycle"] = int(os.getenv("DB_POOL_RECYCLE", "1800"))
 
