@@ -70,14 +70,20 @@ class GoogleTTSProvider:
                 audio_config=audio_config,
             )
         except google_exceptions.GoogleAPICallError as exc:
+            logger.error(f"Google Text-to-Speech APIの呼び出しに失敗しました")
+            logger.error(f"Error message: {exc.message}")
             raise ValueError(
                 "Google Text-to-Speech APIの呼び出しに失敗しました"
             ) from exc
         except google_exceptions.RetryError as exc:
+            logger.error(f"Google Text-to-Speech APIの再試行が上限に達しました")
+            logger.error(f"Error message: {exc.message}")
             raise ValueError(
                 "Google Text-to-Speech APIの再試行が上限に達しました"
             ) from exc
         except Exception as exc:  # pragma: no cover
+            logger.error(f"音声合成中に予期せぬエラーが発生しました")
+            logger.error(f"Error message: {exc.message}")
             raise ValueError("音声合成中に予期せぬエラーが発生しました") from exc
 
         latency_ms = int((time.perf_counter() - start_time) * 1000)
