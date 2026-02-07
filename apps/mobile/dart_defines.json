@@ -1,5 +1,5 @@
 {
-  "API_BASE_URL": "http://https://ai-english-learning-api-303997211717.asia-northeast1.run.app/api/v1",
+  "API_BASE_URL": "https://ai-english-learning-api-303997211717.asia-northeast1.run.app/api/v1",
   "REVENUECAT_IOS_API_KEY": "appl_HsLGHrmznfQXvavhxQpWLGEmamu",
   "REVENUECAT_ENTITLEMENT_ID": "AI English Learning  Pro"
 }

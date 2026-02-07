@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.logging_config import get_logger
-from app.db.session import get_db
+from app.db.session import get_db, engine
 
 logger = get_logger(__name__)
 
@@ -40,4 +40,20 @@ def db_health_check(db: Session = Depends(get_db)):
         logger.exception("Database health check failed: %s", exc)
         raise HTTPException(
             status_code=503, detail="Database connectivity check failed"
+        ) from exc
+
+@router.get("/debug/pool")
+async def pool_status():
+    try:
+        return {
+            "pool_size": engine.pool.size(),
+            "checked_out": engine.pool.checkedout(),  # 現在使用中の接続数
+            "checked_in": engine.pool.checkedin(),     # プールに戻っている接続数
+            "overflow": engine.pool.overflow(),
+            "status": engine.pool.status(),
+        }
+    except Exception as exc:
+        logger.exception("Pool status check failed: %s", exc)
+        raise HTTPException(
+            status_code=503, detail="Pool status check failed"
         ) from exc

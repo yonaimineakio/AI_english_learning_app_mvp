@@ -128,6 +128,16 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
               Row(
                 children: [
                   Expanded(
+                    child: ElevatedButton(
+                      onPressed: isLoadingTurn
+                          ? null
+                          : () => Navigator.of(context).pop(
+                                _TranscriptionAction.send,
+                              ),
+                      child: const Text('送信'),
+                    ),
+                  ),
+                  Expanded(
                     child: OutlinedButton(
                       onPressed: canRetry
                           ? () => Navigator.of(context).pop(
@@ -138,16 +148,6 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: isLoadingTurn
-                          ? null
-                          : () => Navigator.of(context).pop(
-                                _TranscriptionAction.send,
-                              ),
-                      child: const Text('送信'),
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(height: 8),
