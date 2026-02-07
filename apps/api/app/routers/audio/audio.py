@@ -107,7 +107,7 @@ async def text_to_speech(
         )
 
     language_code = settings.GOOGLE_TTS_LANGUAGE
-    voice_name: Optional[str] = None
+    voice_name: Optional[str] = settings.GOOGLE_TTS_VOICE
     speaking_rate = settings.GOOGLE_TTS_SPEAKING_RATE
 
     # voice_profile に応じて将来的に切り替え可能（MVPでは1パターン）

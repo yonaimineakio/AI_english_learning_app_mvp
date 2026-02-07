@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     )
     # Google Cloud Text-to-Speech
     GOOGLE_TTS_LANGUAGE: str = "en-US"
-    GOOGLE_TTS_VOICE: Optional[str] = None
+    GOOGLE_TTS_VOICE: Optional[str] = "en-US-Neural2-A"
     GOOGLE_TTS_SPEAKING_RATE: float = 1.0
 
     REVENUECAT_SECRET_KEY: Optional[str] = None
