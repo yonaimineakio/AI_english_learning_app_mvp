@@ -20,6 +20,9 @@ from models.schemas.schemas import (
     ReviewStatsResponse,
     WordMatch,
 )
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -175,6 +178,15 @@ def evaluate_review(
         )
 
     try:
+        logger.info(f"evaluate_review: {payload}")
+        logger.info(f"cached: {cached}")
+        logger.info(f"review_id: {review_id}")
+        logger.info(f"current_user: {current_user.id}")
+        logger.info(f"db: {db}")
+        logger.info(f"service: {service}")
+        logger.info(f"payload: {payload}")
+        logger.info(f"cached: {cached}")
+        logger.info(f"review_id: {review_id}")
         if payload.question_type == "speaking":
             # スピーキング評価: 単語一致率
             target_sentence = cached.get("speaking_target", "")
