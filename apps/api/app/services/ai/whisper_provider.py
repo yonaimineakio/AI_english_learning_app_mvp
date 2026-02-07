@@ -35,7 +35,7 @@ class WhisperProvider:
         self,
         audio_file: bytes,
         filename: str,
-        language: Optional[str] = None,
+        language: Optional[str] = "en",
         model: str = "whisper-1",
     ) -> TranscriptionResponse:
         """音声ファイルをテキストに変換"""

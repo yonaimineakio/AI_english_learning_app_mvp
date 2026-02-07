@@ -57,6 +57,7 @@ async def transcribe_audio(
         async with WhisperProvider() as whisper_provider:
             result = await whisper_provider.transcribe_audio(
                 audio_file=audio_content,
+                language=language,
                 filename=audio_file.filename or "audio.webm",
             )
 
