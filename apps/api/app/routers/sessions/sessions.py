@@ -76,12 +76,13 @@ async def process_turn(
     """セッションのターンを処理する"""
     try:
         session_service = SessionService(db)
+        logger.info(f"payload={payload}")
         user_input = payload.get("user_input")
         if not user_input:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="user_input is required"
             )
-
+        logger.info(f"user_input={user_input}")
         result = await session_service.process_turn(
             session_id, user_input, current_user.id
         )
