@@ -22,6 +22,7 @@ from models.schemas.schemas import (
 
 from app.services.ai import generate_conversation_response
 from app.services.ai.goal_progress import evaluate_goal_progress
+from app.services.ai.review_top_phrases import select_top_review_phrases
 from app.prompts.scenario_goals import SCENARIO_GOALS, get_goals_for_scenario
 from app.prompts.custom_scenario import (
     get_custom_scenario_prompt,
@@ -48,12 +49,56 @@ class SessionService:
 
         item = (
             self.db.query(ReviewItem)
-            .filter(ReviewItem.user_id == user_id, ReviewItem.due_at.is_not(None))
+            .filter(
+                ReviewItem.user_id == user_id,
+                ReviewItem.source_session_id == session.id,
+                ReviewItem.due_at.is_not(None),
+            )
             .order_by(ReviewItem.due_at.desc())
             .first()
         )
 
+        if item:
+            return item.due_at
+
+        item = (
+            self.db.query(ReviewItem)
+            .filter(ReviewItem.user_id == user_id, ReviewItem.due_at.is_not(None))
+            .order_by(ReviewItem.due_at.desc())
+            .first()
+        )
         return item.due_at if item else None
+
+    def _get_stored_top_phrases(
+        self,
+        session_id: int,
+        user_id: str | int,
+    ) -> List[Dict[str, Any]]:
+        from models.database.models import ReviewItem
+
+        stored_items = (
+            self.db.query(ReviewItem)
+            .filter(
+                ReviewItem.user_id == user_id,
+                ReviewItem.source_session_id == session_id,
+            )
+            .order_by(ReviewItem.id.asc())
+            .all()
+        )
+
+        top_phrases: List[Dict[str, Any]] = []
+        for i, item in enumerate(stored_items, 1):
+            top_phrases.append(
+                {
+                    "rank": i,
+                    "phrase": item.phrase,
+                    "explanation": item.explanation,
+                    "round_index": item.source_round_index,
+                    "reason": item.selection_reason,
+                    "score": item.selection_score,
+                }
+            )
+        return top_phrases
 
     async def _calculate_goal_progress(
         self, session: SessionModel
@@ -530,11 +575,28 @@ class SessionService:
                 # セッション終了時刻を設定
                 session.ended_at = datetime.now(timezone.utc)
 
-                # トップ3フレーズを抽出（モック実装）
-                top_phrases = self._extract_top_phrases(session_id)
+                # トップ3フレーズを抽出（履歴ベースAI。失敗時はフォールバック）
+                (
+                    top_phrases,
+                    selection_mode,
+                    fallback_reason,
+                ) = await self._extract_top_phrases(session_id)
 
                 # 復習アイテムを作成
-                next_review_at = self._create_review_items(user_id, top_phrases)
+                next_review_at = self._create_review_items(
+                    user_id=user_id,
+                    top_phrases=top_phrases,
+                    source_session_id=session_id,
+                )
+                logger.info(
+                    "Review top phrases selected",
+                    extra={
+                        "session_id": session_id,
+                        "selection_mode": selection_mode,
+                        "selected_count": len(top_phrases),
+                        "fallback_reason": fallback_reason,
+                    },
+                )
 
                 # ストリーク更新
                 from app.services.streak.streak_service import StreakService
@@ -572,13 +634,28 @@ class SessionService:
                 )
             else:
                 # 既に終了している場合は、既存データを返却して冪等性を担保
-                top_phrases = self._extract_top_phrases(session_id)
+                top_phrases = self._get_stored_top_phrases(session_id, user_id)
+                selection_mode = "stored"
+                fallback_reason = None
+                if not top_phrases:
+                    top_phrases = self._extract_top_phrases_fallback(session_id)
+                    selection_mode = "fallback"
+                    fallback_reason = "stored_review_items_not_found"
                 next_review_at = self._get_existing_review_due(session, user_id)
 
                 logger.info(
                     "Session %s already ended at %s. Returning stored summary.",
                     session_id,
                     session.ended_at,
+                )
+                logger.info(
+                    "Review top phrases selected",
+                    extra={
+                        "session_id": session_id,
+                        "selection_mode": selection_mode,
+                        "selected_count": len(top_phrases),
+                        "fallback_reason": fallback_reason,
+                    },
                 )
 
             # セッション全体の学習ゴール達成率を計算
@@ -657,11 +734,8 @@ class SessionService:
             tags,
         )
 
-    def _extract_top_phrases(self, session_id: int) -> List[Dict[str, Any]]:
-        """セッションからトップ3フレーズを抽出する（モック実装）"""
-        # 実際の実装では、AIを使用して重要なフレーズを抽出
-        # 現在はモック実装
-
+    def _extract_top_phrases_fallback(self, session_id: int) -> List[Dict[str, Any]]:
+        """フォールバックとして最新3ラウンドから復習フレーズを抽出する。"""
         session_rounds = (
             self.db.query(SessionRound)
             .filter(SessionRound.session_id == session_id)
@@ -678,12 +752,66 @@ class SessionService:
                     "phrase": round_data.improved_sentence,
                     "explanation": round_data.feedback_short,
                     "round_index": round_data.round_index,
+                    "reason": "fallback_latest_rounds",
+                    "score": None,
                 }
             )
 
         return top_phrases
 
-    def _create_review_items(self, user_id: int, top_phrases: List[Dict[str, Any]]):
+    async def _extract_top_phrases(
+        self, session_id: int
+    ) -> tuple[List[Dict[str, Any]], str, Optional[str]]:
+        """セッション履歴から復習フレーズを抽出する。"""
+        session_rounds = (
+            self.db.query(SessionRound)
+            .filter(SessionRound.session_id == session_id)
+            .order_by(SessionRound.round_index.asc())
+            .all()
+        )
+
+        if not session_rounds:
+            return [], "ai", None
+
+        history = [
+            {
+                "round_index": row.round_index,
+                "user_input": row.user_input,
+                "feedback_short": row.feedback_short,
+                "improved_sentence": row.improved_sentence,
+                "tags": row.tags or [],
+            }
+            for row in session_rounds
+        ]
+        selected = await select_top_review_phrases(history)
+
+        if selected is None:
+            return (
+                self._extract_top_phrases_fallback(session_id),
+                "fallback",
+                "ai_selection_failed",
+            )
+
+        top_phrases = []
+        for i, item in enumerate(selected, 1):
+            top_phrases.append(
+                {
+                    "rank": i,
+                    "phrase": item["phrase"],
+                    "explanation": item["explanation"],
+                    "round_index": item["round_index"],
+                    "reason": item.get("reason"),
+                    "score": item.get("score"),
+                }
+            )
+        return top_phrases, "ai", None
+
+    def _create_review_items(
+        self,
+        user_id: str | int,
+        top_phrases: List[Dict[str, Any]],
+        source_session_id: int,
+    ):
         """復習アイテムを作成する"""
         from models.database.models import ReviewItem
 
@@ -699,6 +827,10 @@ class SessionService:
                 phrase=phrase_data["phrase"],
                 explanation=phrase_data["explanation"],
                 due_at=due_at,
+                source_session_id=source_session_id,
+                source_round_index=phrase_data.get("round_index"),
+                selection_reason=phrase_data.get("reason"),
+                selection_score=phrase_data.get("score"),
             )
             self.db.add(review_item)
 

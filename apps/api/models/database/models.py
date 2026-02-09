@@ -9,6 +9,7 @@ from sqlalchemy import (
     JSON,
     Enum,
     Date,
+    Index,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -171,9 +172,18 @@ class ReviewItem(Base):
     is_completed = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
+    source_session_id = Column(Integer, ForeignKey("sessions.id"), nullable=True, index=True)
+    source_round_index = Column(Integer, nullable=True)
+    selection_reason = Column(String(255), nullable=True)
+    selection_score = Column(Integer, nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="review_items")
+    source_session = relationship("Session")
+
+    __table_args__ = (
+        Index("ix_review_items_user_session", "user_id", "source_session_id"),
+    )
 
 
 class SavedPhrase(Base):
