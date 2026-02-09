@@ -46,9 +46,10 @@ class ReviewService:
         self.db = db
 
     def get_due_items(self, user_id: int, limit: int = 100) -> List[ReviewItem]:
-        """現在期限切れになっている復習アイテムを取得する"""
+        # """現在期限切れになっている復習アイテムを取得する"""
+        """復習アイテムを最新順に取得する"""
 
-        now = datetime.utcnow()
+        # now = datetime.utcnow()
         return (
             self.db.query(ReviewItem)
             .filter(
@@ -57,7 +58,7 @@ class ReviewService:
                 # ReviewItem.due_at <= now,
             )
             # .order_by(ReviewItem.due_at.asc(), ReviewItem.created_at.asc())
-            .order_by(ReviewItem.created_at.asc())
+            .order_by(ReviewItem.created_at.desc())
             .limit(limit)
             .all()
         )
