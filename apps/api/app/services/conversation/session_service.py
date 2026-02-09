@@ -593,6 +593,7 @@ class SessionService:
                     extra={
                         "session_id": session_id,
                         "selection_mode": selection_mode,
+                        "top_phrases": top_phrases,
                         "selected_count": len(top_phrases),
                         "fallback_reason": fallback_reason,
                     },
@@ -784,6 +785,8 @@ class SessionService:
             for row in session_rounds
         ]
         selected = await select_top_review_phrases(history)
+
+        logger.info(f"selected={selected}")
 
         if selected is None:
             return (

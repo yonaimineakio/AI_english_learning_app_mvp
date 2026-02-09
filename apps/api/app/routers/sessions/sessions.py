@@ -146,7 +146,8 @@ async def end_session(
     try:
         session_service = SessionService(db)
         result = await session_service.end_session(session_id, current_user.id)
-
+        
+        logger.info(f"result={result}")
         logger.info(f"Session {session_id} ended")
         return result
 
