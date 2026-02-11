@@ -192,7 +192,10 @@ def evaluate_review(
 
             eval_result = service.evaluate_speaking(target_sentence, user_transcription)
 
-            # 復習アイテムを更新
+            # Speaking スコアをキャッシュに保存（Listening 評価時の完了判定に使用）
+            cached["speaking_score"] = eval_result.score
+
+            # 復習アイテムを更新（Speaking 時は DB 変更なし）
             item, is_completed, next_due_at = service.evaluate_and_update(
                 user_id=current_user.id,
                 item_id=review_id,
@@ -234,13 +237,17 @@ def evaluate_review(
 
             eval_result = service.evaluate_listening(correct_words, user_answer)
 
-            # 復習アイテムを更新
+            # キャッシュから Speaking スコアを取得して完了判定に使用
+            speaking_score = cached.get("speaking_score", 0)
+
+            # 復習アイテムを更新（Speaking + Listening 両方 100 点で完了）
             item, is_completed, next_due_at = service.evaluate_and_update(
                 user_id=current_user.id,
                 item_id=review_id,
                 question_type="listening",
                 score=eval_result.score,
                 is_correct=eval_result.is_correct,
+                speaking_score=speaking_score,
             )
 
             # キャッシュをクリア（両方の問題が完了）

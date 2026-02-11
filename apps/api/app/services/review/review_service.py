@@ -46,19 +46,14 @@ class ReviewService:
         self.db = db
 
     def get_due_items(self, user_id: int, limit: int = 100) -> List[ReviewItem]:
-        # """現在期限切れになっている復習アイテムを取得する"""
-        """復習アイテムを最新順に取得する"""
+        """復習アイテムを未完了優先・作成日時の降順で取得する"""
 
-        # now = datetime.utcnow()
         return (
             self.db.query(ReviewItem)
             .filter(
                 ReviewItem.user_id == user_id,
-                # ReviewItem.is_completed.is_(False),
-                # ReviewItem.due_at <= now,
             )
-            # .order_by(ReviewItem.due_at.asc(), ReviewItem.created_at.asc())
-            .order_by(ReviewItem.created_at.desc())
+            .order_by(ReviewItem.is_completed.asc(), ReviewItem.created_at.desc())
             .limit(limit)
             .all()
         )
@@ -283,8 +278,13 @@ class ReviewService:
         question_type: str,
         score: int,
         is_correct: bool,
+        speaking_score: Optional[int] = None,
     ) -> Tuple[ReviewItem, bool, Optional[datetime]]:
         """評価結果に基づいて復習アイテムを更新する。
+
+        Speaking 評価時は DB を更新せずスコアのみ返却する。
+        Listening 評価時に Speaking スコアと Listening スコアの
+        両方が 100 の場合のみ完了とする。
 
         Args:
             user_id: ユーザーID
@@ -292,6 +292,7 @@ class ReviewService:
             question_type: 問題タイプ ("speaking" or "listening")
             score: 評価スコア (0-100)
             is_correct: 正解かどうか
+            speaking_score: Speaking 問題のスコア（Listening 評価時に使用）
 
         Returns:
             ReviewItem: 更新後のアイテム
@@ -315,22 +316,19 @@ class ReviewService:
 
         # リスニング問題（最後の問題）の評価時に完了判定
         if question_type == "listening":
-            if is_correct:
+            # Speaking・Listening 両方 100 点で完了
+            both_perfect = (speaking_score == 100) and (score == 100)
+            if both_perfect:
                 item.is_completed = True
                 item.completed_at = now
             else:
-                # 不正解の場合は翌日再出題
+                # どちらかが 100 未満の場合は翌日再出題
                 item.is_completed = False
                 item.due_at = now + timedelta(days=1)
                 item.completed_at = None
                 next_due_at = item.due_at
 
-        # スピーキング問題で不正解の場合も翌日再出題
-        elif question_type == "speaking" and not is_correct:
-            item.is_completed = False
-            item.due_at = now + timedelta(days=1)
-            item.completed_at = None
-            next_due_at = item.due_at
+        # Speaking 評価時は DB を更新しない（スコアのみ返却）
 
         self.db.commit()
         self.db.refresh(item)
