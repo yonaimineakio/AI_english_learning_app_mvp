@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../shared/models/session_models.dart';
+import '../review/review_screen.dart';
 
-class SummaryScreen extends StatelessWidget {
+class SummaryScreen extends ConsumerWidget {
   const SummaryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final state = GoRouterState.of(context);
     final end = state.extra as SessionEndResponseModel?;
 
@@ -67,6 +69,9 @@ class SummaryScreen extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
+                            // 復習一覧・統計を最新データで再取得させる
+                            ref.invalidate(reviewItemsProvider);
+                            ref.invalidate(reviewStatsProvider);
                             context.go('/review');
                           },
                           child: const Text('復習へ進む'),

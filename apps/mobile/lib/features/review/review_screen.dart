@@ -29,7 +29,7 @@ final _savedPhrasesApiProvider = Provider<SavedPhrasesApi>(
   (ref) => SavedPhrasesApi(ApiClient()),
 );
 
-final _reviewItemsProvider =
+final reviewItemsProvider =
     FutureProvider<ReviewNextResponseModel>((ref) async {
   // 認証状態を監視してログアウト時に自動的にリフレッシュ
   final auth = ref.watch(authStateProvider);
@@ -40,7 +40,7 @@ final _reviewItemsProvider =
   return api.getNextReviews();
 });
 
-final _reviewStatsProvider = FutureProvider<ReviewStatsModel>((ref) async {
+final reviewStatsProvider = FutureProvider<ReviewStatsModel>((ref) async {
   // 認証状態を監視してログアウト時に自動的にリフレッシュ
   final auth = ref.watch(authStateProvider);
   if (auth.valueOrNull?.isLoggedIn != true) {
@@ -87,7 +87,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen>
   @override
   Widget build(BuildContext context) {
     final pro = ref.watch(proStatusProvider);
-    final asyncStats = ref.watch(_reviewStatsProvider);
+    final asyncStats = ref.watch(reviewStatsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -264,7 +264,7 @@ class _TodayReviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final asyncItems = ref.watch(_reviewItemsProvider);
+    final asyncItems = ref.watch(reviewItemsProvider);
 
     return asyncItems.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -336,8 +336,8 @@ class _TodayReviewTab extends StatelessWidget {
                         builder: (context) => ReviewQuizScreen(
                           reviewItem: item,
                           onComplete: () {
-                            ref.invalidate(_reviewItemsProvider);
-                          ref.invalidate(_reviewStatsProvider);
+                            ref.invalidate(reviewItemsProvider);
+                          ref.invalidate(reviewStatsProvider);
                           },
                         ),
                       ),
@@ -441,8 +441,8 @@ class _SavedPhrasesTabState extends State<_SavedPhrasesTab> {
       final api = widget.ref.read(_savedPhrasesApiProvider);
       await api.convertToReview(savedPhraseId: savedPhraseId);
       widget.ref.invalidate(_savedPhrasesProvider);
-      widget.ref.invalidate(_reviewItemsProvider);
-      widget.ref.invalidate(_reviewStatsProvider);
+      widget.ref.invalidate(reviewItemsProvider);
+      widget.ref.invalidate(reviewStatsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('復習問題に追加しました（翌日以降に出題されます）')),
