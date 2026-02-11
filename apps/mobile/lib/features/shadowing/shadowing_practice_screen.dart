@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../shared/models/scenario_static.dart';
 import '../../shared/services/api_client.dart';
 import '../audio/audio_controller.dart';
 import '../auth/auth_providers.dart';
+import '../session/session_controller.dart';
 import 'shadowing_api.dart';
 import 'shadowing_models.dart';
 
@@ -44,6 +47,15 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
   ShadowingSpeakResponse? _speakResult;
   bool _isEvaluating = false;
   String? _errorMessage;
+
+  /// kScenarioList から関連シナリオを検索する。見つからなければ null。
+  ScenarioSummary? get _relatedScenario {
+    try {
+      return kScenarioList.firstWhere((s) => s.id == widget.scenarioId);
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   void initState() {
@@ -280,50 +292,98 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
           ),
 
           // ナビゲーションボタン
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                if (_currentIndex > 0)
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _previousSentence,
-                      icon: const Icon(Icons.arrow_back),
-                      label: const Text('前へ'),
-                    ),
-                  )
-                else
-                  const Expanded(child: SizedBox()),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _currentIndex < data.sentences.length - 1
-                        ? _nextSentence
-                        : () => Navigator.of(context).pop(),
-                    icon: Icon(_currentIndex < data.sentences.length - 1
-                        ? Icons.arrow_forward
-                        : Icons.check),
-                    label: Text(_currentIndex < data.sentences.length - 1
-                        ? '次へ'
-                        : '完了'),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _buildNavigationButtons(data),
         ],
       ),
     );
+  }
+
+  /// ナビゲーションボタンを構築
+  Widget _buildNavigationButtons(ScenarioShadowingResponse data) {
+    final isLastSentence = _currentIndex == data.sentences.length - 1;
+    final relatedScenario = _relatedScenario;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // 最終問題 かつ 関連シナリオあり → 左「完了」+ 右「シナリオを開始する」
+          if (isLastSentence && relatedScenario != null) ...[
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.check),
+                label: const Text('完了'),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () => _startScenarioSession(relatedScenario),
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('シナリオを開始'),
+              ),
+            ),
+          ] else ...[
+            // 従来のレイアウト: 左「前へ」+ 右「次へ/完了」
+            if (_currentIndex > 0)
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _previousSentence,
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('前へ'),
+                ),
+              )
+            else
+              const Expanded(child: SizedBox()),
+            const SizedBox(width: 16),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: isLastSentence
+                    ? () => Navigator.of(context).pop()
+                    : _nextSentence,
+                icon: Icon(isLastSentence
+                    ? Icons.check
+                    : Icons.arrow_forward),
+                label: Text(isLastSentence ? '完了' : '次へ'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// 関連シナリオのセッションを開始して会話画面へ遷移
+  Future<void> _startScenarioSession(ScenarioSummary scenario) async {
+    try {
+      final sessionId = await ref
+          .read(sessionControllerProvider.notifier)
+          .startNewSession(
+            scenarioId: scenario.id,
+            difficulty: scenario.difficulty,
+            mode: 'standard',
+          );
+      if (mounted) {
+        context.go('/sessions/$sessionId');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('セッション開始に失敗しました: $e')),
+        );
+      }
+    }
   }
 
   /// 音声録音セクションを構築
