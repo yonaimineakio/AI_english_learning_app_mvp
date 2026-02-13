@@ -1,7 +1,7 @@
 name: ai_english_learning_mobile
 description: AI English Learning App mobile client built with Flutter and Riverpod.
 publish_to: "none"
-version: 0.3.0+7
+version: 0.3.0+8
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -44,6 +44,14 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  remove_alpha_ios: true  # App Store はアルファチャンネル非対応のため
+  # ソース画像は 1024x1024 推奨。生成: dart run flutter_launcher_icons
 
 flutter:
   uses-material-design: true
