@@ -17,7 +17,7 @@ class _FeatureItem {
   final String description;
 }
 
-const _monthlyFallbackPrice = 1980;
+const _monthlyFallbackPrice = 1580;
 const _yearlyFallbackPrice = 15800;
 
 const _features = [
