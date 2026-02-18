@@ -55,6 +55,15 @@ def _app_user_id_from_payload(payload: dict) -> str | None:
             return first
         if isinstance(first, dict):
             return _get_str(first, "app_user_id", "appUserId")
+
+    # TRANSFER events do not have app_user_id; use transferred_to (destination user).
+    # See: https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields
+    for source in (event_data, event):
+        if not isinstance(source, dict):
+            continue
+        to_ids = source.get("transferred_to") or source.get("transferredTo") or []
+        if isinstance(to_ids, list) and to_ids and isinstance(to_ids[0], str):
+            return to_ids[0].strip()
     return None
 
 
@@ -96,9 +105,9 @@ async def process_revenuecat_webhook(request: Request, db: Session = Depends(get
             status_code=status.HTTP_404_NOT_FOUND, content={"message": "User not found"}
         )
 
-    if event_type in {"INITIAL_PURCHASE", "RENEWAL", "UNCANCELLATION"}:
+    if event_type in {"INITIAL_PURCHASE", "RENEWAL", "UNCANCELLATION", "TRANSFER"}:
         subscription_service.update_user_subscription(user.id, is_pro=True)
-        logger.info(f"User {user.id} subscribed to Pro")
+        logger.info(f"User {user.id} subscribed to Pro (event_type={event_type})")
     elif event_type in {"CANCELLATION", "CANCELLED", "EXPIRATION", "EXPIRED"}:
         subscription_service.update_user_subscription(user.id, is_pro=False)
         logger.info(f"User {user.id} unsubscribed from Pro")
