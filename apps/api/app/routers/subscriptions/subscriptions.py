@@ -11,20 +11,51 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
+def _get_str(obj: dict, *keys: str) -> str | None:
+    """Get first present string value from dict by snake_case or camelCase keys."""
+    for k in keys:
+        v = obj.get(k)
+        if v is not None and isinstance(v, str) and v.strip():
+            return v.strip()
+    return None
+
+
 def _app_user_id_from_payload(payload: dict) -> str | None:
     """Extract app_user_id from RevenueCat webhook payload.
-    RevenueCat may send event fields at top level or under "event" key.
+    RevenueCat sends event under "event" key; field may be app_user_id or appUserId.
     See: https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields
     """
     event = payload.get("event") or {}
-    app_user_id = event.get("app_user_id") or payload.get("app_user_id")
-    if app_user_id:
-        return app_user_id
-    original = event.get("original_app_user_id") or payload.get("original_app_user_id")
-    if original:
-        return original
-    aliases = event.get("aliases") or payload.get("aliases") or []
-    return aliases[0] if aliases else None
+    if not isinstance(event, dict):
+        event = {}
+    # event may wrap data in a "data" key in some API versions
+    event_data = event.get("data") or event.get("event") or event
+
+    for source in (event_data, event, payload):
+        if not isinstance(source, dict):
+            continue
+        app_user_id = _get_str(source, "app_user_id", "appUserId")
+        if app_user_id:
+            return app_user_id
+        original = _get_str(source, "original_app_user_id", "originalAppUserId")
+        if original:
+            return original
+
+    aliases = (
+        event_data.get("aliases")
+        or event_data.get("Aliases")
+        or event.get("aliases")
+        or event.get("Aliases")
+        or payload.get("aliases")
+        or []
+    )
+    if isinstance(aliases, list) and aliases:
+        first = aliases[0]
+        if isinstance(first, str):
+            return first
+        if isinstance(first, dict):
+            return _get_str(first, "app_user_id", "appUserId")
+    return None
 
 
 @router.post("/webhooks/revenuecat", dependencies=[Depends(verify_revenuecat_webhook)])
@@ -32,11 +63,26 @@ async def process_revenuecat_webhook(request: Request, db: Session = Depends(get
     logger.info("RevenueCat webhook started")
     payload = await request.json()
     event = payload.get("event") or payload
+    if not isinstance(event, dict):
+        event = {}
+    event_data = event.get("data") or event.get("event") or event
+    if not isinstance(event_data, dict):
+        event_data = event
     app_user_id = _app_user_id_from_payload(payload)
-    event_type = (event.get("type") or payload.get("type") or "").upper()
+    event_type = (
+        event_data.get("type")
+        or event.get("type")
+        or payload.get("type")
+        or ""
+    ).upper()
 
     if not app_user_id:
-        logger.warning("RevenueCat webhook missing app_user_id; payload keys=%s", list(payload.keys()))
+        event = payload.get("event") or {}
+        logger.warning(
+            "RevenueCat webhook missing app_user_id; payload keys=%s, event keys=%s",
+            list(payload.keys()),
+            list(event.keys()) if isinstance(event, dict) else type(event).__name__,
+        )
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={"message": "Missing app_user_id in webhook payload"},
