@@ -61,14 +61,12 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
 
   void _placeWord(int slotIndex, IndexedWord item) {
     setState(() {
-      // 既に同じIDの単語が別スロットに入っていたら外す
       for (var i = 0; i < _answerSlots.length; i++) {
         if (_answerSlots[i]?.id == item.id) {
           _answerSlots[i] = null;
         }
       }
 
-      // 既に埋まっているスロットなら、元の単語を戻す
       final prev = _answerSlots[slotIndex];
       if (prev != null) {
         _availableWords.add(prev);
@@ -77,6 +75,12 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
       _answerSlots[slotIndex] = item;
       _availableWords.removeWhere((w) => w.id == item.id);
     });
+  }
+
+  void _tapToPlace(IndexedWord item) {
+    final emptyIdx = _answerSlots.indexWhere((s) => s == null);
+    if (emptyIdx == -1) return;
+    _placeWord(emptyIdx, item);
   }
 
   void _removeFromSlot(int slotIndex) {
@@ -209,42 +213,34 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
                 runSpacing: 8,
                 children: List.generate(_answerSlots.length, (idx) {
                   final item = _answerSlots[idx];
-                  return DragTarget<IndexedWord>(
-                    onWillAcceptWithDetails: (_) => item == null,
-                    onAcceptWithDetails: (details) => _placeWord(idx, details.data),
-                    builder: (context, candidate, rejected) {
-                      final isActive = candidate.isNotEmpty;
-                      return InkWell(
-                        onTap: item == null ? null : () => _removeFromSlot(idx),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: item == null ? Colors.white : Colors.blue,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isActive ? Colors.blue : Colors.grey.shade300,
-                              width: isActive ? 2 : 1,
-                            ),
-                          ),
-                          child: Text(
-                            item?.word ?? '____',
-                            style: TextStyle(
-                              color: item == null ? Colors.grey.shade600 : Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                  return GestureDetector(
+                    onTap: item == null ? null : () => _removeFromSlot(idx),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: item == null ? Colors.white : Colors.blue,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.grey.shade300,
                         ),
-                      );
-                    },
+                      ),
+                      child: Text(
+                        item?.word ?? '____',
+                        style: TextStyle(
+                          color: item == null ? Colors.grey.shade600 : Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   );
                 }),
               ),
             ),
             const SizedBox(height: 16),
 
-            // 単語パーツ（ドラッグ元）
+            // 単語パーツ（タップで配置）
             const Text(
-              '単語を選択',
+              '単語をタップして並べ替え',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -252,16 +248,8 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
               spacing: 8,
               runSpacing: 8,
               children: _availableWords.map((item) {
-                return Draggable<IndexedWord>(
-                  data: item,
-                  feedback: Material(
-                    color: Colors.transparent,
-                    child: _WordChip(word: item.word, dragging: true),
-                  ),
-                  childWhenDragging: Opacity(
-                    opacity: 0.4,
-                    child: _WordChip(word: item.word),
-                  ),
+                return GestureDetector(
+                  onTap: () => _tapToPlace(item),
                   child: _WordChip(word: item.word),
                 );
               }).toList(),
@@ -385,10 +373,9 @@ class _ListeningQuestionCardState extends ConsumerState<ListeningQuestionCard> {
 }
 
 class _WordChip extends StatelessWidget {
-  const _WordChip({required this.word, this.dragging = false});
+  const _WordChip({required this.word});
 
   final String word;
-  final bool dragging;
 
   @override
   Widget build(BuildContext context) {
@@ -398,15 +385,6 @@ class _WordChip extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade400),
-        boxShadow: dragging
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.12),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : null,
       ),
       child: Text(
         word,

@@ -97,6 +97,23 @@ class AuthApi {
     );
   }
 
+  /// Exchange Apple identity token for app JWT.
+  Future<AuthTokenResponse> exchangeAppleToken({
+    required String identityToken,
+    String? fullName,
+  }) async {
+    final Response<dynamic> res = await _client.postJson(
+      '/auth/apple/token',
+      data: {
+        'identity_token': identityToken,
+        if (fullName != null) 'full_name': fullName,
+      },
+    );
+    return AuthTokenResponse.fromJson(
+      Map<String, dynamic>.from(res.data as Map),
+    );
+  }
+
   /// Refresh access token using a refresh token.
   Future<RefreshTokenResponse> refreshToken(String refreshToken) async {
     final Response<dynamic> res = await _client.postJson(
@@ -108,6 +125,11 @@ class AuthApi {
     return RefreshTokenResponse.fromJson(
       Map<String, dynamic>.from(res.data as Map),
     );
+  }
+
+  /// Permanently delete the authenticated user's account.
+  Future<void> deleteAccount() async {
+    await _client.deleteJson('/auth/me');
   }
 }
 

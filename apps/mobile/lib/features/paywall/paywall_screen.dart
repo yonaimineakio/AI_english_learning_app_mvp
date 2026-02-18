@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../../shared/services/revenuecat/revenuecat_client.dart';
+import 'pro_status_provider.dart';
 
 enum BillingPlan {
   monthly,
@@ -29,14 +32,14 @@ const _features = [
   _FeatureItem('全シナリオ解放', '50以上の実践的シチュエーション'),
 ];
 
-class PaywallScreen extends StatefulWidget {
+class PaywallScreen extends ConsumerStatefulWidget {
   const PaywallScreen({super.key});
 
   @override
-  State<PaywallScreen> createState() => _PaywallScreenState();
+  ConsumerState<PaywallScreen> createState() => _PaywallScreenState();
 }
 
-class _PaywallScreenState extends State<PaywallScreen> {
+class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   final _revenueCat = RevenueCatClient();
   bool _isRestoring = false;
   bool _isLoading = true;
@@ -63,14 +66,11 @@ class _PaywallScreenState extends State<PaywallScreen> {
       if (!mounted) return;
 
       if (hasPro) {
+        await ref.read(proStatusProvider.notifier).refresh();
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('購入を復元しました')),
         );
-        if (context.canPop()) {
-          context.pop();
-        } else {
-          context.go('/');
-        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('復元できる購入が見つかりませんでした')),
@@ -93,17 +93,36 @@ class _PaywallScreenState extends State<PaywallScreen> {
     });
 
     try {
+      if (kDebugMode) {
+        final info = await Purchases.getCustomerInfo();
+        debugPrint('[Paywall] CustomerInfo: ${info.activeSubscriptions}');
+      }
+
       final offerings = await Purchases.getOfferings();
+      if (kDebugMode) {
+        debugPrint('[Paywall] Offerings: ${offerings.all.keys}');
+        debugPrint('[Paywall] Current offering: ${offerings.current?.identifier}');
+        for (final pkg in offerings.current?.availablePackages ?? []) {
+          debugPrint('[Paywall]   Package: ${pkg.packageType} / ${pkg.storeProduct.identifier}');
+        }
+      }
+
       final current = offerings.current;
       if (current == null) {
-        throw StateError('現在のオファリングが見つかりませんでした');
+        throw StateError(
+          'オファリングが見つかりません。RevenueCat ダッシュボードで '
+          'Offering が「Current」に設定されているか確認してください。',
+        );
       }
 
       _monthlyPackage = _findPackage(current, PackageType.monthly);
       _yearlyPackage = _findPackage(current, PackageType.annual);
 
       if (_monthlyPackage == null && _yearlyPackage == null) {
-        throw StateError('購入可能なプランが見つかりませんでした');
+        throw StateError(
+          'プランが見つかりません。RevenueCat ダッシュボードで '
+          'monthly / annual パッケージが正しく設定されているか確認してください。',
+        );
       }
 
       if (_selectedPlan == BillingPlan.monthly && _monthlyPackage == null) {
@@ -111,8 +130,17 @@ class _PaywallScreenState extends State<PaywallScreen> {
       } else if (_selectedPlan == BillingPlan.yearly && _yearlyPackage == null) {
         _selectedPlan = BillingPlan.monthly;
       }
+    } on PlatformException catch (e) {
+      _loadError = 'ストアとの通信でエラーが発生しました (${e.code})。'
+          'ネットワーク接続を確認してください。';
+      if (kDebugMode) {
+        debugPrint('[Paywall] PlatformException: ${e.code} / ${e.message}');
+      }
     } catch (e) {
       _loadError = e.toString();
+      if (kDebugMode) {
+        debugPrint('[Paywall] Error loading offerings: $e');
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -146,14 +174,11 @@ class _PaywallScreenState extends State<PaywallScreen> {
       final hasPro = _revenueCat.hasPro(result.customerInfo);
       if (!mounted) return;
       if (hasPro) {
+        await ref.read(proStatusProvider.notifier).refresh();
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Proプランにアップグレードしました')),
         );
-        if (context.canPop()) {
-          context.pop();
-        } else {
-          context.go('/');
-        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('購入は完了しましたがProが確認できませんでした')),

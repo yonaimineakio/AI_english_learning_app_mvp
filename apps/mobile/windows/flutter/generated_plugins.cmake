@@ -5,10 +5,12 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   audioplayers_windows
+  desktop_webview_window
   flutter_secure_storage_windows
   flutter_tts
   record_windows
   url_launcher_windows
+  window_to_front
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

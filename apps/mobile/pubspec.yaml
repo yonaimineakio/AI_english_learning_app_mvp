@@ -33,6 +33,11 @@ dependencies:
   purchases_flutter: ^9.10.2
   purchases_ui_flutter: ^9.10.2
 
+  # Sign in with Apple
+  sign_in_with_apple: ^6.1.4
+  # In-app OAuth browser (ASWebAuthenticationSession)
+  flutter_web_auth_2: ^4.0.2
+
   # Secure storage for tokens
   flutter_secure_storage: ^9.2.2
 

@@ -85,6 +85,71 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _showDeleteAccountDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        bool deleting = false;
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return AlertDialog(
+              title: const Text('アカウント削除'),
+              content: const Text(
+                'この操作は取り消せません。\n\n'
+                '学習履歴・保存フレーズ・アカウント情報など、'
+                'すべてのデータが完全に削除されます。',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: deleting ? null : () => Navigator.of(ctx).pop(false),
+                  child: const Text('キャンセル'),
+                ),
+                TextButton(
+                  onPressed: deleting
+                      ? null
+                      : () async {
+                          setState(() => deleting = true);
+                          try {
+                            await ref.read(authStateProvider.notifier).deleteAccount();
+                            if (ctx.mounted) Navigator.of(ctx).pop(true);
+                          } catch (e) {
+                            if (ctx.mounted) {
+                              setState(() => deleting = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('削除に失敗しました: $e')),
+                              );
+                              Navigator.of(ctx).pop(false);
+                            }
+                          }
+                        },
+                  child: deleting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text(
+                          '削除する',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (confirmed == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('アカウントを削除しました')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
@@ -162,6 +227,11 @@ class ProfileScreen extends ConsumerWidget {
                     label: 'アプリについて',
                     value: 'v1.0.0',
                     onTap: () {},
+                  ),
+                  _SettingsItem(
+                    icon: Icons.delete_outline,
+                    label: 'アカウント削除',
+                    onTap: () => _showDeleteAccountDialog(context, ref),
                   ),
                 ],
               ),

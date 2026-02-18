@@ -241,6 +241,68 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     }
   }
 
+  Future<AuthState> loginWithAppleToken({
+    required String identityToken,
+    String? fullName,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      final tokenRes = await _authApi.exchangeAppleToken(
+        identityToken: identityToken,
+        fullName: fullName,
+      );
+
+      final accessToken = tokenRes.accessToken;
+      final refreshToken = tokenRes.refreshToken;
+
+      await _tokenStorage.saveTokens(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      );
+      ApiClient().updateToken(accessToken);
+
+      final UserModel me = await _authApi.getMe();
+      await const RevenueCatClient().loginUser(me.id);
+      await ref.read(proStatusProvider.notifier).refresh();
+
+      final newState = AuthState(
+        isLoggedIn: true,
+        userId: me.id,
+        token: accessToken,
+        userName: me.name,
+        email: me.email,
+        placementCompletedAt: me.placementCompletedAt,
+      );
+      state = AsyncData(newState);
+      _controller.add(newState);
+      return newState;
+    } catch (e, st) {
+      if (e is DioException) {
+        // ignore: avoid_print
+        print(
+          'loginWithAppleToken failed: status=${e.response?.statusCode} data=${e.response?.data}',
+        );
+      }
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> deleteAccount() async {
+    final current = state.valueOrNull;
+    if (current == null || !current.isLoggedIn) {
+      throw StateError('Not logged in');
+    }
+    await _authApi.deleteAccount();
+    await _tokenStorage.clearTokens();
+    ApiClient().updateToken(null);
+    await const RevenueCatClient().logoutUser();
+    ref.invalidate(proStatusProvider);
+    const newState = AuthState(isLoggedIn: false);
+    state = const AsyncData(newState);
+    _controller.add(newState);
+  }
+
   void applyPlacementResult(PlacementSubmitResponseModel result) {
     final current = state.valueOrNull;
     if (current == null) return;
