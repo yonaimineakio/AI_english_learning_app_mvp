@@ -10,11 +10,12 @@ import uuid
 
 from models.database.models import User
 from models.schemas.schemas import User as UserSchema, UserStatsResponse, UserUpdate
-from typing import Optional
+from typing import Optional, Dict, Any
 import httpx
 from urllib.parse import urlencode
 import secrets
 import logging
+from jose import jwt as jose_jwt, JWTError
 
 from app.core.security import (
     create_access_token,
@@ -22,6 +23,11 @@ from app.core.security import (
     verify_refresh_token,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
+
+APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
+APPLE_TOKEN_ISSUER = "https://appleid.apple.com"
+
+_apple_jwks_cache: Optional[Dict[str, Any]] = None
 
 
 router = APIRouter(tags=["authentication"])
@@ -433,6 +439,145 @@ async def refresh_access_token(request: Request, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     }
+
+
+async def _get_apple_jwks() -> list:
+    """Fetch and cache Apple's public keys for identity token verification."""
+    global _apple_jwks_cache
+    if _apple_jwks_cache is not None:
+        return _apple_jwks_cache["keys"]
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(APPLE_JWKS_URL, timeout=10.0)
+    if resp.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to fetch Apple public keys",
+        )
+    data = resp.json()
+    _apple_jwks_cache = data
+    return data["keys"]
+
+
+async def _verify_apple_identity_token(identity_token: str) -> dict:
+    """Verify an Apple identity token and return its claims."""
+    try:
+        header = jose_jwt.get_unverified_header(identity_token)
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid Apple identity token",
+        )
+
+    kid = header.get("kid")
+    if not kid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Apple identity token missing kid header",
+        )
+
+    apple_keys = await _get_apple_jwks()
+    matching_key = next((k for k in apple_keys if k["kid"] == kid), None)
+    if not matching_key:
+        global _apple_jwks_cache
+        _apple_jwks_cache = None
+        apple_keys = await _get_apple_jwks()
+        matching_key = next((k for k in apple_keys if k["kid"] == kid), None)
+
+    if not matching_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No matching Apple public key found",
+        )
+
+    try:
+        payload = jose_jwt.decode(
+            identity_token,
+            matching_key,
+            algorithms=["RS256"],
+            audience=settings.APPLE_BUNDLE_ID,
+            issuer=APPLE_TOKEN_ISSUER,
+        )
+    except JWTError as e:
+        logger.error("Apple identity token verification failed: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Apple identity token verification failed",
+        )
+
+    return payload
+
+
+@router.post("/apple/token")
+async def apple_token_exchange(request: Request, db: Session = Depends(get_db)):
+    """Exchange an Apple identity token for app JWT tokens."""
+    body = await request.json()
+    identity_token = body.get("identity_token")
+    if not identity_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="identity_token is required",
+        )
+
+    payload = await _verify_apple_identity_token(identity_token)
+
+    apple_sub = payload.get("sub")
+    if not apple_sub:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Apple identity token missing sub claim",
+        )
+
+    apple_email = payload.get("email") or ""
+    full_name = body.get("full_name")
+
+    user = db.query(User).filter(User.sub == apple_sub).first()
+    if not user:
+        name = full_name or "Apple User"
+        user = User(
+            id=str(uuid.uuid4()),
+            sub=apple_sub,
+            name=name,
+            email=apple_email,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    elif full_name and user.name == "Apple User":
+        user.name = full_name
+        db.commit()
+        db.refresh(user)
+
+    access_token = create_access_token({"sub": user.sub})
+    refresh_token = create_refresh_token({"sub": user.sub})
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+        },
+    }
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_current_user(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Permanently delete the authenticated user and all associated data."""
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    logger.info("Deleting user account: user_id=%s", user.id)
+    db.delete(user)
+    db.commit()
 
 
 @router.get("/health")

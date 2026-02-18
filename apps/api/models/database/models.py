@@ -78,10 +78,10 @@ class User(Base):
     # Later, this should be synced from RevenueCat (webhook/API) instead of manual updates.
     is_pro = Column(Boolean, default=False, nullable=False)
 
-    # Relationships
-    sessions = relationship("Session", back_populates="user")
-    review_items = relationship("ReviewItem", back_populates="user")
-    saved_phrases = relationship("SavedPhrase", back_populates="user")
+    # Relationships (cascade delete for account deletion support)
+    sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
+    review_items = relationship("ReviewItem", back_populates="user", cascade="all, delete-orphan")
+    saved_phrases = relationship("SavedPhrase", back_populates="user", cascade="all, delete-orphan")
     shadowing_progress = relationship("UserShadowingProgress", back_populates="user", cascade="all, delete-orphan")
     custom_scenarios = relationship("CustomScenario", back_populates="user", cascade="all, delete-orphan")
 

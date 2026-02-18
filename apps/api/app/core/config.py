@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: Optional[str] = None
     FRONTEND_BASE_URL: str = "http://localhost:3000"
 
+    # Apple Sign In
+    APPLE_BUNDLE_ID: str = "com.speaklab.speakai"
+    APPLE_TEAM_ID: Optional[str] = None
+
     # API
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "AI English Learning App"
