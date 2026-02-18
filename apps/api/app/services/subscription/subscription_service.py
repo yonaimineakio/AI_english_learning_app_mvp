@@ -1,3 +1,5 @@
+from typing import Optional
+
 from sqlalchemy.orm import Session
 
 from models.database.models import User
@@ -10,11 +12,13 @@ class SubscriptionService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_user_by_app_user_id(self, app_user_id: str) -> User:
+    def get_user_by_app_user_id(self, app_user_id: Optional[str]) -> Optional[User]:
         """Get user by app_user_id (UUID string)."""
+        if not app_user_id:
+            return None
         user = self.db.query(User).filter(User.id == app_user_id).first()
         if not user:
-            logger.warning(f"User with app_user_id {app_user_id} not found")
+            logger.warning("User with app_user_id %s not found", app_user_id)
             return None
         return user
 
