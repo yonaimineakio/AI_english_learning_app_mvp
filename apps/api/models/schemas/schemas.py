@@ -109,6 +109,7 @@ class CustomScenario(CustomScenarioBase):
 
     id: int
     user_id: str  # UUID
+    goals: Optional[List[str]] = None  # AI生成ゴール（NULLならデフォルト）
     difficulty: str = "intermediate"
     is_active: bool = True
     created_at: datetime

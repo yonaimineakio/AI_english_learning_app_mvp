@@ -288,6 +288,7 @@ class CustomScenario(Base):
     description = Column(Text, nullable=False)
     user_role = Column(Text, nullable=False)  # ユーザーの役割
     ai_role = Column(Text, nullable=False)  # AIの役割
+    goals = Column(JSON, nullable=True)  # AI生成ゴール（3つ）。NULLならデフォルトゴールにフォールバック
     difficulty = Column(String(20), default="intermediate", nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
