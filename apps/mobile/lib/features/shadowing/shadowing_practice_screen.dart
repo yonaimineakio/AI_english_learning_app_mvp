@@ -798,7 +798,7 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
             mode: 'standard',
           );
       if (mounted) {
-        context.go('/sessions/$sessionId');
+        context.push('/sessions/$sessionId');
       }
     } catch (e) {
       if (mounted) {

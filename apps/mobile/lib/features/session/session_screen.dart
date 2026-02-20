@@ -264,6 +264,10 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 64,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios),
+          onPressed: () => context.pop(),
+        ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -430,9 +434,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
 
           return Column(
             children: [
-              // カスタムシナリオの場合はタスクチェックリストを表示しない
-              if (!data.isCustomScenario &&
-                  (data.goalsTotal != null || data.goalsStatus != null))
+              if (data.goalsTotal != null || data.goalsStatus != null)
                 SessionTaskChecklistCard(
                   scenarioId: data.scenario?.id ?? 0,
                   scenarioName: data.scenarioName,

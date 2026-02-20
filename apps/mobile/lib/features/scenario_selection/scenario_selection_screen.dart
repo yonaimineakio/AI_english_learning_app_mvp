@@ -140,7 +140,7 @@ class ScenarioSelectionScreen extends ConsumerWidget {
                 mode: 'standard',
               );
           if (context.mounted) {
-            context.go('/sessions/$sessionId');
+            context.push('/sessions/$sessionId');
           }
         },
         child: Padding(
@@ -234,7 +234,7 @@ class ScenarioSelectionScreen extends ConsumerWidget {
                 mode: 'standard',
               );
           if (context.mounted) {
-            context.go('/sessions/$sessionId');
+            context.push('/sessions/$sessionId');
           }
         },
         child: Padding(
@@ -318,11 +318,12 @@ class ScenarioSelectionScreen extends ConsumerWidget {
   }
 
   Future<void> _showCreateCustomScenarioDialog(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
     final limitAsync = ref.read(customScenarioLimitProvider);
     final limit = limitAsync.valueOrNull;
 
     if (limit != null && limit.remaining <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             limit.isPro
@@ -341,13 +342,36 @@ class ScenarioSelectionScreen extends ConsumerWidget {
     );
 
     if (result != null) {
+      // 生成中のローディング表示
+      messenger.showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(width: 12),
+              Text('シナリオを作成中…'),
+            ],
+          ),
+          duration: const Duration(minutes: 5),
+          backgroundColor: Colors.purple.shade600,
+        ),
+      );
+
       try {
         final api = CustomScenarioApi(ApiClient());
         await api.createCustomScenario(result);
+        messenger.hideCurrentSnackBar();
         ref.invalidate(customScenariosProvider);
         ref.invalidate(customScenarioLimitProvider);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             const SnackBar(
               content: Text('オリジナルシナリオを作成しました'),
               backgroundColor: Colors.green,
@@ -355,9 +379,10 @@ class ScenarioSelectionScreen extends ConsumerWidget {
           );
         }
       } catch (e) {
+        messenger.hideCurrentSnackBar();
         if (context.mounted) {
           String errorMessage = '作成に失敗しました';
-          
+
           // DioExceptionの場合、詳細なエラーメッセージを取得
           if (e.toString().contains('DioException')) {
             final dioError = e as DioException;
@@ -376,8 +401,8 @@ class ScenarioSelectionScreen extends ConsumerWidget {
           } else {
             errorMessage = '$errorMessage: $e';
           }
-          
-          ScaffoldMessenger.of(context).showSnackBar(
+
+          messenger.showSnackBar(
             SnackBar(
               content: Text(errorMessage),
               backgroundColor: Colors.red,
@@ -431,6 +456,7 @@ class _CreateCustomScenarioDialogState extends State<_CreateCustomScenarioDialog
             children: [
               TextFormField(
                 controller: _nameController,
+                autofocus: true,
                 decoration: const InputDecoration(
                   labelText: 'シナリオ名',
                   hintText: '例: カフェで注文',

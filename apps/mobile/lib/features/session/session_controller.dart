@@ -161,12 +161,11 @@ class SessionController extends AsyncNotifier<SessionUiState> {
 
     final goalsLabels = res.goalsLabels;
     final isCustomScenario = customScenarioId != null || res.customScenario != null;
-    // カスタムシナリオの場合はゴールを無効化
     final int? goalsTotal;
-    if (isCustomScenario) {
-      goalsTotal = null;
-    } else if (goalsLabels != null && goalsLabels.isNotEmpty) {
+    if (goalsLabels != null && goalsLabels.isNotEmpty) {
       goalsTotal = goalsLabels.length;
+    } else if (isCustomScenario) {
+      goalsTotal = null; // ゴール未生成のカスタムシナリオ
     } else {
       goalsTotal = _defaultGoalsTotalForScenario(scenarioId, isCustomScenario: false);
     }
@@ -191,14 +190,14 @@ class SessionController extends AsyncNotifier<SessionUiState> {
         roundTarget: res.roundTarget,
         completedRounds: 0,
         goalsTotal: goalsTotal,
-        goalsAchieved: isCustomScenario ? null : 0,
+        goalsAchieved: goalsTotal == null ? null : 0,
         goalsStatus: goalsTotal == null
             ? null
             : List<int>.filled(
                 goalsTotal,
                 0,
               ),
-        goalsLabels: isCustomScenario ? null : goalsLabels, // カスタムシナリオの場合はnull
+        goalsLabels: goalsLabels,
         endPromptReason: null,
         dismissedGoalsCompletedPrompt: false,
         canExtend: false,
@@ -242,43 +241,32 @@ class SessionController extends AsyncNotifier<SessionUiState> {
 
       final nextReason = turn.endPromptReason;
       final isGoalsCompletedReason = nextReason == 'goals_completed';
-      // カスタムシナリオではgoals_completedの終了提案を無視
       final shouldPrompt = turn.shouldEndSession &&
-          !(isGoalsCompletedReason && current.dismissedGoalsCompletedPrompt) &&
-          !(isGoalsCompletedReason && current.isCustomScenario);
+          !(isGoalsCompletedReason && current.dismissedGoalsCompletedPrompt);
 
-      // カスタムシナリオの場合はゴールを常にnullに保つ
+      // Keep goals monotonic: once achieved, never revert to 0 during the session UI.
       int? mergedGoalsTotal;
       int? mergedGoalsAchieved;
       List<int>? mergedGoalsStatus;
       List<String>? mergedGoalsLabels;
 
-      if (current.isCustomScenario) {
-        // カスタムシナリオの場合はゴールを無効化
-        mergedGoalsTotal = null;
-        mergedGoalsAchieved = null;
-        mergedGoalsStatus = null;
-        mergedGoalsLabels = null;
+      if (turn.goalsStatus != null && current.goalsStatus != null) {
+        final a = current.goalsStatus!;
+        final b = turn.goalsStatus!;
+        final n = a.length > b.length ? a.length : b.length;
+        mergedGoalsStatus = List<int>.generate(n, (i) {
+          final av = i < a.length ? a[i] : 0;
+          final bv = i < b.length ? b[i] : 0;
+          return (av == 1 || bv == 1) ? 1 : 0;
+        });
       } else {
-        // Keep goals monotonic: once achieved, never revert to 0 during the session UI.
-        if (turn.goalsStatus != null && current.goalsStatus != null) {
-          final a = current.goalsStatus!;
-          final b = turn.goalsStatus!;
-          final n = a.length > b.length ? a.length : b.length;
-          mergedGoalsStatus = List<int>.generate(n, (i) {
-            final av = i < a.length ? a[i] : 0;
-            final bv = i < b.length ? b[i] : 0;
-            return (av == 1 || bv == 1) ? 1 : 0;
-          });
-        } else {
-          mergedGoalsStatus = turn.goalsStatus ?? current.goalsStatus;
-        }
-        mergedGoalsAchieved = mergedGoalsStatus == null
-            ? (turn.goalsAchieved ?? current.goalsAchieved)
-            : mergedGoalsStatus.where((v) => v == 1).length;
-        mergedGoalsTotal = turn.goalsTotal ?? current.goalsTotal;
-        mergedGoalsLabels = turn.goalsLabels ?? current.goalsLabels;
+        mergedGoalsStatus = turn.goalsStatus ?? current.goalsStatus;
       }
+      mergedGoalsAchieved = mergedGoalsStatus == null
+          ? (turn.goalsAchieved ?? current.goalsAchieved)
+          : mergedGoalsStatus.where((v) => v == 1).length;
+      mergedGoalsTotal = turn.goalsTotal ?? current.goalsTotal;
+      mergedGoalsLabels = turn.goalsLabels ?? current.goalsLabels;
 
       state = AsyncData(
         current.copyWith(
