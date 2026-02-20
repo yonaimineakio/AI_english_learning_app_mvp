@@ -521,6 +521,7 @@ class ShadowingSentence(ShadowingSentenceBase):
     id: int
     scenario_id: int
     user_progress: Optional[ShadowingUserProgress] = None
+    instant_translation_progress: Optional[ShadowingUserProgress] = None
 
 
 class ScenarioShadowingResponse(BaseModel):
@@ -560,6 +561,18 @@ class ShadowingSpeakRequest(BaseModel):
 
 class ShadowingSpeakResponse(BaseModel):
     """シャドーイング発話評価レスポンス"""
+    shadowing_sentence_id: int
+    score: int
+    attempt_count: int
+    best_score: int
+    is_completed: bool
+    is_new_best: bool
+    target_sentence: str
+    matching_words: List[ShadowingWordMatch]
+
+
+class InstantTranslateSpeakResponse(BaseModel):
+    """瞬間英作発話評価レスポンス"""
     shadowing_sentence_id: int
     score: int
     attempt_count: int

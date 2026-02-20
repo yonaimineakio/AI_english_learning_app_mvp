@@ -18,6 +18,7 @@ from models.database.models import (
     Scenario,
     ShadowingSentence,
     UserShadowingProgress,
+    UserInstantTranslationProgress,
 )
 from models.schemas.schemas import (
     ScenarioShadowingResponse,
@@ -27,6 +28,7 @@ from models.schemas.schemas import (
     ShadowingAttemptResponse,
     ShadowingSpeakRequest,
     ShadowingSpeakResponse,
+    InstantTranslateSpeakResponse,
     ShadowingProgressResponse,
     ScenarioProgressSummary,
     ShadowingWordMatch,
@@ -75,6 +77,17 @@ def get_scenario_shadowing(
     )
     progress_map = {p.shadowing_sentence_id: p for p in progress_records}
 
+    # 瞬間英作の進捗を取得
+    it_progress_records = (
+        db.query(UserInstantTranslationProgress)
+        .filter(
+            UserInstantTranslationProgress.user_id == current_user.id,
+            UserInstantTranslationProgress.shadowing_sentence_id.in_(sentence_ids),
+        )
+        .all()
+    )
+    it_progress_map = {p.shadowing_sentence_id: p for p in it_progress_records}
+
     # レスポンス用にデータを整形
     result_sentences: List[ShadowingSentenceSchema] = []
     completed_count = 0
@@ -92,6 +105,16 @@ def get_scenario_shadowing(
             if progress.is_completed:
                 completed_count += 1
 
+        it_progress = it_progress_map.get(sentence.id)
+        instant_translation_progress = None
+        if it_progress:
+            instant_translation_progress = ShadowingUserProgress(
+                attempt_count=it_progress.attempt_count,
+                best_score=it_progress.best_score,
+                is_completed=it_progress.is_completed,
+                last_practiced_at=it_progress.last_practiced_at,
+            )
+
         result_sentences.append(
             ShadowingSentenceSchema(
                 id=sentence.id,
@@ -103,6 +126,7 @@ def get_scenario_shadowing(
                 difficulty=sentence.difficulty.value if hasattr(sentence.difficulty, 'value') else sentence.difficulty,
                 audio_url=sentence.audio_url,
                 user_progress=user_progress,
+                instant_translation_progress=instant_translation_progress,
             )
         )
 
@@ -256,6 +280,90 @@ def evaluate_shadowing_speech(
     db.refresh(progress)
 
     return ShadowingSpeakResponse(
+        shadowing_sentence_id=sentence_id,
+        score=eval_result.score,
+        attempt_count=progress.attempt_count,
+        best_score=progress.best_score,
+        is_completed=progress.is_completed,
+        is_new_best=is_new_best,
+        target_sentence=sentence.sentence_en,
+        matching_words=[
+            ShadowingWordMatch(word=m.word, matched=m.matched, index=m.index)
+            for m in eval_result.matching_words
+        ],
+    )
+
+
+@router.post("/{sentence_id}/instant-translate", response_model=InstantTranslateSpeakResponse)
+def evaluate_instant_translation(
+    sentence_id: int,
+    request: ShadowingSpeakRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    瞬間英作の発話を評価
+
+    - 日本語を見て英語で答えたユーザーの発話を評価
+    - 単語レベルで一致率を計算してスコアを算出
+    - 80点以上で完了とみなす
+    """
+    # シャドーイング文の存在確認
+    sentence = (
+        db.query(ShadowingSentence)
+        .filter(ShadowingSentence.id == sentence_id)
+        .first()
+    )
+    if not sentence:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Shadowing sentence not found",
+        )
+
+    # 発話評価（シャドーイングと同じアルゴリズム）
+    eval_result = ReviewService.evaluate_speaking(
+        target_sentence=sentence.sentence_en,
+        user_transcription=request.user_transcription,
+    )
+
+    # 既存の進捗を取得または新規作成
+    progress = (
+        db.query(UserInstantTranslationProgress)
+        .filter(
+            UserInstantTranslationProgress.user_id == current_user.id,
+            UserInstantTranslationProgress.shadowing_sentence_id == sentence_id,
+        )
+        .first()
+    )
+
+    is_new_best = False
+    if not progress:
+        progress = UserInstantTranslationProgress(
+            user_id=current_user.id,
+            shadowing_sentence_id=sentence_id,
+            attempt_count=0,
+            best_score=None,
+            is_completed=False,
+        )
+        db.add(progress)
+
+    # 進捗を更新
+    progress.attempt_count += 1
+    progress.last_practiced_at = datetime.utcnow()
+
+    # ベストスコアを更新
+    if progress.best_score is None or eval_result.score > progress.best_score:
+        progress.best_score = eval_result.score
+        is_new_best = True
+
+    # 80点以上で完了とみなす
+    if eval_result.score >= 80:
+        progress.is_completed = True
+
+    db.commit()
+    db.refresh(progress)
+
+    return InstantTranslateSpeakResponse(
         shadowing_sentence_id=sentence_id,
         score=eval_result.score,
         attempt_count=progress.attempt_count,

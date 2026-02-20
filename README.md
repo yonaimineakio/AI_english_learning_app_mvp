@@ -166,6 +166,66 @@ npm run dev
 - バックエンドAPI: http://localhost:8000
 - API ドキュメント: http://localhost:8000/docs
 
+## データベースマイグレーション
+
+マイグレーションは [Alembic](https://alembic.sqlalchemy.org/) で管理しています。
+ファイルは `apps/api/alembic/versions/` に格納されています。
+
+### ローカル（SQLite）
+
+```bash
+cd apps/api
+uv run alembic upgrade head
+```
+
+### Cloud SQL（MySQL・本番環境）
+
+接続には [Cloud SQL Python Connector](https://github.com/GoogleCloudPlatform/cloud-sql-python-connector) を使用します。
+`apps/api/.env` に以下の値が設定されていることを確認してください。
+
+| 環境変数 | 説明 |
+|---|---|
+| `CLOUD_SQL_CONNECTION_NAME` | `PROJECT_ID:REGION:INSTANCE_ID` 形式 |
+| `DB_NAME` | データベース名 |
+| `DB_USER` | DBユーザー名 |
+| `DB_PASSWORD` | DBパスワード |
+
+```bash
+cd apps/api
+
+# .env を読み込み、Cloud SQL Connector を有効にして実行
+set -a && source .env && set +a
+CLOUD_SQL_USE_CONNECTOR=true CLOUD_SQL_IP_TYPE=public uv run alembic upgrade head
+```
+
+> **注意**: インスタンスにプライベートIPのみ割り当てられている場合は `CLOUD_SQL_IP_TYPE=private` に変更してください。
+
+#### 現在の適用状態を確認する
+
+```bash
+set -a && source .env && set +a
+CLOUD_SQL_USE_CONNECTOR=true CLOUD_SQL_IP_TYPE=public uv run alembic current
+```
+
+#### 初回セットアップ（スキーマ作成＋シードデータ投入）
+
+```bash
+# スクリプトを使う場合（apps/api ディレクトリで実行）
+set -a && source .env && set +a
+CLOUD_SQL_USE_CONNECTOR=true CLOUD_SQL_IP_TYPE=public \
+  bash ../../scripts/bootstrap_cloudsql_mysql.sh
+```
+
+### 新しいマイグレーションファイルを作成する
+
+```bash
+cd apps/api
+uv run alembic revision -m "マイグレーションの説明"
+# apps/api/alembic/versions/ に新しいファイルが生成される
+```
+
+---
+
 ## ライセンス
 MIT
 

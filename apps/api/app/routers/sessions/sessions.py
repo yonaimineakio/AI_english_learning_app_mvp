@@ -19,9 +19,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-FREE_SCENARIO_IDS = {1, 2, 3}
-
-
 @router.post("/start", response_model=SessionStartResponse)
 async def start_session(
     session_data: SessionCreate,
@@ -36,15 +33,6 @@ async def start_session(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Either scenario_id or custom_scenario_id is required",
             )
-
-        # For regular scenarios, check free user restriction
-        if session_data.scenario_id:
-            if not getattr(current_user, "is_pro", False):
-                if session_data.scenario_id not in FREE_SCENARIO_IDS:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="This scenario is available for Pro users only",
-                    )
 
         # For custom scenarios, all users can use their own custom scenarios
         # (Daily creation limit is checked in custom_scenarios router)

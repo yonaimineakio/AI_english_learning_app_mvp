@@ -83,6 +83,7 @@ class User(Base):
     review_items = relationship("ReviewItem", back_populates="user", cascade="all, delete-orphan")
     saved_phrases = relationship("SavedPhrase", back_populates="user", cascade="all, delete-orphan")
     shadowing_progress = relationship("UserShadowingProgress", back_populates="user", cascade="all, delete-orphan")
+    instant_translation_progress = relationship("UserInstantTranslationProgress", back_populates="user", cascade="all, delete-orphan")
     custom_scenarios = relationship("CustomScenario", back_populates="user", cascade="all, delete-orphan")
 
 
@@ -230,6 +231,7 @@ class ShadowingSentence(Base):
     # Relationships
     scenario = relationship("Scenario", back_populates="shadowing_sentences")
     user_progress = relationship("UserShadowingProgress", back_populates="shadowing_sentence", cascade="all, delete-orphan")
+    instant_translation_progress = relationship("UserInstantTranslationProgress", back_populates="shadowing_sentence", cascade="all, delete-orphan")
 
     # Unique constraint
     __table_args__ = (
@@ -254,6 +256,25 @@ class UserShadowingProgress(Base):
     # Relationships
     user = relationship("User", back_populates="shadowing_progress")
     shadowing_sentence = relationship("ShadowingSentence", back_populates="user_progress")
+
+
+class UserInstantTranslationProgress(Base):
+    """ユーザーの瞬間英作進捗"""
+
+    __tablename__ = "user_instant_translation_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    shadowing_sentence_id = Column(Integer, ForeignKey("shadowing_sentences.id", ondelete="CASCADE"), nullable=False)
+    attempt_count = Column(Integer, default=0, nullable=False)
+    best_score = Column(Integer, nullable=True)
+    last_practiced_at = Column(DateTime(timezone=True), nullable=True)
+    is_completed = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User", back_populates="instant_translation_progress")
+    shadowing_sentence = relationship("ShadowingSentence", back_populates="instant_translation_progress")
 
 
 class CustomScenario(Base):

@@ -63,9 +63,9 @@ def get_creation_limit(
 ):
     """本日の作成制限情報を取得"""
     is_pro = getattr(current_user, "is_pro", False)
-    daily_limit = PRO_USER_DAILY_LIMIT if is_pro else FREE_USER_DAILY_LIMIT
+    daily_limit = PRO_USER_DAILY_LIMIT
     created_today = get_created_today_count(db, current_user.id)
-    remaining = max(0, daily_limit - created_today)
+    remaining = max(0, daily_limit - created_today) if is_pro else 0
 
     return CustomScenarioLimitResponse(
         daily_limit=daily_limit,
@@ -82,9 +82,16 @@ def create_custom_scenario(
     db: Session = Depends(get_db),
 ):
     """オリジナルシナリオを作成する"""
-    # 日次制限チェック
+    # Proユーザーのみ作成可能
     is_pro = getattr(current_user, "is_pro", False)
-    daily_limit = PRO_USER_DAILY_LIMIT if is_pro else FREE_USER_DAILY_LIMIT
+    if not is_pro:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="オリジナルシナリオの作成はProユーザー限定の機能です。",
+        )
+
+    # 日次制限チェック
+    daily_limit = PRO_USER_DAILY_LIMIT
     created_today = get_created_today_count(db, current_user.id)
 
     if created_today >= daily_limit:
