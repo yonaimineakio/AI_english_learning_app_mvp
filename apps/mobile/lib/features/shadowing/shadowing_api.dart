@@ -49,6 +49,20 @@ class ShadowingApi {
     );
   }
 
+  /// 瞬間英作の発話を評価
+  Future<InstantTranslateSpeakResponse> instantTranslateAttempt({
+    required int sentenceId,
+    required String userTranscription,
+  }) async {
+    final Response<dynamic> res = await _client.postJson(
+      '/shadowing/$sentenceId/instant-translate',
+      data: {'user_transcription': userTranscription},
+    );
+    return InstantTranslateSpeakResponse.fromJson(
+      Map<String, dynamic>.from(res.data as Map),
+    );
+  }
+
   /// シャドーイング全体進捗を取得（ホーム画面用）
   Future<ShadowingProgressResponse> getProgress() async {
     final Response<dynamic> res = await _client.getJson(

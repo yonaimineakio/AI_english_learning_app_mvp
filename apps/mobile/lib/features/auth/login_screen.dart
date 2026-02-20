@@ -138,17 +138,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       child: Column(
         children: [
           const Spacer(flex: 3),
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2563EB),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(
-              Icons.chat_bubble_outline_rounded,
-              color: Colors.white,
-              size: 40,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.asset(
+              'assets/icon/app_icon.png',
+              width: 80,
+              height: 80,
+              fit: BoxFit.cover,
             ),
           ),
           const SizedBox(height: 24),

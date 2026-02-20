@@ -4,9 +4,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../shared/services/revenuecat/revenuecat_client.dart';
 import 'pro_status_provider.dart';
+
+const _privacyPolicyUrl = 'https://yurueigo-support-neon.vercel.app/privacy';
+const _termsOfServiceUrl = 'https://yurueigo-support-neon.vercel.app/terms';
 
 enum BillingPlan {
   monthly,
@@ -921,7 +925,54 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _LinkText(
+                  label: '利用規約',
+                  uri: Uri.parse(_termsOfServiceUrl),
+                ),
+                Text(
+                  ' ・ ',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                ),
+                _LinkText(
+                  label: 'プライバシーポリシー',
+                  uri: Uri.parse(_privacyPolicyUrl),
+                ),
+              ],
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LinkText extends StatelessWidget {
+  const _LinkText({required this.label, required this.uri});
+
+  final String label;
+  final Uri uri;
+
+  Future<void> _openUrl() async {
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _openUrl,
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11,
+          color: Color(0xFF2563EB),
+          decoration: TextDecoration.underline,
+          decorationColor: Color(0xFF2563EB),
         ),
       ),
     );

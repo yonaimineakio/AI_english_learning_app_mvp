@@ -146,7 +146,7 @@ class _ShadowingHomeScreenState extends ConsumerState<ShadowingHomeScreen> {
                 const Icon(Icons.record_voice_over, color: Colors.blue, size: 28),
                 const SizedBox(width: 8),
                 const Text(
-                  '今日のシャドーイング',
+                  '今日までの進捗',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,

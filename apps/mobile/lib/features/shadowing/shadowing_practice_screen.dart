@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../shared/models/scenario_static.dart';
@@ -37,14 +36,16 @@ class ShadowingPracticeScreen extends ConsumerStatefulWidget {
 }
 
 class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScreen> {
-  late FlutterTts _tts;
   int _currentIndex = 0;
-  bool _isPlaying = false;
   bool _showTranslation = false;
-  
+
+  // 練習キュー（シャドーイング2問 + 瞬間英作2問 × 熟語3つ = 12問）
+  List<PracticeQuestion> _questionQueue = [];
+
   // 音声録音・評価用の状態
   String? _transcription;
   ShadowingSpeakResponse? _speakResult;
+  InstantTranslateSpeakResponse? _instantTranslateResult;
   bool _isEvaluating = false;
   String? _errorMessage;
 
@@ -57,37 +58,37 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _initTts();
-  }
 
-  void _initTts() {
-    _tts = FlutterTts();
-    _tts.setLanguage('en-US');
-    _tts.setSpeechRate(0.5);
-    _tts.setCompletionHandler(() {
-      if (!mounted) {
-        return;
-      }
-      setState(() => _isPlaying = false);
-    });
-    _tts.setErrorHandler((msg) {
-      if (!mounted) {
-        return;
-      }
-      setState(() => _isPlaying = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('音声再生エラー: $msg')),
-      );
-    });
-  }
+  /// 9文からシャドーイング2問＋瞬間英作2問の12問キューを構築
+  ///
+  /// 熟語ごとに先頭2文を使い：
+  ///   - シャドーイング問題（英文を聞いて繰り返す）× 2
+  ///   - 瞬間英作問題（日本語を見て英語で答える）× 2
+  /// の順番で並べる。
+  List<PracticeQuestion> _buildQuestionQueue(List<ShadowingSentence> sentences) {
+    // key_phrase でグループ化（出現順を保持）
+    final groups = <String, List<ShadowingSentence>>{};
+    for (final s in sentences) {
+      groups.putIfAbsent(s.keyPhrase, () => []).add(s);
+    }
 
-  @override
-  void dispose() {
-    _tts.stop();
-    super.dispose();
+    final queue = <PracticeQuestion>[];
+    for (final group in groups.values) {
+      // orderIndex でソートし先頭2文を使用
+      final sorted = List<ShadowingSentence>.from(group)
+        ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+      final pair = sorted.take(2).toList();
+
+      // シャドーイング2問
+      for (final s in pair) {
+        queue.add(PracticeQuestion(sentence: s, type: QuestionType.shadowing));
+      }
+      // 瞬間英作2問（同じ文を別モードで）
+      for (final s in pair) {
+        queue.add(PracticeQuestion(sentence: s, type: QuestionType.instantTranslation));
+      }
+    }
+    return queue;
   }
 
   @override
@@ -109,7 +110,10 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
               Text('エラー: $e'),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => ref.invalidate(scenarioShadowingProvider(widget.scenarioId)),
+                onPressed: () {
+                  setState(() => _questionQueue = []);
+                  ref.invalidate(scenarioShadowingProvider(widget.scenarioId));
+                },
                 child: const Text('再読み込み'),
               ),
             ],
@@ -122,20 +126,31 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
 
   Widget _buildPracticeView(ScenarioShadowingResponse data) {
     if (data.sentences.isEmpty) {
-      return const Center(
-        child: Text('シャドーイング文がありません'),
-      );
+      return const Center(child: Text('シャドーイング文がありません'));
     }
 
-    final sentence = data.sentences[_currentIndex];
+    // キューが未構築の場合に構築（初回または再読み込み後）
+    if (_questionQueue.isEmpty) {
+      _questionQueue = _buildQuestionQueue(data.sentences);
+    }
+
+    if (_questionQueue.isEmpty) {
+      return const Center(child: Text('問題を準備できませんでした'));
+    }
+
+    final currentQuestion = _questionQueue[_currentIndex];
+    final isLastQuestion = _currentIndex == _questionQueue.length - 1;
 
     return SafeArea(
       child: Column(
         children: [
           // 進捗インジケーター
           LinearProgressIndicator(
-            value: (_currentIndex + 1) / data.sentences.length,
+            value: (_currentIndex + 1) / _questionQueue.length,
             minHeight: 4,
+            color: currentQuestion.type == QuestionType.shadowing
+                ? Colors.blue
+                : Colors.orange,
           ),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -143,27 +158,30 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${_currentIndex + 1} / ${data.sentences.length}',
+                  '${_currentIndex + 1} / ${_questionQueue.length}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      size: 16,
-                      color: sentence.userProgress?.isCompleted == true
-                          ? Colors.green
-                          : Colors.grey.shade300,
+                // 問題種別バッジ
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: currentQuestion.type == QuestionType.shadowing
+                        ? Colors.blue.shade100
+                        : Colors.orange.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    currentQuestion.type == QuestionType.shadowing
+                        ? 'シャドーイング'
+                        : '瞬間英作',
+                    style: TextStyle(
+                      color: currentQuestion.type == QuestionType.shadowing
+                          ? Colors.blue.shade700
+                          : Colors.orange.shade700,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '完了: ${data.completedCount}/${data.totalSentences}',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -172,226 +190,291 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // キーフレーズ
-                  Card(
-                    color: Colors.blue.shade50,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.lightbulb_outline, color: Colors.blue),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              sentence.keyPhrase,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.blue,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // 英文
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.volume_up, color: Colors.grey),
-                              const SizedBox(width: 8),
-                              const Text(
-                                '読み上げ文',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            sentence.sentenceEn,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w500,
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          // 日本語訳
-                          GestureDetector(
-                            onTap: () => setState(() => _showTranslation = !_showTranslation),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    _showTranslation ? Icons.visibility : Icons.visibility_off,
-                                    color: Colors.grey,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _showTranslation ? sentence.sentenceJa : '日本語訳を表示',
-                                      style: TextStyle(
-                                        color: _showTranslation ? Colors.black87 : Colors.grey,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // 再生ボタン
-                  Center(
-                    child: ElevatedButton.icon(
-                      onPressed: _isPlaying ? null : () => _speakSentence(sentence.sentenceEn),
-                      icon: Icon(_isPlaying ? Icons.stop : Icons.play_arrow),
-                      label: Text(_isPlaying ? '再生中...' : 'AIの発音を聞く'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // 音声録音セクション
-                  _buildRecordingSection(sentence),
-                ],
-              ),
+              child: currentQuestion.type == QuestionType.shadowing
+                  ? _buildShadowingContent(currentQuestion.sentence)
+                  : _buildInstantTranslationContent(currentQuestion.sentence),
             ),
           ),
 
           // ナビゲーションボタン
-          _buildNavigationButtons(data),
+          _buildNavigationButtons(isLastQuestion),
         ],
       ),
     );
   }
 
-  /// ナビゲーションボタンを構築
-  Widget _buildNavigationButtons(ScenarioShadowingResponse data) {
-    final isLastSentence = _currentIndex == data.sentences.length - 1;
-    final relatedScenario = _relatedScenario;
+  // ─────────────────────────────────────────────
+  // シャドーイング問題 UI
+  // ─────────────────────────────────────────────
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // 最終問題 かつ 関連シナリオあり → 左「完了」+ 右「シナリオを開始する」
-          if (isLastSentence && relatedScenario != null) ...[
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.check),
-                label: const Text('完了'),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () => _startScenarioSession(relatedScenario),
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('シナリオを開始'),
-              ),
-            ),
-          ] else ...[
-            // 従来のレイアウト: 左「前へ」+ 右「次へ/完了」
-            if (_currentIndex > 0)
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _previousSentence,
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('前へ'),
+  Widget _buildShadowingContent(ShadowingSentence sentence) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // キーフレーズ
+        Card(
+          color: Colors.blue.shade50,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                const Icon(Icons.lightbulb_outline, color: Colors.blue),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    sentence.keyPhrase,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue,
+                    ),
+                  ),
                 ),
-              )
-            else
-              const Expanded(child: SizedBox()),
-            const SizedBox(width: 16),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: isLastSentence
-                    ? () => Navigator.of(context).pop()
-                    : _nextSentence,
-                icon: Icon(isLastSentence
-                    ? Icons.check
-                    : Icons.arrow_forward),
-                label: Text(isLastSentence ? '完了' : '次へ'),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // 英文
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.volume_up, color: Colors.grey),
+                    SizedBox(width: 8),
+                    Text(
+                      '読み上げ文',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  sentence.sentenceEn,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w500,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // 日本語訳（任意表示）
+                GestureDetector(
+                  onTap: () => setState(() => _showTranslation = !_showTranslation),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _showTranslation ? Icons.visibility : Icons.visibility_off,
+                          color: Colors.grey,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _showTranslation ? sentence.sentenceJa : '日本語訳を表示',
+                            style: TextStyle(
+                              color: _showTranslation ? Colors.black87 : Colors.grey,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // 再生ボタン
+        Builder(builder: (context) {
+          final audioState = ref.watch(audioControllerProvider);
+          return Center(
+            child: ElevatedButton.icon(
+              onPressed: audioState.isPlaying ? null : () => _speakSentence(sentence.sentenceEn),
+              icon: Icon(audioState.isPlaying ? Icons.stop : Icons.play_arrow),
+              label: Text(audioState.isPlaying ? '再生中...' : 'AIの発音を聞く'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
               ),
             ),
-          ],
-        ],
-      ),
+          );
+        }),
+
+        const SizedBox(height: 24),
+
+        _buildRecordingCard(
+          sentence: sentence,
+          questionType: QuestionType.shadowing,
+          accentColor: Colors.deepPurple,
+          title: '発話して評価',
+          instruction: 'マイクボタンを押して、文章を声に出して読んでください',
+          result: _speakResult != null
+              ? _buildEvaluationResult(
+                  score: _speakResult!.score,
+                  isNewBest: _speakResult!.isNewBest,
+                  isCompleted: _speakResult!.isCompleted,
+                  attemptCount: _speakResult!.attemptCount,
+                  bestScore: _speakResult!.bestScore,
+                  matchingWords: _speakResult!.matchingWords,
+                )
+              : null,
+        ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 
-  /// 関連シナリオのセッションを開始して会話画面へ遷移
-  Future<void> _startScenarioSession(ScenarioSummary scenario) async {
-    try {
-      final sessionId = await ref
-          .read(sessionControllerProvider.notifier)
-          .startNewSession(
-            scenarioId: scenario.id,
-            difficulty: scenario.difficulty,
-            mode: 'standard',
-          );
-      if (mounted) {
-        context.go('/sessions/$sessionId');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('セッション開始に失敗しました: $e')),
-        );
-      }
-    }
+  // ─────────────────────────────────────────────
+  // 瞬間英作問題 UI
+  // ─────────────────────────────────────────────
+
+  Widget _buildInstantTranslationContent(ShadowingSentence sentence) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // キーフレーズ（ヒント）
+        Card(
+          color: Colors.orange.shade50,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                const Icon(Icons.lightbulb_outline, color: Colors.orange),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'このフレーズを使って英語で言ってみよう',
+                        style: TextStyle(color: Colors.orange, fontSize: 11),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        sentence.keyPhrase,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // 日本語（メイン表示）
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.translate, color: Colors.grey),
+                    SizedBox(width: 8),
+                    Text(
+                      '以下の日本語を英語にしよう',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  sentence.sentenceJa,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    height: 1.6,
+                  ),
+                ),
+                // 評価後に正解英文を表示
+                if (_instantTranslateResult != null) ...[
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '正解',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    sentence.sentenceEn,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade700,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        _buildRecordingCard(
+          sentence: sentence,
+          questionType: QuestionType.instantTranslation,
+          accentColor: Colors.orange,
+          title: '英語で発話して評価',
+          instruction: 'マイクボタンを押して、上の日本語を英語で言ってみてください',
+          result: _instantTranslateResult != null
+              ? _buildEvaluationResult(
+                  score: _instantTranslateResult!.score,
+                  isNewBest: _instantTranslateResult!.isNewBest,
+                  isCompleted: _instantTranslateResult!.isCompleted,
+                  attemptCount: _instantTranslateResult!.attemptCount,
+                  bestScore: _instantTranslateResult!.bestScore,
+                  matchingWords: _instantTranslateResult!.matchingWords,
+                )
+              : null,
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
   }
 
-  /// 音声録音セクションを構築
-  Widget _buildRecordingSection(ShadowingSentence sentence) {
+  // ─────────────────────────────────────────────
+  // 共通ウィジェット
+  // ─────────────────────────────────────────────
+
+  Widget _buildRecordingCard({
+    required ShadowingSentence sentence,
+    required QuestionType questionType,
+    required Color accentColor,
+    required String title,
+    required String instruction,
+    Widget? result,
+  }) {
     final audioState = ref.watch(audioControllerProvider);
     final isRecording = audioState.isRecording;
     final isTranscribing = audioState.isTranscribing;
-    // 録音中は停止可能、認識中・評価中は操作不可
     final isBusy = isTranscribing || _isEvaluating;
 
     return Card(
@@ -402,43 +485,34 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
           children: [
             Row(
               children: [
-                const Icon(Icons.mic, color: Colors.deepPurple),
+                Icon(Icons.mic, color: accentColor),
                 const SizedBox(width: 8),
-                const Text(
-                  '発話して評価',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              'マイクボタンを押して、文章を声に出して読んでください',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 12,
-              ),
+            Text(
+              instruction,
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
             ),
             const SizedBox(height: 16),
 
-            // 録音ボタン
+            // マイクボタン
             Center(
               child: GestureDetector(
-                onTap: isBusy ? null : () => _toggleRecording(sentence),
+                onTap: isBusy ? null : () => _toggleRecording(sentence, questionType),
                 child: Container(
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isRecording
-                        ? Colors.red
-                        : (isBusy ? Colors.grey : Colors.deepPurple),
+                    color: isRecording ? Colors.red : (isBusy ? Colors.grey : accentColor),
                     boxShadow: [
                       BoxShadow(
-                        color: (isRecording ? Colors.red : Colors.deepPurple)
-                            .withOpacity(0.3),
+                        color: (isRecording ? Colors.red : accentColor).withValues(alpha: 0.3),
                         blurRadius: 12,
                         spreadRadius: 2,
                       ),
@@ -453,7 +527,6 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
               ),
             ),
 
-            // 状態表示
             const SizedBox(height: 12),
             Center(
               child: Text(
@@ -496,10 +569,10 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
               ),
             ],
 
-            // 認識結果と評価結果
-            if (_speakResult != null) ...[
+            // 評価結果 or 認識テキスト
+            if (result != null) ...[
               const SizedBox(height: 16),
-              _buildEvaluationResult(),
+              result,
             ] else if (_transcription != null) ...[
               const SizedBox(height: 16),
               Container(
@@ -511,15 +584,9 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'あなたの発話:',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
+                    const Text('あなたの発話:', style: TextStyle(color: Colors.grey, fontSize: 12)),
                     const SizedBox(height: 4),
-                    Text(
-                      _transcription!,
-                      style: const TextStyle(fontSize: 16),
-                    ),
+                    Text(_transcription!, style: const TextStyle(fontSize: 16)),
                   ],
                 ),
               ),
@@ -530,35 +597,40 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
     );
   }
 
-  /// 評価結果を表示するウィジェット
-  Widget _buildEvaluationResult() {
-    final result = _speakResult!;
-    final scoreColor = result.score >= 80
+  /// 評価結果ウィジェット（シャドーイング・瞬間英作共通）
+  Widget _buildEvaluationResult({
+    required int score,
+    required bool isNewBest,
+    required bool isCompleted,
+    required int attemptCount,
+    required int bestScore,
+    required List<WordMatch> matchingWords,
+  }) {
+    final scoreColor = score >= 80
         ? Colors.green
-        : result.score >= 60
+        : score >= 60
             ? Colors.orange
             : Colors.red;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: scoreColor.withOpacity(0.1),
+        color: scoreColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scoreColor.withOpacity(0.3)),
+        border: Border.all(color: scoreColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // スコア表示
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
                   Icon(
-                    result.score >= 80
+                    score >= 80
                         ? Icons.celebration
-                        : result.score >= 60
+                        : score >= 60
                             ? Icons.thumb_up
                             : Icons.refresh,
                     color: scoreColor,
@@ -566,7 +638,7 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'スコア: ${result.score}点',
+                    'スコア: $score点',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -575,7 +647,7 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
                   ),
                 ],
               ),
-              if (result.isNewBest)
+              if (isNewBest)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
@@ -600,14 +672,12 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
                 ),
             ],
           ),
-
           const SizedBox(height: 12),
-
-          // 単語ハイライト表示
+          // 単語ハイライト
           Wrap(
             spacing: 4,
             runSpacing: 4,
-            children: result.matchingWords.map((wordMatch) {
+            children: matchingWords.map((wordMatch) {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -625,26 +695,19 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
               );
             }).toList(),
           ),
-
           const SizedBox(height: 12),
-
-          // 進捗情報
           Text(
-            '練習回数: ${result.attemptCount}回 / ベスト: ${result.bestScore}点',
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 12,
-            ),
+            '練習回数: $attemptCount回 / ベスト: $bestScore点',
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
           ),
-
-          if (result.isCompleted) ...[
+          if (isCompleted) ...[
             const SizedBox(height: 8),
             Row(
               children: [
                 const Icon(Icons.check_circle, color: Colors.green, size: 16),
                 const SizedBox(width: 4),
                 Text(
-                  'この文は完了しました！',
+                  'この問題は完了しました！',
                   style: TextStyle(
                     color: Colors.green.shade700,
                     fontSize: 12,
@@ -659,25 +722,117 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
     );
   }
 
+  // ─────────────────────────────────────────────
+  // ナビゲーション
+  // ─────────────────────────────────────────────
+
+  Widget _buildNavigationButtons(bool isLastQuestion) {
+    final relatedScenario = _relatedScenario;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          if (isLastQuestion && relatedScenario != null) ...[
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.check),
+                label: const Text('完了'),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () => _startScenarioSession(relatedScenario),
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('シナリオを開始'),
+              ),
+            ),
+          ] else ...[
+            if (_currentIndex > 0)
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _previousSentence,
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('前へ'),
+                ),
+              )
+            else
+              const Expanded(child: SizedBox()),
+            const SizedBox(width: 16),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: isLastQuestion ? () => Navigator.of(context).pop() : _nextSentence,
+                icon: Icon(isLastQuestion ? Icons.check : Icons.arrow_forward),
+                label: Text(isLastQuestion ? '完了' : '次へ'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // アクション
+  // ─────────────────────────────────────────────
+
+  Future<void> _startScenarioSession(ScenarioSummary scenario) async {
+    try {
+      final sessionId = await ref
+          .read(sessionControllerProvider.notifier)
+          .startNewSession(
+            scenarioId: scenario.id,
+            difficulty: scenario.difficulty,
+            mode: 'standard',
+          );
+      if (mounted) {
+        context.go('/sessions/$sessionId');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('セッション開始に失敗しました: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _speakSentence(String text) async {
-    setState(() => _isPlaying = true);
-    await _tts.speak(text);
+    try {
+      await ref.read(audioControllerProvider.notifier).playTts(text);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('音声再生エラー: $e')),
+        );
+      }
+    }
   }
 
   /// 録音の開始/停止を切り替え
-  Future<void> _toggleRecording(ShadowingSentence sentence) async {
+  Future<void> _toggleRecording(ShadowingSentence sentence, QuestionType questionType) async {
     final audioController = ref.read(audioControllerProvider.notifier);
     final audioState = ref.read(audioControllerProvider);
 
-    setState(() {
-      _errorMessage = null;
-    });
+    setState(() => _errorMessage = null);
 
     if (audioState.isRecording) {
-      // 録音停止 → 認識 → 評価
+      // 録音停止 → 音声認識 → 評価API呼び出し
       try {
         final transcription = await audioController.stopAndTranscribe();
-        
+
         if (transcription == null || transcription.trim().isEmpty) {
           setState(() {
             _errorMessage = '音声を認識できませんでした。もう一度お試しください。';
@@ -690,20 +845,33 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
           _isEvaluating = true;
         });
 
-        // 評価APIを呼び出し
         final api = ShadowingApi(ApiClient());
-        final result = await api.speakAttempt(
-          sentenceId: sentence.id,
-          userTranscription: transcription,
-        );
+
+        if (questionType == QuestionType.shadowing) {
+          final result = await api.speakAttempt(
+            sentenceId: sentence.id,
+            userTranscription: transcription,
+          );
+          if (mounted) {
+            setState(() {
+              _speakResult = result;
+              _isEvaluating = false;
+            });
+          }
+        } else {
+          final result = await api.instantTranslateAttempt(
+            sentenceId: sentence.id,
+            userTranscription: transcription,
+          );
+          if (mounted) {
+            setState(() {
+              _instantTranslateResult = result;
+              _isEvaluating = false;
+            });
+          }
+        }
 
         if (mounted) {
-          setState(() {
-            _speakResult = result;
-            _isEvaluating = false;
-          });
-
-          // 進捗を更新
           ref.invalidate(scenarioShadowingProvider(widget.scenarioId));
         }
       } catch (e) {
@@ -717,17 +885,15 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
     } else {
       // 録音開始
       try {
-        // 前回の結果をクリア
         setState(() {
           _transcription = null;
           _speakResult = null;
+          _instantTranslateResult = null;
         });
         await audioController.startRecording();
       } catch (e) {
         if (mounted) {
-          setState(() {
-            _errorMessage = '$e';
-          });
+          setState(() => _errorMessage = '$e');
         }
       }
     }
@@ -740,22 +906,20 @@ class _ShadowingPracticeScreenState extends ConsumerState<ShadowingPracticeScree
         _showTranslation = false;
         _transcription = null;
         _speakResult = null;
+        _instantTranslateResult = null;
         _errorMessage = null;
       });
     }
   }
 
   void _nextSentence() {
-    final shadowingAsync = ref.read(scenarioShadowingProvider(widget.scenarioId));
-    final data = shadowingAsync.valueOrNull;
-    if (data == null) return;
-
-    if (_currentIndex < data.sentences.length - 1) {
+    if (_currentIndex < _questionQueue.length - 1) {
       setState(() {
         _currentIndex++;
         _showTranslation = false;
         _transcription = null;
         _speakResult = null;
+        _instantTranslateResult = null;
         _errorMessage = null;
       });
     }

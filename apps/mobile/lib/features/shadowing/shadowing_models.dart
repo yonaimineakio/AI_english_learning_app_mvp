@@ -35,6 +35,7 @@ class ShadowingSentence {
   final String difficulty;
   final String? audioUrl;
   final ShadowingUserProgress? userProgress;
+  final ShadowingUserProgress? instantTranslationProgress;
 
   const ShadowingSentence({
     required this.id,
@@ -46,6 +47,7 @@ class ShadowingSentence {
     required this.difficulty,
     this.audioUrl,
     this.userProgress,
+    this.instantTranslationProgress,
   });
 
   factory ShadowingSentence.fromJson(Map<String, dynamic> json) {
@@ -60,6 +62,9 @@ class ShadowingSentence {
       audioUrl: json['audio_url'],
       userProgress: json['user_progress'] != null
           ? ShadowingUserProgress.fromJson(json['user_progress'])
+          : null,
+      instantTranslationProgress: json['instant_translation_progress'] != null
+          ? ShadowingUserProgress.fromJson(json['instant_translation_progress'])
           : null,
     );
   }
@@ -179,6 +184,61 @@ class ShadowingSpeakResponse {
           .toList(),
     );
   }
+}
+
+/// 瞬間英作発話評価レスポンス
+class InstantTranslateSpeakResponse {
+  final int shadowingSentenceId;
+  final int score;
+  final int attemptCount;
+  final int bestScore;
+  final bool isCompleted;
+  final bool isNewBest;
+  final String targetSentence;
+  final List<WordMatch> matchingWords;
+
+  const InstantTranslateSpeakResponse({
+    required this.shadowingSentenceId,
+    required this.score,
+    required this.attemptCount,
+    required this.bestScore,
+    required this.isCompleted,
+    required this.isNewBest,
+    required this.targetSentence,
+    required this.matchingWords,
+  });
+
+  factory InstantTranslateSpeakResponse.fromJson(Map<String, dynamic> json) {
+    return InstantTranslateSpeakResponse(
+      shadowingSentenceId: json['shadowing_sentence_id'],
+      score: json['score'],
+      attemptCount: json['attempt_count'],
+      bestScore: json['best_score'],
+      isCompleted: json['is_completed'],
+      isNewBest: json['is_new_best'],
+      targetSentence: json['target_sentence'],
+      matchingWords: (json['matching_words'] as List)
+          .map((e) => WordMatch.fromJson(e))
+          .toList(),
+    );
+  }
+}
+
+/// 練習問題の種別
+enum QuestionType {
+  shadowing,
+  instantTranslation,
+}
+
+/// 練習キューの1アイテム
+class PracticeQuestion {
+  final ShadowingSentence sentence;
+  final QuestionType type;
+
+  const PracticeQuestion({
+    required this.sentence,
+    required this.type,
+  });
 }
 
 class ScenarioProgressSummary {

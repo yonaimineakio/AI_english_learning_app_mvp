@@ -30,7 +30,7 @@ class ScenarioSelectionScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authStateProvider);
-    final pro = ref.watch(proStatusProvider);
+    final isPro = ref.watch(proStatusProvider).valueOrNull ?? false;
     final customScenariosAsync = ref.watch(customScenariosProvider);
 
     return Scaffold(
@@ -41,45 +41,26 @@ class ScenarioSelectionScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (authState) {
-          final isPro = pro.valueOrNull ?? false;
-
-          // Free: 固定3シナリオのみ（placementなし）
-          // Pro : placement結果に応じて難易度フィルタ（現状は仮実装）
-          final level = (!isPro || authState.placementCompletedAt == null)
-              ? null
-              : 'intermediate'; // TODO: 実際のplacement_levelをUserModelから保持
-
-          final scenarios = kScenarioList.where((s) {
-            if (!isPro) {
-              return kFreeScenarioIds.contains(s.id);
-            }
-            if (level == null) return true;
-            if (level == 'beginner') {
-              return s.difficulty == 'beginner';
-            }
-            if (level == 'intermediate') {
-              return s.difficulty == 'beginner' ||
-                  s.difficulty == 'intermediate';
-            }
-            return true;
-          }).toList();
+          final scenarios = kScenarioList.toList();
 
           final customScenarios = customScenariosAsync.valueOrNull?.customScenarios ?? [];
 
           return Column(
             children: [
               const StreakWidget(),
-              // オリジナルシナリオ作成ボタン
+              // オリジナルシナリオ作成ボタン（Pro限定）
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () => _showCreateCustomScenarioDialog(context, ref),
-                    icon: const Icon(Icons.auto_awesome),
-                    label: const Text('オリジナルシナリオを作成'),
+                    onPressed: isPro
+                        ? () => _showCreateCustomScenarioDialog(context, ref)
+                        : () => context.push('/paywall'),
+                    icon: Icon(isPro ? Icons.auto_awesome : Icons.lock_outline),
+                    label: Text(isPro ? 'オリジナルシナリオを作成' : 'オリジナルシナリオを作成（Pro限定）'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple.shade600,
+                      backgroundColor: isPro ? Colors.purple.shade600 : Colors.grey.shade400,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -89,32 +70,6 @@ class ScenarioSelectionScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              if (!isPro)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Card(
-                    color: Colors.blue.shade50,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          Icon(Icons.lock_outline, color: Colors.blue.shade600),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Freeプランでは利用できるシナリオは3つのみです。Proで全シナリオ・復習機能が解放されます。',
-                              style: TextStyle(color: Colors.blue.shade800),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () => context.push('/paywall'),
-                            child: const Text('Proへ'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(vertical: 16),
