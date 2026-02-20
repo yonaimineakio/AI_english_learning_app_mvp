@@ -41,6 +41,13 @@ class SessionService:
     def _to_str(value):
         return value.value if hasattr(value, "value") else value
 
+    @staticmethod
+    def _get_custom_scenario_goals(custom_scenario: CustomScenario) -> list[str]:
+        """カスタムシナリオのゴールを取得する。DB保存ゴール優先、NULLならデフォルト。"""
+        if custom_scenario and custom_scenario.goals:
+            return list(custom_scenario.goals)
+        return get_custom_scenario_goals()
+
     def _get_existing_review_due(self, session: SessionModel, user_id: int):
         from models.database.models import ReviewItem
 
@@ -104,9 +111,9 @@ class SessionService:
         self, session: SessionModel
     ) -> tuple[int, int, List[int]]:
         """セッション全体の会話履歴から学習ゴール達成率を判定する。"""
-        # カスタムシナリオの場合はデフォルトゴールを使用
+        # カスタムシナリオの場合はDB保存ゴール優先、NULLならデフォルト
         if session.custom_scenario_id:
-            goals = get_custom_scenario_goals()
+            goals = self._get_custom_scenario_goals(session.custom_scenario)
         else:
             goals = get_goals_for_scenario(session.scenario_id)
         goals_total: int = len(goals)
@@ -145,6 +152,55 @@ class SessionService:
             goals_achieved = 0
 
         return goals_total, goals_achieved, goals_status
+
+    async def _build_goals_info_for_prompt(
+        self, session: SessionModel
+    ) -> Optional[Dict[str, Any]]:
+        """AI会話プロンプトに注入するゴール情報を構築する。
+
+        前回ターンまでの達成状況を評価し、ゴールリストと合わせて返す。
+        ラウンド1（会話履歴なし）の場合はステータスを全て未達成で返す。
+        """
+        if session.custom_scenario_id:
+            goals = self._get_custom_scenario_goals(session.custom_scenario)
+        else:
+            goals = get_goals_for_scenario(session.scenario_id)
+
+        if not goals:
+            return None
+
+        # 会話履歴がまだない（ラウンド1）場合は全て未達成
+        history_rounds = (
+            self.db.query(SessionRound)
+            .filter(SessionRound.session_id == session.id)
+            .order_by(SessionRound.round_index.asc())
+            .all()
+        )
+
+        if not history_rounds:
+            return {"goals": goals, "status": [0] * len(goals)}
+
+        # 前回ターンまでの履歴でゴール達成状況を評価
+        history_payload = [
+            {
+                "round_index": r.round_index,
+                "user_input": r.user_input,
+                "ai_reply": r.ai_reply,
+            }
+            for r in history_rounds
+        ]
+
+        try:
+            status = await evaluate_goal_progress(goals, history_payload)
+            if len(status) < len(goals):
+                status.extend([0] * (len(goals) - len(status)))
+            elif len(status) > len(goals):
+                status = status[: len(goals)]
+        except Exception as exc:
+            logger.warning("Goal info for prompt failed: %s", exc)
+            status = [0] * len(goals)
+
+        return {"goals": goals, "status": status}
 
     def _get_initial_message(self, scenario: Scenario) -> Optional[str]:
         """シナリオIDに応じた初期メッセージを返す（モック実装）。"""
@@ -242,7 +298,7 @@ class SessionService:
                     custom_scenario.ai_role,
                     custom_scenario.description,
                 )
-                goals_labels = get_custom_scenario_goals()
+                goals_labels = self._get_custom_scenario_goals(custom_scenario)
 
             # 通常シナリオの場合
             elif session_data.scenario_id:
@@ -363,6 +419,9 @@ class SessionService:
 
             session_difficulty = self._to_str(session.difficulty)
 
+            # AI呼び出し前にゴール情報を準備（未達成ゴールへの誘導に使用）
+            goals_info = await self._build_goals_info_for_prompt(session)
+
             # カスタムシナリオの場合
             if session.custom_scenario_id and session.custom_scenario:
                 custom_scenario = session.custom_scenario
@@ -386,6 +445,7 @@ class SessionService:
                     scenario_id=scenario_id,
                     provider_name="groq",
                     custom_system_prompt=custom_prompt,  # カスタムプロンプトを渡す
+                    goals_info=goals_info,
                 )
             else:
                 # 通常シナリオの場合
@@ -400,6 +460,7 @@ class SessionService:
                     context=context,
                     scenario_id=scenario_id,
                     provider_name="groq",
+                    goals_info=goals_info,
                 )
             latency_ms = conversation_result.latency_ms
             if latency_ms is None:
@@ -474,7 +535,7 @@ class SessionService:
 
             # ゴールラベルを取得
             if session.custom_scenario_id:
-                goals_labels = get_custom_scenario_goals()
+                goals_labels = self._get_custom_scenario_goals(session.custom_scenario)
             elif session.scenario_id:
                 goals_labels = get_goals_for_scenario(session.scenario_id)
             else:
@@ -668,7 +729,7 @@ class SessionService:
 
             # ゴールラベルを取得
             if session.custom_scenario_id:
-                goals_labels = get_custom_scenario_goals()
+                goals_labels = self._get_custom_scenario_goals(session.custom_scenario)
                 scenario_name = session.custom_scenario.name if session.custom_scenario else None
             elif session.scenario_id:
                 goals_labels = get_goals_for_scenario(session.scenario_id)

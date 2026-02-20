@@ -54,6 +54,7 @@ class MockConversationProvider(ConversationProvider):
         context: List[dict],
         scenario_id: int | None = None,
         custom_system_prompt: str | None = None,
+        goals_info: dict | None = None,
     ) -> ConversationResponse:
         response_template = MOCK_RESPONSES.get(
             difficulty, MOCK_RESPONSES[DifficultyLevel.INTERMEDIATE]

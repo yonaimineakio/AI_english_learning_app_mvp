@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.core.deps import get_current_user, get_db
+from app.services.ai.generate_custom_goals import generate_custom_scenario_goals
 from models.database.models import (
     User,
     CustomScenario as CustomScenarioModel,
@@ -20,6 +22,8 @@ from models.schemas.schemas import (
     CustomScenarioListResponse,
     CustomScenarioLimitResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -76,7 +80,7 @@ def get_creation_limit(
 
 
 @router.post("", response_model=CustomScenario, status_code=status.HTTP_201_CREATED)
-def create_custom_scenario(
+async def create_custom_scenario(
     payload: CustomScenarioCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -101,6 +105,18 @@ def create_custom_scenario(
             detail=f"{limit_type}ユーザーは1日{daily_limit}個までシナリオを作成できます。明日また作成してください。",
         )
 
+    # AIでゴールを自動生成（失敗時は None → デフォルトゴールにフォールバック）
+    goals = None
+    try:
+        goals = await generate_custom_scenario_goals(
+            scenario_name=payload.name,
+            description=payload.description,
+            user_role=payload.user_role,
+            ai_role=payload.ai_role,
+        )
+    except Exception as exc:
+        logger.warning("Custom goal generation failed, using default: %s", exc)
+
     # シナリオ作成
     custom_scenario = CustomScenarioModel(
         user_id=current_user.id,
@@ -108,6 +124,7 @@ def create_custom_scenario(
         description=payload.description,
         user_role=payload.user_role,
         ai_role=payload.ai_role,
+        goals=goals,
         difficulty="intermediate",  # 固定
         is_active=True,
     )

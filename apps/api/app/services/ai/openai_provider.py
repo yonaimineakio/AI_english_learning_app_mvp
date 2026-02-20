@@ -43,6 +43,7 @@ class OpenAIConversationProvider(ConversationProvider):
         context: List[dict],
         scenario_id: int | None = None,
         custom_system_prompt: str | None = None,
+        goals_info: dict | None = None,
     ) -> ConversationResponse:
         start_time = asyncio.get_event_loop().time()
         logger.info(

@@ -42,6 +42,7 @@ class GroqConversationProvider(ConversationProvider):
         context: List[dict],
         scenario_id: int | None = None,
         custom_system_prompt: str | None = None,
+        goals_info: dict | None = None,
     ) -> ConversationResponse:
         start_time = asyncio.get_event_loop().time()
         logger.info(
@@ -62,6 +63,7 @@ class GroqConversationProvider(ConversationProvider):
             context=context,
             scenario_id=scenario_id,
             custom_system_prompt=custom_system_prompt,
+            goals_info=goals_info,
         )
 
         try:
@@ -139,6 +141,7 @@ class GroqConversationProvider(ConversationProvider):
         context: List[dict],
         scenario_id: int | None = None,
         custom_system_prompt: str | None = None,
+        goals_info: dict | None = None,
     ) -> dict:
         # カスタムシナリオの場合は、渡されたプロンプトを使用
         if custom_system_prompt:
@@ -159,6 +162,7 @@ class GroqConversationProvider(ConversationProvider):
         conversation_prompt = get_conversation_system_prompt(
             difficulty=difficulty,
             user_input=user_input,
+            goals_info=goals_info,
         )
         full_system_prompt = f"{system_prompt}\n\n{conversation_prompt}"
 

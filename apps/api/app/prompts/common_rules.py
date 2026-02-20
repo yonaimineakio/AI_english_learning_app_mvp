@@ -5,25 +5,75 @@
 """
 
 
-def get_common_conversation_rules(difficulty: str, user_input: str) -> str:
+def build_goals_section(goals_info: dict | None) -> str:
+    """ゴール誘導セクションを生成する
+
+    Args:
+        goals_info: {"goals": ["ゴール1", ...], "status": [0, 1, 0, ...]} or None
+
+    Returns:
+        ゴール誘導プロンプト文字列（ゴールがなければ空文字列）
+    """
+    if not goals_info:
+        return ""
+
+    goals: list[str] = goals_info.get("goals", [])
+    status: list[int] = goals_info.get("status", [])
+
+    if not goals:
+        return ""
+
+    # ステータスが足りない場合は 0 で埋める
+    while len(status) < len(goals):
+        status.append(0)
+
+    lines = []
+    pending_goals = []
+    for i, (goal, st) in enumerate(zip(goals, status), 1):
+        mark = "達成済" if st == 1 else "未達成"
+        lines.append(f"  {i}. [{mark}] {goal}")
+        if st == 0:
+            pending_goals.append(goal)
+
+    section = "\n【学習ゴール（最重要）】\n"
+    section += "このセッションでユーザーが達成すべきゴール:\n"
+    section += "\n".join(lines) + "\n\n"
+
+    if pending_goals:
+        section += "未達成のゴールに向けて、会話を自然に誘導してください。\n"
+        section += "- ユーザーが未達成ゴールに関連する発話をしやすい質問をする\n"
+        section += "- ただし会話の流れを壊して唐突にゴールの話題へ切り替えてはいけない\n"
+        section += "- 1ターンで1つのゴールに集中する（複数を同時に狙わない）\n"
+    else:
+        section += "すべてのゴールが達成済みです。自然に会話を締めくくってください。\n"
+
+    return section
+
+
+def get_common_conversation_rules(
+    difficulty: str, user_input: str, goals_info: dict | None = None
+) -> str:
     """共通の会話ルールプロンプトを生成する
 
     Args:
         difficulty: 難易度 ('beginner', 'intermediate', 'advanced')
         user_input: ユーザーの入力テキスト
+        goals_info: ゴール情報（任意）
 
     Returns:
         フォーマット済みの共通ルールプロンプト
     """
+    goals_section = build_goals_section(goals_info)
     return COMMON_CONVERSATION_RULES_TEMPLATE.format(
         difficulty=difficulty,
         user_input=user_input,
+        goals_section=goals_section,
     )
 
 
 COMMON_CONVERSATION_RULES_TEMPLATE = """
 難易度は「{difficulty}」です。
-
+{goals_section}
 以下の手順と制約を必ず守ってください。
 
 【手順】
