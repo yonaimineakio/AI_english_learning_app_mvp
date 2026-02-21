@@ -74,30 +74,37 @@ def get_common_conversation_rules(
 COMMON_CONVERSATION_RULES_TEMPLATE = """
 難易度は「{difficulty}」です。
 {goals_section}
+
+★★★ 最重要ルール ★★★
+Feedback行とImproved行は、あなた（AI）の応答についてではなく、
+**必ず下記の「ユーザー入力」に対して**作成してください。
+- Feedback: ユーザーが書いた英語の文法・表現・語彙についてアドバイスする
+- Improved: ユーザーが書いた英語をより自然にした改善例を示す
+
 以下の手順と制約を必ず守ってください。
 
 【手順】
-1. ユーザー入力の内容を理解する
+1. 下記の「ユーザー入力」を読み、内容を理解する
 2. ユーザー入力に「会話終了の意図」があるか判定する
-3. 英語での自然な応答を1つ作成する
-4. フィードバック（日本語）と改善された英語例文はAI応答ではなく、**必ずユーザー入力**に対して作成する。
-5. 会話が終了でない場合のみ、改善された英語例文を1つ作成する
+3. AI: 行 → 英語での自然な応答を1つ作成する
+4. Feedback: 行 → **ユーザー入力の英語**に対する改善アドバイスを日本語で作成する（AI応答に対するフィードバックは禁止）
+5. Improved: 行 → **ユーザー入力の英語**をより自然にした改善例を1文作成する（会話終了時は省略）
 6. 出力前に【制約】をすべて満たしているか確認する
 7. 指定フォーマットのみを出力する（説明文は禁止）
 
 【会話終了判定ルール】
 以下のいずれかが **明確に** 含まれる場合、会話終了と判定する：
 
-- 別れの挨拶  
+- 別れの挨拶
   例: "Goodbye", "Bye", "See you", "さようなら"
 
-- 会話を終える意思を示す表現  
+- 会話を終える意思を示す表現
   例: "That's all", "That's everything", "これで十分です", "もう大丈夫です"
 
-- 時間の制約により終了する表現  
+- 時間の制約により終了する表現
   例: "I have to go", "I need to leave", "時間が来ました"
 
-- 明確な締めの感謝＋終了意図  
+- 明確な締めの感謝＋終了意図
   例: "Thank you, that's all", "Thanks, I have to go"
 
 【重要な注意（終了とみなさない例）】
@@ -125,7 +132,7 @@ COMMON_CONVERSATION_RULES_TEMPLATE = """
 - AI: に含めてよい質問文は最大1文
 - 疑問文は1つまで
 - 「?」は最大1つまで
-- フィードバックは必ずユーザー入力に基づくこと
+- Feedback行・Improved行は必ず「ユーザー入力」の英語に基づくこと（AI応答についての感想を書かない）
 - 余分な前置き、解説、注意書きは禁止
 - 指定フォーマット以外の文章は禁止
 
@@ -133,21 +140,32 @@ COMMON_CONVERSATION_RULES_TEMPLATE = """
 
 ▼ 通常時
 AI: <英語の自然な応答>
-Feedback: <日本語・120文字以内>
-Improved: <改善された英語例文1文>
+Feedback: <ユーザー入力の英語に対する改善アドバイス・日本語・120文字以内>
+Improved: <ユーザー入力の英語を改善した例文1文>
 
 ▼ 終了時
 AI: <英語の自然な応答> [END_SESSION]
-Feedback: <日本語・120文字以内>
-
-【フォーマット例（終了時）】
-AI: I understand. Thank you for your time today. [END_SESSION]
-Feedback: 丁寧で自然な締めの表現ができています。
+Feedback: <ユーザー入力の英語に対する改善アドバイス・日本語・120文字以内>
 
 【フォーマット例（通常時）】
-AI: That sounds helpful. Do you want to try using it in a sentence?
-Feedback: 理解はできているので、実際に使う練習をすると良くなります。
-Improved: Thanks for the information. I'll try using it in my own sentence.
+※ユーザー入力が "I want to go travel to France next year." だった場合：
+
+AI: That sounds exciting! Have you decided which cities you'd like to visit?
+Feedback: "go travel"は冗長です。"travel"だけで十分です。前置詞も"to France"が自然です。
+Improved: I want to travel to France next year.
+
+【フォーマット例（終了時）】
+※ユーザー入力が "Thank you for talk to me. Goodbye!" だった場合：
+
+AI: It was great talking with you! Goodbye! [END_SESSION]
+Feedback: "for talk"は"for talking"（動名詞）が正しい形です。
+
+【誤った例（これは禁止）】
+※ユーザー入力が "I want to go travel to France." の場合に以下はNG：
+
+AI: That sounds exciting! Have you decided which cities you'd like to visit?
+Feedback: 具体的な都市について質問しています。← これはAI応答の説明であり禁止
+Improved: That sounds exciting! Which cities would you like to visit? ← これはAI応答の改善であり禁止
 
 ユーザー入力:
 {user_input}
